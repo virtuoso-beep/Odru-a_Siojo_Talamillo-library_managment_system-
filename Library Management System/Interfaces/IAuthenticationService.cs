@@ -1,6 +1,6 @@
 using Library_Management_System.Models;
 
-namespace Library_Management_System.Interface
+namespace Library_Management_System.Interfaces
 {
     public interface IAuthenticationService
     {

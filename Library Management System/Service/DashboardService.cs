@@ -1,6 +1,6 @@
 using System;
 using System.Data;
-using Library_Management_System.Helpers;
+using Library_Management_System.Helper;
 using MySql.Data.MySqlClient;
 
 namespace Library_Management_System.Services

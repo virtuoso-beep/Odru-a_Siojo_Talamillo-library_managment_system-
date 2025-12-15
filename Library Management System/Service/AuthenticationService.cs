@@ -3,8 +3,8 @@ using System.Data;
 using MySql.Data.MySqlClient;
 using System.Security.Cryptography;
 using System.Text;
-using Library_Management_System.Helpers;
-using Library_Management_System.Interface;
+using Library_Management_System.Helper;
+using Library_Management_System.Interfaces;
 using Library_Management_System.Models;
 
 namespace Library_Management_System.Services

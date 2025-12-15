@@ -2,7 +2,7 @@ using System;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Library_Management_System.Helpers
+namespace Library_Management_System.Helper
 {
     public static class PasswordHashGenerator
     {
