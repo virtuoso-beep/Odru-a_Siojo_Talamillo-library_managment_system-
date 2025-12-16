@@ -46,26 +46,32 @@
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="MySql.Data, Version=8.0.33.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL">
-      <HintPath>packages\MySql.Data.8.0.33\lib\net462\MySql.Data.dll</HintPath>
+      <HintPath>..\packages\MySql.Data.8.0.33\lib\net462\MySql.Data.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Forms\DashboardForm.cs">
+    <Compile Include="DashboardForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\DashboardForm.Designer.cs">
+    <Compile Include="DashboardForm.Designer.cs">
       <DependentUpon>DashboardForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\SiginForm.cs">
+    <Compile Include="SiginForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Forms\SiginForm.Designer.cs">
+    <Compile Include="SiginForm.Designer.cs">
       <DependentUpon>SiginForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="Helpers\CurrentUser.cs" />
-    <Compile Include="Helpers\DatabaseHelper.cs" />
-    <Compile Include="Helpers\PasswordHashGenerator.cs" />
-    <Compile Include="Interface\IAuthenticationService.cs" />
+    <Compile Include="Helper\MYSqlHelper.cs" />
+    <Compile Include="Helper\AuditLogger.cs" />
+    <Compile Include="Helper\ThemeConstants.cs" />
+    <Compile Include="Helper\PlaceholderTextHelper.cs" />
+    <Compile Include="Interfaces\IAuthenticationService.cs" />
+    <Compile Include="Interfaces\IBookService.cs" />
+    <Compile Include="Interfaces\ICirculationService.cs" />
+    <Compile Include="Interfaces\IDashboardService.cs" />
+    <Compile Include="Interfaces\IFineService.cs" />
+    <Compile Include="Interfaces\IMembersService.cs" />
     <Compile Include="Models\Librarian.cs" />
     <Compile Include="Models\LibraryStaff.cs" />
     <Compile Include="Models\Member.cs" />
@@ -73,13 +79,17 @@
     <Compile Include="Models\UserRole.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Services\AuthenticationService.cs" />
-    <Compile Include="Services\DashboardService.cs" />
-    <Compile Include="Services\MembersService.cs" />
-    <EmbeddedResource Include="Forms\DashboardForm.resx">
+    <Compile Include="Service\AuthenticationService.cs" />
+    <Compile Include="Service\BookService.cs" />
+    <Compile Include="Service\CirculationService.cs" />
+    <Compile Include="Service\DashboardService.cs" />
+    <Compile Include="Service\FinesService.cs" />
+    <Compile Include="Service\InventoryService.cs" />
+    <Compile Include="Service\MembersService.cs" />
+    <EmbeddedResource Include="DashboardForm.resx">
       <DependentUpon>DashboardForm.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\SiginForm.resx">
+    <EmbeddedResource Include="SiginForm.resx">
       <DependentUpon>SiginForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -105,9 +115,9 @@
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\images-removebg-preview.png" />
+    <None Include="Resources\images-removebg-preview.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

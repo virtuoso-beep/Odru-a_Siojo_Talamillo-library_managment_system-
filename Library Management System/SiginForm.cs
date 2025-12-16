@@ -10,22 +10,37 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Library_Management_System.Helper;
+using static Library_Management_System.Helper.PlaceholderTextHelper;
+using static Library_Management_System.Helper.MYSqlHelper;
 using Library_Management_System.Interfaces;
 using Library_Management_System.Models;
-using Library_Management_System.Services;
-using Library_Management_System.Forms;
+using Library_Management_System.Service;
 
 namespace Library_Management_System
 {
     public partial class SiginForm : Form
     {
+        private static User _currentUser;
         private bool passwordVisible = false;
         private readonly IAuthenticationService _authenticationService;
+
+        public static User CurrentUser => _currentUser;
+        public static bool IsLoggedIn => _currentUser != null;
+
+        public static void SetCurrentUser(User user)
+        {
+            _currentUser = user;
+        }
+
+        public static void ClearCurrentUser()
+        {
+            _currentUser = null;
+        }
 
         public SiginForm()
         {
             InitializeComponent();
-            _authenticationService = new AuthenticationService();
+            _authenticationService = new Library_Management_System.Service.AuthenticationService();
         }
 
         private void SignAndSignUpForms_Load(object sender, EventArgs e)
@@ -38,36 +53,40 @@ namespace Library_Management_System
                 50
             );
             this.Height = 700;
-            
+
+            // Ensure form controls are properly initialized
+            txtEmail.Text = "";
+            txtPassword.Text = "";
+            cmbLoginAs.SelectedIndex = -1;
+            txtEmail.Focus();
+
+            // Set up placeholder text
+            txtEmail.SetPlaceholder("john.doe.123456.tc@umindanao.edu.ph");
+            txtPassword.SetPlaceholder("Enter your password");
+
             ApplyFormRoundedCorners();
-            
-            string logoPath = System.IO.Path.Combine(Application.StartupPath, "..", "..", "Resources", "images-removebg-preview.png");
+
+            // Load logo
+            string logoPath = System.IO.Path.Combine(Application.StartupPath, "Resources", "images-removebg-preview.png");
             if (System.IO.File.Exists(logoPath))
             {
                 picLogo.Image = Image.FromFile(logoPath);
             }
-            else
-            {
-                logoPath = System.IO.Path.Combine(Application.StartupPath, "Resources", "images-removebg-preview.png");
-                if (System.IO.File.Exists(logoPath))
-                {
-                    picLogo.Image = Image.FromFile(logoPath);
-                }
-            }
         }
+
 
         private void ApplyFormRoundedCorners()
         {
             GraphicsPath path = new GraphicsPath();
             int radius = 20;
             Rectangle rect = this.ClientRectangle;
-            
+
             path.AddArc(rect.X, rect.Y, radius * 2, radius * 2, 180, 90);
             path.AddArc(rect.Right - radius * 2, rect.Y, radius * 2, radius * 2, 270, 90);
             path.AddArc(rect.Right - radius * 2, rect.Bottom - radius * 2, radius * 2, radius * 2, 0, 90);
             path.AddArc(rect.X, rect.Bottom - radius * 2, radius * 2, radius * 2, 90, 90);
             path.CloseAllFigures();
-            
+
             this.Region = new Region(path);
         }
 
@@ -91,71 +110,6 @@ namespace Library_Management_System
             }
         }
 
-        private void pnlMainCard_Paint(object sender, PaintEventArgs e)
-        {
-            GraphicsPath path = new GraphicsPath();
-            int radius = 20;
-            Rectangle rect = pnlMainCard.ClientRectangle;
-            
-            path.AddArc(rect.X, rect.Y, radius * 2, radius * 2, 180, 90);
-            path.AddArc(rect.Right - radius * 2, rect.Y, radius * 2, radius * 2, 270, 90);
-            path.AddArc(rect.Right - radius * 2, rect.Bottom - radius * 2, radius * 2, radius * 2, 0, 90);
-            path.AddArc(rect.X, rect.Bottom - radius * 2, radius * 2, radius * 2, 90, 90);
-            path.CloseAllFigures();
-            
-            pnlMainCard.Region = new Region(path);
-        }
-
-
-        private void DrawRoundedBorder(Panel panel, PaintEventArgs e, Color borderColor, int borderWidth, int radius = 8)
-        {
-            Graphics g = e.Graphics;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            
-            Rectangle rect = panel.ClientRectangle;
-            rect.Width -= 1;
-            rect.Height -= 1;
-            
-            using (Pen borderPen = new Pen(borderColor, borderWidth))
-            {
-                GraphicsPath path = new GraphicsPath();
-                path.AddArc(rect.X, rect.Y, radius * 2, radius * 2, 180, 90);
-                path.AddArc(rect.Right - radius * 2, rect.Y, radius * 2, radius * 2, 270, 90);
-                path.AddArc(rect.Right - radius * 2, rect.Bottom - radius * 2, radius * 2, radius * 2, 0, 90);
-                path.AddArc(rect.X, rect.Bottom - radius * 2, radius * 2, radius * 2, 90, 90);
-                path.CloseAllFigures();
-                
-                g.DrawPath(borderPen, path);
-                path.Dispose();
-            }
-        }
-
-        private void pnlEmailContainer_Paint(object sender, PaintEventArgs e)
-        {
-            Panel panel = sender as Panel;
-            if (panel != null)
-            {
-                DrawRoundedBorder(panel, e, Color.FromArgb(220, 220, 220), 2, 8);
-            }
-        }
-
-        private void pnlPasswordContainer_Paint(object sender, PaintEventArgs e)
-        {
-            Panel panel = sender as Panel;
-            if (panel != null)
-            {
-                DrawRoundedBorder(panel, e, Color.FromArgb(220, 220, 220), 2, 8);
-            }
-        }
-
-        private void pnlComboContainer_Paint(object sender, PaintEventArgs e)
-        {
-            Panel panel = sender as Panel;
-            if (panel != null)
-            {
-                DrawRoundedBorder(panel, e, Color.FromArgb(220, 220, 220), 2, 8);
-            }
-        }
 
         private void btnTogglePassword_Click(object sender, EventArgs e)
         {
@@ -168,13 +122,18 @@ namespace Library_Management_System
         {
             try
             {
+                // Debug: Check form state
+                System.Diagnostics.Debug.WriteLine($"Email: '{txtEmail.GetActualText()}'");
+                System.Diagnostics.Debug.WriteLine($"Password: '{txtPassword.GetActualText()}' (Length: {txtPassword.GetActualText().Length})");
+                System.Diagnostics.Debug.WriteLine($"Role: '{cmbLoginAs.SelectedItem}'");
+
                 if (!ValidateInput())
                 {
                     return;
                 }
 
-                string email = txtEmail.Text.Trim();
-                string password = txtPassword.Text;
+                string email = txtEmail.GetActualText().Trim();
+                string password = txtPassword.GetActualText();
                 string loginAs = cmbLoginAs.SelectedItem?.ToString();
 
                 UserRole expectedRole = MapRoleFromString(loginAs);
@@ -193,9 +152,19 @@ namespace Library_Management_System
 
                 if (authenticatedUser != null)
                 {
-                    CurrentUser.SetCurrentUser(authenticatedUser);
+                    Library_Management_System.Helper.AuditLogger.LogLogin(email, true);
+                }
+                else
+                {
+                    Library_Management_System.Helper.AuditLogger.LogLogin(email, false);
+                }
 
-                    MessageBox.Show($"Welcome, {authenticatedUser.FullName}!\n{authenticatedUser.GetRoleDescription()}", 
+                if (authenticatedUser != null)
+                {
+                    Library_Management_System.Helper.AuditLogger.LogLogin(email, true);
+                    SiginForm.SetCurrentUser(authenticatedUser);
+
+                    MessageBox.Show($"Welcome, {authenticatedUser.FullName}!\n{authenticatedUser.GetRoleDescription()}",
                         "Login Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                     try
@@ -204,10 +173,10 @@ namespace Library_Management_System
                         
                         dashboardForm.FormClosed += (s, args) => 
                         {
-                            CurrentUser.Clear();
+                            SiginForm.ClearCurrentUser();
                             this.Show();
-                            this.txtEmail.Clear();
-                            this.txtPassword.Clear();
+                            this.txtEmail.SetActualText("");
+                            this.txtPassword.SetActualText("");
                             this.cmbLoginAs.SelectedIndex = -1;
                             btnSignIn.Enabled = true;
                             btnSignIn.Text = "Sign In";
@@ -236,10 +205,10 @@ namespace Library_Management_System
                 }
                 else
                 {
-                    MessageBox.Show("Invalid email, password, or role mismatch.\nPlease check your credentials and try again.", 
+                    MessageBox.Show("Invalid email, password, or role mismatch.\nPlease check your credentials and try again.",
                         "Authentication Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    
-                    txtPassword.Clear();
+
+                    txtPassword.SetActualText("");
                     txtPassword.Focus();
                 }
             }
@@ -257,26 +226,34 @@ namespace Library_Management_System
 
         private bool ValidateInput()
         {
-            if (string.IsNullOrWhiteSpace(txtEmail.Text))
+            if (string.IsNullOrWhiteSpace(txtEmail.GetActualText()))
             {
-                MessageBox.Show("Please enter your email address.", "Validation Error", 
+                MessageBox.Show("Please enter your email address.", "Validation Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtEmail.Focus();
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(txtPassword.Text))
+            if (string.IsNullOrWhiteSpace(txtPassword.GetActualText()))
             {
-                MessageBox.Show("Please enter your password.", "Validation Error", 
+                MessageBox.Show("Please enter your password.\n\nFor admin login, use: Admin123!", "Validation Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtPassword.Focus();
                 return false;
             }
 
-            if (cmbLoginAs.SelectedItem == null)
+            if (txtPassword.GetActualText().Length < 6)
             {
-                MessageBox.Show("Please select a role.", "Validation Error", 
+                MessageBox.Show("Password must be at least 6 characters long.", "Validation Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txtPassword.Focus();
+                return false;
+            }
+
+            if (cmbLoginAs.SelectedItem == null || cmbLoginAs.SelectedIndex == -1)
+            {
+                MessageBox.Show("Please select your role (Administrator, Staff, or Member).",
+                    "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 cmbLoginAs.Focus();
                 return false;
             }
@@ -284,7 +261,7 @@ namespace Library_Management_System
             string email = txtEmail.Text.Trim().ToLower();
             if (!IsValidEducationalEmail(email))
             {
-                MessageBox.Show("Please ensure:\n\n• It must be institutional email\n• Format: firstname.lastname.idnumber.tc@umindanao.edu.ph\n\nExample: t.odruna.142275.tc@umindanao.edu.ph", 
+                MessageBox.Show("Please ensure:\n\n• It must be institutional email\n• Format: firstname.lastname.IDnumber.tc@umindanao.edu.ph\n\nExample: john.doe.123456.tc@umindanao.edu.ph",
                     "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 txtEmail.Focus();
                 return false;

@@ -2,11 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using Library_Management_System.Helper;
+using Library_Management_System.Interfaces;
 using MySql.Data.MySqlClient;
+using Library_Management_System.Service;
 
-namespace Library_Management_System.Services
+namespace Library_Management_System.Service
 {
-    public class MembersService
+    public class MembersService : IMembersService
     {
         public class MemberInfo
         {
@@ -23,6 +25,13 @@ namespace Library_Management_System.Services
             public DateTime? RegistrationDate { get; set; }
             public DateTime? ExpirationDate { get; set; }
             public int TotalBorrowed { get; set; }
+            public string IdNumber { get; set; }
+            public DateTime? DateOfBirth { get; set; }
+            public string Gender { get; set; }
+            public string Department { get; set; }
+            public string EmergencyContactName { get; set; }
+            public string EmergencyContactPhone { get; set; }
+            public DateTime? MembershipExpiryDate { get; set; }
         }
 
         public class MemberStatistics
@@ -39,7 +48,7 @@ namespace Library_Management_System.Services
 
             try
             {
-                using (var connection = DatabaseHelper.GetConnection())
+                using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
 
@@ -92,7 +101,7 @@ namespace Library_Management_System.Services
 
             try
             {
-                using (var connection = DatabaseHelper.GetConnection())
+                using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
 
@@ -137,11 +146,11 @@ namespace Library_Management_System.Services
                         : "0";
 
                     string query = $@"
-                        SELECT 
+                        SELECT
                             m.MemberNumber,
                             u.FirstName,
                             u.LastName,
-                            CASE 
+                            CASE
                                 WHEN m.MemberType = 1 THEN 'Student'
                                 WHEN m.MemberType = 2 THEN 'Faculty'
                                 WHEN m.MemberType = 3 THEN 'Staff'
@@ -149,16 +158,23 @@ namespace Library_Management_System.Services
                                 ELSE 'Guest'
                             END AS MemberType,
                             u.Email,
-                            CASE 
-                                WHEN m.Status = 1 AND (m.ExpirationDate IS NULL OR m.ExpirationDate > NOW()) THEN 'Active'
+                            CASE
+                                WHEN m.Status = 1 AND (m.MembershipExpiryDate IS NULL OR m.MembershipExpiryDate > NOW()) THEN 'Active'
                                 WHEN m.Status = 2 THEN 'Inactive'
                                 WHEN m.Status = 3 THEN 'Suspended'
-                                WHEN m.Status = 4 OR (m.ExpirationDate IS NOT NULL AND m.ExpirationDate < NOW()) THEN 'Expired'
+                                WHEN m.Status = 4 OR (m.MembershipExpiryDate IS NOT NULL AND m.MembershipExpiryDate < NOW()) THEN 'Expired'
                                 ELSE 'Unknown'
                             END AS Status,
                             {booksBorrowedSubquery} AS BooksBorrowed,
                             5 AS BooksLimit,
-                            {finesSubquery} AS Fines
+                            {finesSubquery} AS Fines,
+                            m.IdNumber,
+                            m.DateOfBirth,
+                            m.Gender,
+                            m.Department,
+                            m.EmergencyContactName,
+                            m.EmergencyContactPhone,
+                            m.MembershipExpiryDate
                         FROM Members m
                         INNER JOIN Users u ON m.UserId = u.UserId
                         WHERE 1=1";
@@ -224,7 +240,14 @@ namespace Library_Management_System.Services
                                     Status = reader["Status"].ToString(),
                                     BooksBorrowed = Convert.ToInt32(reader["BooksBorrowed"]),
                                     BooksLimit = Convert.ToInt32(reader["BooksLimit"]),
-                                    Fines = Convert.ToDecimal(reader["Fines"])
+                                    Fines = Convert.ToDecimal(reader["Fines"]),
+                                    IdNumber = reader["IdNumber"] != DBNull.Value ? reader["IdNumber"].ToString() : "",
+                                    DateOfBirth = reader["DateOfBirth"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["DateOfBirth"]) : null,
+                                    Gender = reader["Gender"] != DBNull.Value ? reader["Gender"].ToString() : "",
+                                    Department = reader["Department"] != DBNull.Value ? reader["Department"].ToString() : "",
+                                    EmergencyContactName = reader["EmergencyContactName"] != DBNull.Value ? reader["EmergencyContactName"].ToString() : "",
+                                    EmergencyContactPhone = reader["EmergencyContactPhone"] != DBNull.Value ? reader["EmergencyContactPhone"].ToString() : "",
+                                    MembershipExpiryDate = reader["MembershipExpiryDate"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["MembershipExpiryDate"]) : null
                                 });
                             }
                         }
@@ -239,11 +262,13 @@ namespace Library_Management_System.Services
             return members;
         }
 
-        public bool RegisterMember(string firstName, string lastName, string email, string phone, string address, string memberType)
+        public bool RegisterMember(string firstName, string lastName, string email, string phone, string address, string memberType, string status = "Active",
+            string idNumber = "", DateTime? dateOfBirth = null, string gender = "", string department = "",
+            string emergencyContactName = "", string emergencyContactPhone = "", DateTime? membershipExpiryDate = null)
         {
             try
             {
-                using (var connection = DatabaseHelper.GetConnection())
+                using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
 
@@ -260,9 +285,9 @@ namespace Library_Management_System.Services
                         }
                     }
 
-                    // Generate a default password (can be changed later)
-                    string defaultPassword = "Member123!";
-                    string passwordHash = Helpers.PasswordHashGenerator.GenerateHash(defaultPassword);
+                    // Generate a secure default password (can be changed later)
+                    string defaultPassword = GenerateSecureDefaultPassword();
+                    string passwordHash = GenerateHash(defaultPassword);
 
                     // Insert into Users table - ensure email is lowercase
                     string insertUserQuery = @"
@@ -288,6 +313,12 @@ namespace Library_Management_System.Services
                     if (memberType == "Student") memberTypeValue = 1;
                     else if (memberType == "Faculty") memberTypeValue = 2;
                     else if (memberType == "Staff") memberTypeValue = 3;
+
+                    // Map status
+                    int statusValue = 1;
+                    if (status == "Inactive") statusValue = 2;
+                    else if (status == "Suspended") statusValue = 3;
+                    else if (status == "Expired") statusValue = 4;
 
                     // Insert into Members table
                     // Check if Phone and Address columns exist
@@ -320,14 +351,18 @@ namespace Library_Management_System.Services
                     if (hasPhoneColumn && hasAddressColumn)
                     {
                         insertMemberQuery = @"
-                            INSERT INTO Members (UserId, MemberNumber, MemberType, Status, RegistrationDate, Phone, Address)
-                            VALUES (@userId, @memberNumber, @memberType, 1, NOW(), @phone, @address)";
+                            INSERT INTO Members (UserId, MemberNumber, MemberType, Status, RegistrationDate, Phone, Address,
+                                               IdNumber, DateOfBirth, Gender, Department, EmergencyContactName, EmergencyContactPhone, MembershipExpiryDate)
+                            VALUES (@userId, @memberNumber, @memberType, @status, NOW(), @phone, @address,
+                                   @idNumber, @dateOfBirth, @gender, @department, @emergencyContactName, @emergencyContactPhone, @membershipExpiryDate)";
                     }
                     else
                     {
                         insertMemberQuery = @"
-                            INSERT INTO Members (UserId, MemberNumber, MemberType, Status, RegistrationDate)
-                            VALUES (@userId, @memberNumber, @memberType, 1, NOW())";
+                            INSERT INTO Members (UserId, MemberNumber, MemberType, Status, RegistrationDate,
+                                               IdNumber, DateOfBirth, Gender, Department, EmergencyContactName, EmergencyContactPhone, MembershipExpiryDate)
+                            VALUES (@userId, @memberNumber, @memberType, @status, NOW(),
+                                   @idNumber, @dateOfBirth, @gender, @department, @emergencyContactName, @emergencyContactPhone, @membershipExpiryDate)";
                     }
                     
                     using (var memberCmd = new MySqlCommand(insertMemberQuery, connection))
@@ -342,12 +377,22 @@ namespace Library_Management_System.Services
                         {
                             memberCmd.Parameters.AddWithValue("@memberType", memberTypeValue);
                         }
-                        
+                        memberCmd.Parameters.AddWithValue("@status", statusValue);
+
                         if (hasPhoneColumn && hasAddressColumn)
                         {
                             memberCmd.Parameters.AddWithValue("@phone", string.IsNullOrWhiteSpace(phone) ? (object)DBNull.Value : phone.Trim());
                             memberCmd.Parameters.AddWithValue("@address", string.IsNullOrWhiteSpace(address) ? (object)DBNull.Value : address.Trim());
                         }
+
+                        // Add new member fields
+                        memberCmd.Parameters.AddWithValue("@idNumber", string.IsNullOrWhiteSpace(idNumber) ? (object)DBNull.Value : idNumber.Trim());
+                        memberCmd.Parameters.AddWithValue("@dateOfBirth", dateOfBirth.HasValue ? (object)dateOfBirth.Value : DBNull.Value);
+                        memberCmd.Parameters.AddWithValue("@gender", string.IsNullOrWhiteSpace(gender) ? (object)DBNull.Value : gender.Trim());
+                        memberCmd.Parameters.AddWithValue("@department", string.IsNullOrWhiteSpace(department) ? (object)DBNull.Value : department.Trim());
+                        memberCmd.Parameters.AddWithValue("@emergencyContactName", string.IsNullOrWhiteSpace(emergencyContactName) ? (object)DBNull.Value : emergencyContactName.Trim());
+                        memberCmd.Parameters.AddWithValue("@emergencyContactPhone", string.IsNullOrWhiteSpace(emergencyContactPhone) ? (object)DBNull.Value : emergencyContactPhone.Trim());
+                        memberCmd.Parameters.AddWithValue("@membershipExpiryDate", membershipExpiryDate.HasValue ? (object)membershipExpiryDate.Value : DBNull.Value);
                         
                         memberCmd.ExecuteNonQuery();
                     }
@@ -366,7 +411,7 @@ namespace Library_Management_System.Services
         {
             try
             {
-                using (var connection = DatabaseHelper.GetConnection())
+                using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
 
@@ -460,11 +505,11 @@ namespace Library_Management_System.Services
                                 ELSE 'Guest'
                             END AS MemberType,
                             u.Email,
-                            CASE 
-                                WHEN m.Status = 1 AND (m.ExpirationDate IS NULL OR m.ExpirationDate > NOW()) THEN 'Active'
+                            CASE
+                                WHEN m.Status = 1 AND (m.MembershipExpiryDate IS NULL OR m.MembershipExpiryDate > NOW()) THEN 'Active'
                                 WHEN m.Status = 2 THEN 'Inactive'
                                 WHEN m.Status = 3 THEN 'Suspended'
-                                WHEN m.Status = 4 OR (m.ExpirationDate IS NOT NULL AND m.ExpirationDate < NOW()) THEN 'Expired'
+                                WHEN m.Status = 4 OR (m.MembershipExpiryDate IS NOT NULL AND m.MembershipExpiryDate < NOW()) THEN 'Expired'
                                 ELSE 'Unknown'
                             END AS Status,
                             {currentBorrowedSubquery} AS BooksBorrowed,
@@ -473,8 +518,14 @@ namespace Library_Management_System.Services
                             {phoneColumn},
                             {addressColumn},
                             m.RegistrationDate,
-                            m.ExpirationDate,
-                            {totalBorrowedSubquery} AS TotalBorrowed
+                            m.MembershipExpiryDate,
+                            {totalBorrowedSubquery} AS TotalBorrowed,
+                            m.IdNumber,
+                            m.DateOfBirth,
+                            m.Gender,
+                            m.Department,
+                            m.EmergencyContactName,
+                            m.EmergencyContactPhone
                         FROM Members m
                         INNER JOIN Users u ON m.UserId = u.UserId
                         WHERE m.MemberNumber = @memberId";
@@ -500,8 +551,15 @@ namespace Library_Management_System.Services
                                     Phone = reader["Phone"] != DBNull.Value ? reader["Phone"].ToString() : "",
                                     Address = reader["Address"] != DBNull.Value ? reader["Address"].ToString() : "",
                                     RegistrationDate = reader["RegistrationDate"] != DBNull.Value ? Convert.ToDateTime(reader["RegistrationDate"]) : (DateTime?)null,
-                                    ExpirationDate = reader["ExpirationDate"] != DBNull.Value ? Convert.ToDateTime(reader["ExpirationDate"]) : (DateTime?)null,
-                                    TotalBorrowed = reader["TotalBorrowed"] != DBNull.Value ? Convert.ToInt32(reader["TotalBorrowed"]) : 0
+                                    ExpirationDate = reader["MembershipExpiryDate"] != DBNull.Value ? Convert.ToDateTime(reader["MembershipExpiryDate"]) : (DateTime?)null,
+                                    TotalBorrowed = reader["TotalBorrowed"] != DBNull.Value ? Convert.ToInt32(reader["TotalBorrowed"]) : 0,
+                                    IdNumber = reader["IdNumber"] != DBNull.Value ? reader["IdNumber"].ToString() : "",
+                                    DateOfBirth = reader["DateOfBirth"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["DateOfBirth"]) : null,
+                                    Gender = reader["Gender"] != DBNull.Value ? reader["Gender"].ToString() : "",
+                                    Department = reader["Department"] != DBNull.Value ? reader["Department"].ToString() : "",
+                                    EmergencyContactName = reader["EmergencyContactName"] != DBNull.Value ? reader["EmergencyContactName"].ToString() : "",
+                                    EmergencyContactPhone = reader["EmergencyContactPhone"] != DBNull.Value ? reader["EmergencyContactPhone"].ToString() : "",
+                                    MembershipExpiryDate = reader["MembershipExpiryDate"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["MembershipExpiryDate"]) : null
                                 };
                             }
                         }
@@ -521,7 +579,7 @@ namespace Library_Management_System.Services
         {
             try
             {
-                using (var connection = DatabaseHelper.GetConnection())
+                using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
 
@@ -680,7 +738,7 @@ namespace Library_Management_System.Services
         {
             try
             {
-                using (var connection = DatabaseHelper.GetConnection())
+                using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
 
@@ -750,6 +808,29 @@ namespace Library_Management_System.Services
             {
                 System.Diagnostics.Debug.WriteLine($"Error deleting member: {ex.Message}");
                 throw;
+            }
+        }
+
+        private string GenerateSecureDefaultPassword()
+        {
+            // Generate a secure default password that meets complexity requirements
+            // Format: Member + random number + special character
+            Random random = new Random();
+            int randomNumber = random.Next(1000, 9999);
+            return $"Member{randomNumber}!";
+        }
+
+        private string GenerateHash(string password)
+        {
+            using (System.Security.Cryptography.SHA256 sha256 = System.Security.Cryptography.SHA256.Create())
+            {
+                byte[] bytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
+                System.Text.StringBuilder builder = new System.Text.StringBuilder();
+                for (int i = 0; i < bytes.Length; i++)
+                {
+                    builder.Append(bytes[i].ToString("x2"));
+                }
+                return builder.ToString();
             }
         }
     }

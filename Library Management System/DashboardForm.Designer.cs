@@ -1,4 +1,4 @@
-namespace Library_Management_System.Forms
+namespace Library_Management_System
 {
     partial class DashboardForm
     {
@@ -118,8 +118,6 @@ namespace Library_Management_System.Forms
             this.pnlCardActiveMembers = new System.Windows.Forms.Panel();
             this.lblActiveMembers = new System.Windows.Forms.Label();
             this.lblActiveMembersChange = new System.Windows.Forms.Label();
-            this.pnlCardReservations = new System.Windows.Forms.Panel();
-            this.lblReservations = new System.Windows.Forms.Label();
             this.pnlCardTotalBooks = new System.Windows.Forms.Panel();
             this.lblTotalBooks = new System.Windows.Forms.Label();
             this.lblTotalBooksChange = new System.Windows.Forms.Label();
@@ -164,7 +162,6 @@ namespace Library_Management_System.Forms
             this.pnlCardTodaysBorrowings.SuspendLayout();
             this.pnlCardBooksBorrowed.SuspendLayout();
             this.pnlCardActiveMembers.SuspendLayout();
-            this.pnlCardReservations.SuspendLayout();
             this.pnlCardTotalBooks.SuspendLayout();
             this.pnlMembersView.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvMembers)).BeginInit();
@@ -236,6 +233,7 @@ namespace Library_Management_System.Forms
             // btnSignOut
             // 
             this.btnSignOut.BackColor = System.Drawing.Color.Transparent;
+            this.btnSignOut.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnSignOut.FlatAppearance.BorderSize = 0;
             this.btnSignOut.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(180)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
             this.btnSignOut.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -244,12 +242,11 @@ namespace Library_Management_System.Forms
             this.btnSignOut.Location = new System.Drawing.Point(25, 40);
             this.btnSignOut.Margin = new System.Windows.Forms.Padding(0);
             this.btnSignOut.Name = "btnSignOut";
+            this.btnSignOut.Padding = new System.Windows.Forms.Padding(15, 0, 0, 0);
             this.btnSignOut.Size = new System.Drawing.Size(230, 35);
             this.btnSignOut.TabIndex = 1;
             this.btnSignOut.Text = "🚪 Sign Out";
             this.btnSignOut.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.btnSignOut.Padding = new System.Windows.Forms.Padding(15, 0, 0, 0);
-            this.btnSignOut.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnSignOut.UseVisualStyleBackColor = false;
             this.btnSignOut.Click += new System.EventHandler(this.BtnSignOut_Click);
             // 
@@ -260,13 +257,13 @@ namespace Library_Management_System.Forms
             this.lblAdminName.ForeColor = System.Drawing.Color.White;
             this.lblAdminName.Location = new System.Drawing.Point(25, 10);
             this.lblAdminName.Name = "lblAdminName";
-            this.lblAdminName.Size = new System.Drawing.Size(84, 32);
+            this.lblAdminName.Size = new System.Drawing.Size(90, 32);
             this.lblAdminName.TabIndex = 0;
             this.lblAdminName.Text = "Admin";
             // 
             // btnSettings
             // 
-            this.btnSettings.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
+            this.btnSettings.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(32)))));
             this.btnSettings.FlatAppearance.BorderSize = 0;
             this.btnSettings.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnSettings.Font = new System.Drawing.Font("Segoe UI", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -285,7 +282,7 @@ namespace Library_Management_System.Forms
             // 
             // btnSearch
             // 
-            this.btnSearch.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
+            this.btnSearch.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(32)))));
             this.btnSearch.FlatAppearance.BorderSize = 0;
             this.btnSearch.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnSearch.Font = new System.Drawing.Font("Segoe UI", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -304,7 +301,7 @@ namespace Library_Management_System.Forms
             // 
             // btnReports
             // 
-            this.btnReports.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
+            this.btnReports.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(32)))));
             this.btnReports.FlatAppearance.BorderSize = 0;
             this.btnReports.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnReports.Font = new System.Drawing.Font("Segoe UI", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -323,7 +320,7 @@ namespace Library_Management_System.Forms
             // 
             // btnInventory
             // 
-            this.btnInventory.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
+            this.btnInventory.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(32)))));
             this.btnInventory.FlatAppearance.BorderSize = 0;
             this.btnInventory.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnInventory.Font = new System.Drawing.Font("Segoe UI", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -342,7 +339,7 @@ namespace Library_Management_System.Forms
             // 
             // btnFines
             // 
-            this.btnFines.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
+            this.btnFines.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(32)))));
             this.btnFines.FlatAppearance.BorderSize = 0;
             this.btnFines.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnFines.Font = new System.Drawing.Font("Segoe UI", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -354,14 +351,14 @@ namespace Library_Management_System.Forms
             this.btnFines.Size = new System.Drawing.Size(280, 48);
             this.btnFines.TabIndex = 7;
             this.btnFines.Tag = "Fines";
-            this.btnFines.Text = "  ₱ Fines";
+            this.btnFines.Text = "  💰 Fines";
             this.btnFines.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.btnFines.UseVisualStyleBackColor = false;
             this.btnFines.Click += new System.EventHandler(this.MenuItem_Click);
             // 
             // btnReservations
             // 
-            this.btnReservations.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
+            this.btnReservations.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(32)))));
             this.btnReservations.FlatAppearance.BorderSize = 0;
             this.btnReservations.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnReservations.Font = new System.Drawing.Font("Segoe UI", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -380,7 +377,7 @@ namespace Library_Management_System.Forms
             // 
             // btnCirculation
             // 
-            this.btnCirculation.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
+            this.btnCirculation.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(32)))));
             this.btnCirculation.FlatAppearance.BorderSize = 0;
             this.btnCirculation.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnCirculation.Font = new System.Drawing.Font("Segoe UI", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -392,14 +389,14 @@ namespace Library_Management_System.Forms
             this.btnCirculation.Size = new System.Drawing.Size(280, 48);
             this.btnCirculation.TabIndex = 5;
             this.btnCirculation.Tag = "Circulation";
-            this.btnCirculation.Text = "  ⇄ Circulation";
+            this.btnCirculation.Text = "  🔄 Circulation";
             this.btnCirculation.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.btnCirculation.UseVisualStyleBackColor = false;
             this.btnCirculation.Click += new System.EventHandler(this.MenuItem_Click);
             // 
             // btnCatalog
             // 
-            this.btnCatalog.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
+            this.btnCatalog.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(32)))));
             this.btnCatalog.FlatAppearance.BorderSize = 0;
             this.btnCatalog.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnCatalog.Font = new System.Drawing.Font("Segoe UI", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -418,7 +415,7 @@ namespace Library_Management_System.Forms
             // 
             // btnMembers
             // 
-            this.btnMembers.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
+            this.btnMembers.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(32)))));
             this.btnMembers.FlatAppearance.BorderSize = 0;
             this.btnMembers.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnMembers.Font = new System.Drawing.Font("Segoe UI", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -653,7 +650,6 @@ namespace Library_Management_System.Forms
             this.pnlCardActiveMembers.BackColor = System.Drawing.Color.White;
             this.pnlCardActiveMembers.Controls.Add(this.lblActiveMembers);
             this.pnlCardActiveMembers.Controls.Add(this.lblActiveMembersChange);
-            this.pnlCardActiveMembers.Controls.Add(this.pnlCardReservations);
             this.pnlCardActiveMembers.Location = new System.Drawing.Point(280, 125);
             this.pnlCardActiveMembers.Margin = new System.Windows.Forms.Padding(3, 5, 3, 5);
             this.pnlCardActiveMembers.Name = "pnlCardActiveMembers";
@@ -681,27 +677,6 @@ namespace Library_Management_System.Forms
             this.lblActiveMembersChange.Size = new System.Drawing.Size(184, 28);
             this.lblActiveMembersChange.TabIndex = 1;
             this.lblActiveMembersChange.Text = "+8% from last week";
-            // 
-            // pnlCardReservations
-            // 
-            this.pnlCardReservations.BackColor = System.Drawing.Color.White;
-            this.pnlCardReservations.Controls.Add(this.lblReservations);
-            this.pnlCardReservations.Location = new System.Drawing.Point(151, 77);
-            this.pnlCardReservations.Margin = new System.Windows.Forms.Padding(3, 5, 3, 5);
-            this.pnlCardReservations.Name = "pnlCardReservations";
-            this.pnlCardReservations.Size = new System.Drawing.Size(230, 135);
-            this.pnlCardReservations.TabIndex = 9;
-            // 
-            // lblReservations
-            // 
-            this.lblReservations.AutoSize = true;
-            this.lblReservations.Font = new System.Drawing.Font("Segoe UI", 22F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblReservations.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(40)))));
-            this.lblReservations.Location = new System.Drawing.Point(20, 40);
-            this.lblReservations.Name = "lblReservations";
-            this.lblReservations.Size = new System.Drawing.Size(50, 60);
-            this.lblReservations.TabIndex = 0;
-            this.lblReservations.Text = "8";
             // 
             // pnlCardTotalBooks
             // 
@@ -849,7 +824,7 @@ namespace Library_Management_System.Forms
             this.cmbStatusFilter.SelectedIndexChanged += new System.EventHandler(this.CmbStatusFilter_SelectedIndexChanged);
             // 
             // txtSearchMembers
-            // 
+            //
             this.txtSearchMembers.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.txtSearchMembers.Location = new System.Drawing.Point(0, 10);
             this.txtSearchMembers.Name = "txtSearchMembers";
@@ -1115,8 +1090,9 @@ namespace Library_Management_System.Forms
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.MaximizeBox = false;
-            this.MaximumSize = new System.Drawing.Size(1400, 650);
-            this.MinimumSize = new System.Drawing.Size(1400, 650);
+            // Removed size constraints for full screen mode
+            // this.MaximumSize = new System.Drawing.Size(1400, 650);
+            // this.MinimumSize = new System.Drawing.Size(1400, 650);
             this.Name = "DashboardForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "LibraryMS - Dashboard";
@@ -1141,8 +1117,6 @@ namespace Library_Management_System.Forms
             this.pnlCardBooksBorrowed.PerformLayout();
             this.pnlCardActiveMembers.ResumeLayout(false);
             this.pnlCardActiveMembers.PerformLayout();
-            this.pnlCardReservations.ResumeLayout(false);
-            this.pnlCardReservations.PerformLayout();
             this.pnlCardTotalBooks.ResumeLayout(false);
             this.pnlCardTotalBooks.PerformLayout();
             this.pnlMembersView.ResumeLayout(false);
@@ -1163,9 +1137,6 @@ namespace Library_Management_System.Forms
             this.ResumeLayout(false);
 
         }
-
-        private System.Windows.Forms.Panel pnlCardReservations;
-        private System.Windows.Forms.Label lblReservations;
     }
 }
 

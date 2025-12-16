@@ -79,7 +79,6 @@
             this.pnlMainCard.Name = "pnlMainCard";
             this.pnlMainCard.Size = new System.Drawing.Size(640, 800);
             this.pnlMainCard.TabIndex = 0;
-            this.pnlMainCard.Paint += new System.Windows.Forms.PaintEventHandler(this.pnlMainCard_Paint);
             // 
             // btnSignIn
             // 
@@ -99,12 +98,12 @@
             // pnlComboContainer
             // 
             this.pnlComboContainer.BackColor = System.Drawing.Color.White;
+            this.pnlComboContainer.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.pnlComboContainer.Controls.Add(this.cmbLoginAs);
             this.pnlComboContainer.Location = new System.Drawing.Point(70, 570);
             this.pnlComboContainer.Name = "pnlComboContainer";
             this.pnlComboContainer.Size = new System.Drawing.Size(500, 50);
             this.pnlComboContainer.TabIndex = 7;
-            this.pnlComboContainer.Paint += new System.Windows.Forms.PaintEventHandler(this.pnlComboContainer_Paint);
             // 
             // cmbLoginAs
             // 
@@ -121,7 +120,7 @@
             "Member"});
             this.cmbLoginAs.Location = new System.Drawing.Point(3, 3);
             this.cmbLoginAs.Name = "cmbLoginAs";
-            this.cmbLoginAs.Size = new System.Drawing.Size(494, 40);
+            this.cmbLoginAs.Size = new System.Drawing.Size(492, 40);
             this.cmbLoginAs.TabIndex = 0;
             // 
             // lblLoginAs
@@ -137,14 +136,14 @@
             // 
             // pnlPasswordContainer
             // 
-            this.pnlPasswordContainer.BackColor = System.Drawing.Color.White;
+            this.pnlPasswordContainer.BackColor = System.Drawing.SystemColors.Window;
+            this.pnlPasswordContainer.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.pnlPasswordContainer.Controls.Add(this.btnTogglePassword);
             this.pnlPasswordContainer.Controls.Add(this.txtPassword);
             this.pnlPasswordContainer.Location = new System.Drawing.Point(70, 450);
             this.pnlPasswordContainer.Name = "pnlPasswordContainer";
-            this.pnlPasswordContainer.Size = new System.Drawing.Size(500, 55);
+            this.pnlPasswordContainer.Size = new System.Drawing.Size(500, 66);
             this.pnlPasswordContainer.TabIndex = 5;
-            this.pnlPasswordContainer.Paint += new System.Windows.Forms.PaintEventHandler(this.pnlPasswordContainer_Paint);
             // 
             // btnTogglePassword
             // 
@@ -153,16 +152,16 @@
             this.btnTogglePassword.FlatAppearance.BorderSize = 0;
             this.btnTogglePassword.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnTogglePassword.Font = new System.Drawing.Font("Segoe UI Emoji", 16F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnTogglePassword.Location = new System.Drawing.Point(436, 3);
+            this.btnTogglePassword.Location = new System.Drawing.Point(418, 3);
             this.btnTogglePassword.Name = "btnTogglePassword";
-            this.btnTogglePassword.Size = new System.Drawing.Size(61, 50);
+            this.btnTogglePassword.Size = new System.Drawing.Size(56, 60);
             this.btnTogglePassword.TabIndex = 1;
             this.btnTogglePassword.Text = "👁";
             this.btnTogglePassword.UseVisualStyleBackColor = false;
             this.btnTogglePassword.Click += new System.EventHandler(this.btnTogglePassword_Click);
             // 
             // txtPassword
-            // 
+            //
             this.txtPassword.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.txtPassword.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.txtPassword.Location = new System.Drawing.Point(10, 12);
@@ -185,15 +184,15 @@
             // pnlEmailContainer
             // 
             this.pnlEmailContainer.BackColor = System.Drawing.Color.White;
+            this.pnlEmailContainer.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.pnlEmailContainer.Controls.Add(this.txtEmail);
             this.pnlEmailContainer.Location = new System.Drawing.Point(70, 330);
             this.pnlEmailContainer.Name = "pnlEmailContainer";
             this.pnlEmailContainer.Size = new System.Drawing.Size(500, 55);
             this.pnlEmailContainer.TabIndex = 3;
-            this.pnlEmailContainer.Paint += new System.Windows.Forms.PaintEventHandler(this.pnlEmailContainer_Paint);
             // 
             // txtEmail
-            // 
+            //
             this.txtEmail.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.txtEmail.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.txtEmail.Location = new System.Drawing.Point(10, 12);

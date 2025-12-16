@@ -5,14 +5,14 @@ namespace Library_Management_System.Models
 {
     public abstract class User
     {
-        private int _userId;
-        private string _email;
-        private string _passwordHash;
-        private string _firstName;
-        private string _lastName;
-        private UserRole _role;
-        private bool _isActive;
-        private DateTime _createdDate;
+        protected int _userId;
+        protected string _email;
+        protected string _passwordHash;
+        protected string _firstName;
+        protected string _lastName;
+        protected UserRole _role;
+        protected bool _isActive;
+        protected DateTime _createdDate;
 
         public int UserId
         {
@@ -110,8 +110,9 @@ namespace Library_Management_System.Models
 
             string localPart = email.Split('@')[0];
 
-            string pattern = @"^[a-z]+\.[a-z]+\.[0-9]+\.tc$";
-            
+            // More flexible pattern that allows for variations in name format
+            string pattern = @"^[a-zA-Z]+\.[a-zA-Z]+\.[0-9]+\.tc$";
+
             if (!Regex.IsMatch(localPart, pattern))
                 return false;
 

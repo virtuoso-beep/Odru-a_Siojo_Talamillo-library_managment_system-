@@ -1,11 +1,12 @@
 using System;
 using System.Data;
 using Library_Management_System.Helper;
+using Library_Management_System.Interfaces;
 using MySql.Data.MySqlClient;
 
-namespace Library_Management_System.Services
+namespace Library_Management_System.Service
 {
-    public class DashboardService
+    public class DashboardService : IDashboardService
     {
         public class DashboardStatistics
         {
@@ -29,7 +30,7 @@ namespace Library_Management_System.Services
 
             try
             {
-                using (var connection = DatabaseHelper.GetConnection())
+                using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
                     stats.ActiveMembers = GetActiveMembersCount(connection);
@@ -455,14 +456,19 @@ namespace Library_Management_System.Services
             }
         }
 
-        public string CalculatePercentageChange(int current, int previous)
+        public decimal CalculatePercentageChange(decimal current, decimal previous)
         {
             if (previous == 0)
             {
-                return current > 0 ? "+100%" : "0%";
+                return current > 0 ? 100.0m : 0.0m;
             }
 
-            double change = ((double)(current - previous) / previous) * 100;
+            return ((current - previous) / previous) * 100;
+        }
+
+        public string CalculatePercentageChangeFormatted(int current, int previous)
+        {
+            decimal change = CalculatePercentageChange(current, previous);
             string sign = change >= 0 ? "+" : "";
             return $"{sign}{change:F0}% from last week";
         }

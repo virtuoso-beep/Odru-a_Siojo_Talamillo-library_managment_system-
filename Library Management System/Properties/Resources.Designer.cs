@@ -37,11 +37,5 @@ namespace Library_Management_System.Properties {
             }
         }
         
-        internal static System.Drawing.Bitmap images_removebg_preview {
-            get {
-                object obj = ResourceManager.GetObject("images-removebg-preview", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
     }
 }
