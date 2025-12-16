@@ -7,7 +7,6 @@ namespace Library_Management_System.Interfaces
         User Authenticate(string email, string password, UserRole expectedRole);
 
         bool VerifyPassword(string password, string passwordHash);
-
         string HashPassword(string password);
 
         bool UserExists(string email);
