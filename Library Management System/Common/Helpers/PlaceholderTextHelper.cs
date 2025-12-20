@@ -2,7 +2,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace Library_Management_System.Helper
+namespace Library_Management_System.Common.Helpers
 {
     public static class PlaceholderTextHelper
     {
@@ -158,3 +158,4 @@ namespace Library_Management_System.Helper
         }
     }
 }
+

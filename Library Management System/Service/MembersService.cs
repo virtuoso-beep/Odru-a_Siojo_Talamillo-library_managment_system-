@@ -95,6 +95,54 @@ namespace Library_Management_System.Service
             return stats;
         }
 
+        public bool IsEmailRegistered(string email)
+        {
+            try
+            {
+                using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
+                {
+                    connection.Open();
+                    string query = "SELECT COUNT(*) FROM Users WHERE Email = @email";
+                    using (var cmd = new MySqlCommand(query, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@email", email.ToLower().Trim());
+                        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error checking email: {ex.Message}");
+                return false;
+            }
+        }
+
+        public bool IsIdNumberRegistered(string idNumber, string excludeMemberId = null)
+        {
+            try
+            {
+                using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
+                {
+                    connection.Open();
+                    string query = excludeMemberId != null
+                        ? "SELECT COUNT(*) FROM Members WHERE IdNumber = @idNumber AND MemberId != @excludeMemberId"
+                        : "SELECT COUNT(*) FROM Members WHERE IdNumber = @idNumber";
+                    using (var cmd = new MySqlCommand(query, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@idNumber", idNumber.Trim());
+                        if (excludeMemberId != null)
+                            cmd.Parameters.AddWithValue("@excludeMemberId", excludeMemberId);
+                        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error checking ID number: {ex.Message}");
+                return false;
+            }
+        }
+
         public List<MemberInfo> GetMembers(string searchText = "", string statusFilter = "All Status", string typeFilter = "All Types")
         {
             var members = new List<MemberInfo>();
@@ -262,6 +310,83 @@ namespace Library_Management_System.Service
             return members;
         }
 
+        public string DiagnoseDatabase()
+        {
+            var diagnostics = new System.Text.StringBuilder();
+            diagnostics.AppendLine("=== Database Diagnostics ===");
+
+            try
+            {
+                using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
+                {
+                    connection.Open();
+                    diagnostics.AppendLine("✓ Database connection successful");
+
+                    // Check if required tables exist
+                    string[] requiredTables = { "Users", "Members" };
+                    foreach (string table in requiredTables)
+                    {
+                        string checkQuery = $"SHOW TABLES LIKE '{table}'";
+                        using (var cmd = new MySqlCommand(checkQuery, connection))
+                        {
+                            var result = cmd.ExecuteScalar();
+                            if (result != null)
+                                diagnostics.AppendLine($"✓ Table '{table}' exists");
+                            else
+                                diagnostics.AppendLine($"✗ Table '{table}' missing");
+                        }
+                    }
+
+                    // Check Users table structure
+                    string userColumnsQuery = @"
+                        SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT
+                        FROM INFORMATION_SCHEMA.COLUMNS
+                        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Users'
+                        ORDER BY ORDINAL_POSITION";
+
+                    using (var cmd = new MySqlCommand(userColumnsQuery, connection))
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        diagnostics.AppendLine("\nUsers table columns:");
+                        while (reader.Read())
+                        {
+                            string colName = reader["COLUMN_NAME"].ToString();
+                            string dataType = reader["DATA_TYPE"].ToString();
+                            string nullable = reader["IS_NULLABLE"].ToString();
+                            diagnostics.AppendLine($"  - {colName} ({dataType}) Nullable: {nullable}");
+                        }
+                    }
+
+                    // Check Members table structure
+                    string memberColumnsQuery = @"
+                        SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT
+                        FROM INFORMATION_SCHEMA.COLUMNS
+                        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Members'
+                        ORDER BY ORDINAL_POSITION";
+
+                    using (var cmd = new MySqlCommand(memberColumnsQuery, connection))
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        diagnostics.AppendLine("\nMembers table columns:");
+                        while (reader.Read())
+                        {
+                            string colName = reader["COLUMN_NAME"].ToString();
+                            string dataType = reader["DATA_TYPE"].ToString();
+                            string nullable = reader["IS_NULLABLE"].ToString();
+                            diagnostics.AppendLine($"  - {colName} ({dataType}) Nullable: {nullable}");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                diagnostics.AppendLine($"✗ Database error: {ex.Message}");
+                diagnostics.AppendLine($"Stack trace: {ex.StackTrace}");
+            }
+
+            return diagnostics.ToString();
+        }
+
         public bool RegisterMember(string firstName, string lastName, string email, string phone, string address, string memberType, string status = "Active",
             string idNumber = "", DateTime? dateOfBirth = null, string gender = "", string department = "",
             string emergencyContactName = "", string emergencyContactPhone = "", DateTime? membershipExpiryDate = null)
@@ -285,6 +410,8 @@ namespace Library_Management_System.Service
                         }
                     }
 
+                    System.Diagnostics.Debug.WriteLine($"Registering member: {firstName} {lastName} ({email})");
+
                     // Generate a secure default password (can be changed later)
                     string defaultPassword = GenerateSecureDefaultPassword();
                     string passwordHash = GenerateHash(defaultPassword);
@@ -293,7 +420,7 @@ namespace Library_Management_System.Service
                     string insertUserQuery = @"
                         INSERT INTO Users (Email, PasswordHash, FirstName, LastName, Role, IsActive)
                         VALUES (@email, @passwordHash, @firstName, @lastName, 3, TRUE)";
-                    
+
                     int userId;
                     using (var userCmd = new MySqlCommand(insertUserQuery, connection))
                     {
@@ -301,8 +428,10 @@ namespace Library_Management_System.Service
                         userCmd.Parameters.AddWithValue("@passwordHash", passwordHash);
                         userCmd.Parameters.AddWithValue("@firstName", firstName);
                         userCmd.Parameters.AddWithValue("@lastName", lastName);
+                        System.Diagnostics.Debug.WriteLine("Executing user insert query...");
                         userCmd.ExecuteNonQuery();
                         userId = (int)userCmd.LastInsertedId;
+                        System.Diagnostics.Debug.WriteLine($"User inserted with ID: {userId}");
                     }
 
                     // Generate member number
@@ -393,8 +522,10 @@ namespace Library_Management_System.Service
                         memberCmd.Parameters.AddWithValue("@emergencyContactName", string.IsNullOrWhiteSpace(emergencyContactName) ? (object)DBNull.Value : emergencyContactName.Trim());
                         memberCmd.Parameters.AddWithValue("@emergencyContactPhone", string.IsNullOrWhiteSpace(emergencyContactPhone) ? (object)DBNull.Value : emergencyContactPhone.Trim());
                         memberCmd.Parameters.AddWithValue("@membershipExpiryDate", membershipExpiryDate.HasValue ? (object)membershipExpiryDate.Value : DBNull.Value);
-                        
+
+                        System.Diagnostics.Debug.WriteLine($"Executing member insert query for member: {memberNumber}");
                         memberCmd.ExecuteNonQuery();
+                        System.Diagnostics.Debug.WriteLine("Member inserted successfully");
                     }
 
                     return true;

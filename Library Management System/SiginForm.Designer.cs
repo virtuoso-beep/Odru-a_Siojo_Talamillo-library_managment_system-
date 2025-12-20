@@ -97,8 +97,8 @@
             // 
             // pnlComboContainer
             // 
-            this.pnlComboContainer.BackColor = System.Drawing.Color.White;
-            this.pnlComboContainer.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.pnlComboContainer.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
+            this.pnlComboContainer.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.pnlComboContainer.Controls.Add(this.cmbLoginAs);
             this.pnlComboContainer.Location = new System.Drawing.Point(70, 570);
             this.pnlComboContainer.Name = "pnlComboContainer";
@@ -110,6 +110,7 @@
             this.cmbLoginAs.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+            this.cmbLoginAs.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
             this.cmbLoginAs.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbLoginAs.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.cmbLoginAs.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -118,9 +119,9 @@
             "Administrator",
             "Staff",
             "Member"});
-            this.cmbLoginAs.Location = new System.Drawing.Point(3, 3);
+            this.cmbLoginAs.Location = new System.Drawing.Point(15, 10);
             this.cmbLoginAs.Name = "cmbLoginAs";
-            this.cmbLoginAs.Size = new System.Drawing.Size(492, 40);
+            this.cmbLoginAs.Size = new System.Drawing.Size(470, 40);
             this.cmbLoginAs.TabIndex = 0;
             // 
             // lblLoginAs
@@ -136,8 +137,8 @@
             // 
             // pnlPasswordContainer
             // 
-            this.pnlPasswordContainer.BackColor = System.Drawing.SystemColors.Window;
-            this.pnlPasswordContainer.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.pnlPasswordContainer.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
+            this.pnlPasswordContainer.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.pnlPasswordContainer.Controls.Add(this.btnTogglePassword);
             this.pnlPasswordContainer.Controls.Add(this.txtPassword);
             this.pnlPasswordContainer.Location = new System.Drawing.Point(70, 450);
@@ -162,12 +163,13 @@
             // 
             // txtPassword
             //
+            this.txtPassword.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
             this.txtPassword.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.txtPassword.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtPassword.Location = new System.Drawing.Point(10, 12);
+            this.txtPassword.Location = new System.Drawing.Point(15, 18);
             this.txtPassword.Name = "txtPassword";
             this.txtPassword.PasswordChar = '●';
-            this.txtPassword.Size = new System.Drawing.Size(430, 32);
+            this.txtPassword.Size = new System.Drawing.Size(400, 32);
             this.txtPassword.TabIndex = 0;
             // 
             // lblPassword
@@ -183,8 +185,8 @@
             // 
             // pnlEmailContainer
             // 
-            this.pnlEmailContainer.BackColor = System.Drawing.Color.White;
-            this.pnlEmailContainer.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.pnlEmailContainer.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
+            this.pnlEmailContainer.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.pnlEmailContainer.Controls.Add(this.txtEmail);
             this.pnlEmailContainer.Location = new System.Drawing.Point(70, 330);
             this.pnlEmailContainer.Name = "pnlEmailContainer";
@@ -193,11 +195,12 @@
             // 
             // txtEmail
             //
+            this.txtEmail.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
             this.txtEmail.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.txtEmail.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtEmail.Location = new System.Drawing.Point(10, 12);
+            this.txtEmail.Location = new System.Drawing.Point(15, 15);
             this.txtEmail.Name = "txtEmail";
-            this.txtEmail.Size = new System.Drawing.Size(480, 32);
+            this.txtEmail.Size = new System.Drawing.Size(470, 32);
             this.txtEmail.TabIndex = 0;
             // 
             // lblEmail

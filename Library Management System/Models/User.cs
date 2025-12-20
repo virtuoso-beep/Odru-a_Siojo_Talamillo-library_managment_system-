@@ -110,7 +110,6 @@ namespace Library_Management_System.Models
 
             string localPart = email.Split('@')[0];
 
-            // More flexible pattern that allows for variations in name format
             string pattern = @"^[a-zA-Z]+\.[a-zA-Z]+\.[0-9]+\.tc$";
 
             if (!Regex.IsMatch(localPart, pattern))

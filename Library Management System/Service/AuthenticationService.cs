@@ -44,7 +44,7 @@ namespace Library_Management_System.Service
                     connection.Open();
                     
                     string query = @"
-                        SELECT UserId, Email, PasswordHash, FirstName, LastName, Role, IsActive, CreatedDate
+                        SELECT UserId, Email, PasswordHash, FirstName, LastName, Role, IsActive
                         FROM Users
                         WHERE Email = @Email AND IsActive = 1";
 
@@ -63,8 +63,7 @@ namespace Library_Management_System.Service
                                     reader["Email"] == DBNull.Value ||
                                     reader["FirstName"] == DBNull.Value ||
                                     reader["LastName"] == DBNull.Value ||
-                                    reader["IsActive"] == DBNull.Value ||
-                                    reader["CreatedDate"] == DBNull.Value)
+                                    reader["IsActive"] == DBNull.Value)
                                 {
                                     throw new Exception("Database schema error: Required user columns are missing or null");
                                 }
@@ -92,7 +91,7 @@ namespace Library_Management_System.Service
                                 user.FirstName = reader["FirstName"].ToString();
                                 user.LastName = reader["LastName"].ToString();
                                 user.IsActive = Convert.ToBoolean(reader["IsActive"]);
-                                user.CreatedDate = Convert.ToDateTime(reader["CreatedDate"]);
+                                user.CreatedDate = DateTime.Now; // Set current time since CreatedDate may not exist in older schemas
 
                                 if (user is Member member)
                                 {
@@ -168,6 +167,8 @@ namespace Library_Management_System.Service
                     }
                     else
                     {
+                        // Check if table schema needs updating
+                        UpdateTableSchemaIfNeeded(connection);
                         // Check if admin user exists
                         EnsureAdminUserExists(connection);
                     }
@@ -177,6 +178,48 @@ namespace Library_Management_System.Service
             {
                 // Log error but don't throw - allow authentication to continue
                 System.Diagnostics.Debug.WriteLine($"Database initialization error: {ex.Message}");
+            }
+        }
+
+        private void UpdateTableSchemaIfNeeded(MySqlConnection connection)
+        {
+            try
+            {
+                // Check if Users table has CreatedDate column
+                string checkColumnQuery = @"
+                    SELECT COUNT(*)
+                    FROM information_schema.columns
+                    WHERE table_schema = DATABASE()
+                    AND table_name = 'Users'
+                    AND column_name = 'CreatedDate'";
+
+                using (var command = new MySqlCommand(checkColumnQuery, connection))
+                {
+                    int columnCount = Convert.ToInt32(command.ExecuteScalar());
+
+                    if (columnCount == 0)
+                    {
+                        // Add CreatedDate column to existing Users table
+                        string addColumnQuery = "ALTER TABLE Users ADD COLUMN CreatedDate DATETIME DEFAULT CURRENT_TIMESTAMP";
+                        using (var alterCommand = new MySqlCommand(addColumnQuery, connection))
+                        {
+                            alterCommand.ExecuteNonQuery();
+                        }
+
+                        // Update existing records to have a CreatedDate
+                        string updateExistingQuery = "UPDATE Users SET CreatedDate = NOW() WHERE CreatedDate IS NULL";
+                        using (var updateCommand = new MySqlCommand(updateExistingQuery, connection))
+                        {
+                            updateCommand.ExecuteNonQuery();
+                        }
+
+                        System.Diagnostics.Debug.WriteLine("Added CreatedDate column to existing Users table");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Schema update error: {ex.Message}");
             }
         }
 

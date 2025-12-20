@@ -125,6 +125,53 @@ namespace Library_Management_System.Service
             return categories;
         }
 
+        private void EnsureBooksTableExists(MySqlConnection connection)
+        {
+            try
+            {
+                // Check if Books table exists
+                string checkTableQuery = @"
+                    SELECT COUNT(*)
+                    FROM information_schema.tables
+                    WHERE table_schema = DATABASE()
+                    AND table_name = 'Books'";
+
+                using (var command = new MySqlCommand(checkTableQuery, connection))
+                {
+                    int tableCount = Convert.ToInt32(command.ExecuteScalar());
+
+                    if (tableCount == 0)
+                    {
+                        // Create Books table
+                        string createTableQuery = @"
+                            CREATE TABLE Books (
+                                BookId INT PRIMARY KEY AUTO_INCREMENT,
+                                ISBN VARCHAR(20) UNIQUE,
+                                Title VARCHAR(255) NOT NULL,
+                                Author VARCHAR(255) NOT NULL,
+                                Publisher VARCHAR(255),
+                                PublicationYear INT,
+                                Category VARCHAR(100),
+                                TotalCopies INT DEFAULT 1,
+                                AvailableCopies INT DEFAULT 1,
+                                Description TEXT,
+                                CreatedDate DATETIME DEFAULT CURRENT_TIMESTAMP
+                            )";
+
+                        using (var createCommand = new MySqlCommand(createTableQuery, connection))
+                        {
+                            createCommand.ExecuteNonQuery();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error ensuring Books table exists: {ex.Message}");
+                // Don't throw - let the calling method handle errors
+            }
+        }
+
         public bool AddBook(string isbn, string title, string author, string publisher,
                            int? publicationYear, string category, int totalCopies, string description)
         {
@@ -133,6 +180,9 @@ namespace Library_Management_System.Service
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
+                    
+                    // Ensure Books table exists before using it
+                    EnsureBooksTableExists(connection);
 
                     string query = @"
                         INSERT INTO Books (ISBN, Title, Author, Publisher, PublicationYear, Category, TotalCopies, AvailableCopies, Description)

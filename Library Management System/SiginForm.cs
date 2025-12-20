@@ -12,6 +12,7 @@ using System.Windows.Forms;
 using Library_Management_System.Helper;
 using static Library_Management_System.Helper.PlaceholderTextHelper;
 using static Library_Management_System.Helper.MYSqlHelper;
+using PlaceholderData = Library_Management_System.Helper.PlaceholderTextHelper.PlaceholderData;
 using Library_Management_System.Interfaces;
 using Library_Management_System.Models;
 using Library_Management_System.Service;
@@ -62,9 +63,17 @@ namespace Library_Management_System
 
             // Set up placeholder text
             txtEmail.SetPlaceholder("john.doe.123456.tc@umindanao.edu.ph");
+            // Password placeholder - ensure it shows properly
+            txtPassword.PasswordChar = '\0'; // Clear password char initially to show placeholder
             txtPassword.SetPlaceholder("Enter your password");
 
             ApplyFormRoundedCorners();
+            
+            // Apply rounded corners and styling to textbox containers
+            ApplyRoundedTextBoxStyling();
+            
+            // Apply transparent border styling to combobox
+            ApplyTransparentComboBoxStyling();
 
             // Load logo
             string logoPath = System.IO.Path.Combine(Application.StartupPath, "Resources", "images-removebg-preview.png");
@@ -95,6 +104,87 @@ namespace Library_Management_System
             ApplyFormRoundedCorners();
         }
 
+        private GraphicsPath CreateRoundedRectangle(Rectangle rect, int radius)
+        {
+            GraphicsPath path = new GraphicsPath();
+            path.AddArc(rect.X, rect.Y, radius * 2, radius * 2, 180, 90);
+            path.AddArc(rect.Right - radius * 2, rect.Y, radius * 2, radius * 2, 270, 90);
+            path.AddArc(rect.Right - radius * 2, rect.Bottom - radius * 2, radius * 2, radius * 2, 0, 90);
+            path.AddArc(rect.X, rect.Bottom - radius * 2, radius * 2, radius * 2, 90, 90);
+            path.CloseAllFigures();
+            return path;
+        }
+
+        private void ApplyRoundedTextBoxStyling()
+        {
+            // Email container with rounded corners
+            pnlEmailContainer.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle rect = new Rectangle(0, 0, pnlEmailContainer.Width - 1, pnlEmailContainer.Height - 1);
+                using (GraphicsPath path = CreateRoundedRectangle(rect, 10))
+                {
+                    using (SolidBrush brush = new SolidBrush(Color.FromArgb(240, 240, 240)))
+                    {
+                        e.Graphics.FillPath(brush, path);
+                    }
+                    using (Pen pen = new Pen(Color.FromArgb(200, 200, 200), 1))
+                    {
+                        e.Graphics.DrawPath(pen, path);
+                    }
+                }
+            };
+            pnlEmailContainer.Region = new Region(CreateRoundedRectangle(new Rectangle(0, 0, pnlEmailContainer.Width, pnlEmailContainer.Height), 10));
+
+            // Password container with rounded corners
+            pnlPasswordContainer.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle rect = new Rectangle(0, 0, pnlPasswordContainer.Width - 1, pnlPasswordContainer.Height - 1);
+                using (GraphicsPath path = CreateRoundedRectangle(rect, 10))
+                {
+                    using (SolidBrush brush = new SolidBrush(Color.FromArgb(240, 240, 240)))
+                    {
+                        e.Graphics.FillPath(brush, path);
+                    }
+                    using (Pen pen = new Pen(Color.FromArgb(200, 200, 200), 1))
+                    {
+                        e.Graphics.DrawPath(pen, path);
+                    }
+                }
+            };
+            pnlPasswordContainer.Region = new Region(CreateRoundedRectangle(new Rectangle(0, 0, pnlPasswordContainer.Width, pnlPasswordContainer.Height), 10));
+
+            // Combo container with rounded corners
+            pnlComboContainer.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle rect = new Rectangle(0, 0, pnlComboContainer.Width - 1, pnlComboContainer.Height - 1);
+                using (GraphicsPath path = CreateRoundedRectangle(rect, 10))
+                {
+                    using (SolidBrush brush = new SolidBrush(Color.FromArgb(240, 240, 240)))
+                    {
+                        e.Graphics.FillPath(brush, path);
+                    }
+                    using (Pen pen = new Pen(Color.FromArgb(200, 200, 200), 1))
+                    {
+                        e.Graphics.DrawPath(pen, path);
+                    }
+                }
+            };
+            pnlComboContainer.Region = new Region(CreateRoundedRectangle(new Rectangle(0, 0, pnlComboContainer.Width, pnlComboContainer.Height), 10));
+        }
+
+        private void ApplyTransparentComboBoxStyling()
+        {
+            // Make combobox background match container to hide border
+            cmbLoginAs.BackColor = Color.FromArgb(240, 240, 240);
+            cmbLoginAs.FlatStyle = FlatStyle.Flat;
+            
+            // The dropdown arrow will remain visible as it's part of the native control
+            // The border is hidden by matching the background color with the container
+        }
+
         private void btnClose_Click(object sender, EventArgs e)
         {
             DialogResult result = MessageBox.Show(
@@ -114,6 +204,14 @@ namespace Library_Management_System
         private void btnTogglePassword_Click(object sender, EventArgs e)
         {
             passwordVisible = !passwordVisible;
+            
+            // Only set password char if there's actual text (not placeholder)
+            if (txtPassword.Tag is PlaceholderData data && txtPassword.Text == data.PlaceholderText)
+            {
+                // Don't toggle if showing placeholder
+                return;
+            }
+            
             txtPassword.PasswordChar = passwordVisible ? '\0' : '●';
             btnTogglePassword.Text = passwordVisible ? "👁️" : "👁";
         }
