@@ -12,7 +12,7 @@ namespace Library_Management_System.Models
         {
             Role = UserRole.Staff;
         }
-
+ 
         public override string GetRoleDescription()
         {
             return "Library Staff - Process borrowing, returns, and member registration";

@@ -129,7 +129,7 @@ namespace Library_Management_System.Models
         protected User()
         {
             _createdDate = DateTime.Now;
-            _isActive = true;
+            _isActive = true;   
         }
 
         protected User(string email, string firstName, string lastName)

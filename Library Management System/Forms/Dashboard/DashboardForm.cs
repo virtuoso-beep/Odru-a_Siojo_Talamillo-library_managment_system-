@@ -3,7 +3,9 @@
     using System.ComponentModel;
     using System.Drawing;
     using System.Drawing.Drawing2D;
+    using System.IO;
     using System.Linq;
+    using System.Web;
     using System.Windows.Forms;
 using Library_Management_System.Helper;
 using Library_Management_System.Models;
@@ -18,9 +20,8 @@ namespace Library_Management_System
         private bool _isLoadingMembersData = false;
         private bool _isProcessingAction = false;
         private System.Windows.Forms.Timer _sessionTimer;
-        private const int SessionTimeoutMinutes = 30; // 30 minutes timeout
+        private const int SessionTimeoutMinutes = 30; 
         
-        // Store references to original Designer controls
         private List<Control> _originalMainContentControls = new List<Control>();
 
         public DashboardForm()
@@ -61,26 +62,20 @@ namespace Library_Management_System
             
             SetFormIcon();
             
-            // Remove rounded corners for traditional Windows Form
-            // ApplyFormRoundedCorners();
             
             this.Resize += DashboardForm_Resize;
 
-            // Initialize session timeout timer (30 minutes)
             InitializeSessionTimeout();
 
-            // Store original Designer controls before any modifications
             StoreOriginalControls();
 
             ApplyModernDashboardStyling();
             ResetMenuHighlights();
 
-            // Set up placeholder text for search fields
             txtSearchMembers.SetPlaceholder("Search members by name, email, or ID...");
 
             LoadUserInfo();
 
-            // Load logo
             string logoPath = System.IO.Path.Combine(Application.StartupPath, "Resources", "images-removebg-preview.png");
             if (System.IO.File.Exists(logoPath))
             {
@@ -97,7 +92,6 @@ namespace Library_Management_System
             
             SetupMembersView();
             
-            // Apply enhanced dashboard layout after all initialization
             this.Load += (s, e) => {
                 if (pnlMainContent.Controls.Contains(pnlCardTotalBooks))
                 {
@@ -109,7 +103,6 @@ namespace Library_Management_System
 
         private void StoreOriginalControls()
         {
-            // Store all controls that were added by the Designer
             _originalMainContentControls.Clear();
             foreach (Control ctrl in pnlMainContent.Controls)
             {
@@ -119,7 +112,6 @@ namespace Library_Management_System
 
         private void RestoreOriginalControls()
         {
-            // Remove only dynamically added controls (not in original list)
             List<Control> toRemove = new List<Control>();
             foreach (Control ctrl in pnlMainContent.Controls)
             {
@@ -135,7 +127,6 @@ namespace Library_Management_System
                 ctrl.Dispose();
             }
             
-            // Ensure all original controls are present
             foreach (Control ctrl in _originalMainContentControls)
             {
                 if (!pnlMainContent.Controls.Contains(ctrl))
@@ -147,7 +138,6 @@ namespace Library_Management_System
 
         private void ClearDynamicControls()
         {
-            // Remove only dynamically added controls (not in original list)
             List<Control> toRemove = new List<Control>();
             foreach (Control ctrl in pnlMainContent.Controls)
             {
@@ -159,7 +149,6 @@ namespace Library_Management_System
             
             foreach (Control ctrl in toRemove)
             {
-                // Clear child controls first (like statsPanel's cards)
                 if (ctrl is Panel panel)
                 {
                     panel.Controls.Clear();
@@ -172,10 +161,9 @@ namespace Library_Management_System
         private void InitializeSessionTimeout()
         {
             _sessionTimer = new System.Windows.Forms.Timer();
-            _sessionTimer.Interval = SessionTimeoutMinutes * 60 * 1000; // Convert minutes to milliseconds
+            _sessionTimer.Interval = SessionTimeoutMinutes * 60 * 1000; 
             _sessionTimer.Tick += SessionTimer_Tick;
 
-            // Reset timer on user activity
             this.MouseMove += ResetSessionTimer;
             this.KeyPress += ResetSessionTimer;
             this.MouseClick += ResetSessionTimer;
@@ -393,7 +381,6 @@ namespace Library_Management_System
             Rectangle cardRect = new Rectangle(0, 0, card.Width - 2, card.Height - 2);
             using (GraphicsPath path = CreateRoundedRectangle(cardRect, 12))
             {
-                // Add gradient effect for modern look
                 if (card.BackColor == ThemeConstants.PrimaryMaroon)
                 {
                     using (LinearGradientBrush gradientBrush = new LinearGradientBrush(
@@ -417,7 +404,6 @@ namespace Library_Management_System
                     }
                 }
 
-                // Draw border
                 if (card.BackColor != ThemeConstants.PrimaryMaroon)
                 {
                     using (Pen pen = new Pen(ThemeConstants.BorderLight, 1))
@@ -580,7 +566,6 @@ namespace Library_Management_System
 
         private void ResetMenuHighlights()
         {
-            // Apply consistent maroon theme to all menu buttons
             btnDashboard.BackColor = ThemeConstants.SecondaryMaroon;
             btnDashboard.ForeColor = ThemeConstants.TextWhite;
             btnDashboard.Font = ThemeConstants.FontBody;
@@ -631,7 +616,6 @@ namespace Library_Management_System
             btnSettings.Font = ThemeConstants.FontBody;
             btnSettings.Text = "  ⚙️ Settings";
 
-            // Apply modern styling to all buttons
             ApplyModernButtonStyling(btnDashboard);
             ApplyModernButtonStyling(btnMembers);
             ApplyModernButtonStyling(btnCatalog);
@@ -643,13 +627,11 @@ namespace Library_Management_System
             ApplyModernButtonStyling(btnSearch);
             ApplyModernButtonStyling(btnSettings);
 
-            // Set active state for dashboard
             btnDashboard.BackColor = ThemeConstants.AccentMaroon;
         }
 
         private void ApplyModernDashboardStyling()
         {
-            // Apply gradient background to main panel
             pnlMainContent.BackColor = ThemeConstants.BackgroundLight;
             pnlMainContent.Paint += (s, e) => {
                 using (LinearGradientBrush brush = new LinearGradientBrush(
@@ -662,7 +644,6 @@ namespace Library_Management_System
                 }
             };
 
-            // Add modern styling to sidebar
             pnlSidebar.BackColor = ThemeConstants.SecondaryMaroon;
             pnlSidebar.Paint += (s, e) => {
                 using (LinearGradientBrush brush = new LinearGradientBrush(
@@ -675,7 +656,6 @@ namespace Library_Management_System
                 }
             };
 
-            // Style the main content area
             pnlMainContent.BackColor = ThemeConstants.BackgroundLight;
         }
 
@@ -686,7 +666,6 @@ namespace Library_Management_System
             button.TextAlign = ContentAlignment.MiddleLeft;
             button.Padding = new Padding(10, 0, 0, 0);
 
-            // Add hover effects
             button.MouseEnter += (s, e) => {
                 if (button.BackColor != ThemeConstants.AccentMaroon)
                 {
@@ -704,45 +683,35 @@ namespace Library_Management_System
 
         private void DashboardForm_Resize(object sender, EventArgs e)
         {
-            // Traditional Windows Form - no rounded corners needed
-            // ApplyFormRoundedCorners();
 
-            // Ensure panels fill the entire client area properly
             pnlSidebar.Height = this.ClientSize.Height;
             pnlMainContent.Width = this.ClientSize.Width - pnlSidebar.Width;
             pnlMainContent.Height = this.ClientSize.Height;
 
-            // Adjust main content padding
             pnlMainContent.Padding = new Padding(30, 35, 30, 35);
 
-            // Refresh the current view to ensure proper scaling
             RefreshCurrentView();
         }
 
         private void RefreshCurrentView()
         {
-            // This method will be called to refresh the current view when resized
             if (pnlMainContent.Controls.Contains(pnlCardTotalBooks))
             {
-                // Dashboard view is active, refresh card positions and text
                 AdjustDashboardCards();
                 AdjustDashboardText();
             }
             else if (pnlMainContent.Controls.Contains(pnlMembersView))
             {
-                // Members view is active, adjust layout
                 AdjustMembersViewLayout();
             }
             else
             {
-                // Other module views (Catalog, Circulation, Fines, Inventory)
                 AdjustModuleViewLayout();
             }
         }
 
         private void AdjustMembersViewLayout()
         {
-            // Ensure members view scales properly in full screen
             if (pnlMembersView != null)
             {
                 pnlMembersView.Width = pnlMainContent.Width - 60;
@@ -752,18 +721,15 @@ namespace Library_Management_System
 
         private void AdjustModuleViewLayout()
         {
-            // Adjust layout for module views (Catalog, Circulation, Fines, Inventory)
             foreach (Control ctrl in pnlMainContent.Controls)
             {
                 if (ctrl is DataGridView dgv)
                 {
-                    // Adjust DataGridView size for full screen
                     dgv.Width = pnlMainContent.Width - 60;
                     dgv.Height = pnlMainContent.Height - ctrl.Top - 20;
                 }
                 else if (ctrl is Panel panel && (panel.Name.Contains("search") || panel.Name.Contains("summary") || panel.Name.Contains("alerts")))
                 {
-                    // Adjust panel widths
                     panel.Width = pnlMainContent.Width - 60;
                 }
             }
@@ -771,10 +737,8 @@ namespace Library_Management_System
 
         private void AdjustDashboardText()
         {
-            // Ensure text elements scale properly in full screen mode
             if (lblWelcome != null)
             {
-                // Make welcome text responsive
                 int maxWidth = pnlMainContent.Width - 120;
                 if (lblWelcome.Width > maxWidth)
                 {
@@ -785,23 +749,19 @@ namespace Library_Management_System
 
             if (lblDate != null)
             {
-                // Ensure date label is positioned correctly in top right with proper spacing
                 lblDate.Location = new Point(pnlMainContent.Width - lblDate.Width - 60, 20);
             }
         }
 
         private void AdjustDashboardCards()
         {
-            // Enhanced dashboard layout with proper spacing
             if (pnlCardTotalBooks != null && pnlCardActiveMembers != null &&
                 pnlCardBooksBorrowed != null && pnlCardOverdueBooks != null)
             {
-                // Top row cards - Enhanced sizes and spacing
                 int topRowY = 110;
                 int topCardWidth = 250;
                 int topCardHeight = 180;
                 
-                // Use fixed positions for consistent layout (matching Designer settings)
                 int startX = 38;
                 
                 pnlCardTotalBooks.Size = new Size(topCardWidth, topCardHeight);
@@ -816,10 +776,9 @@ namespace Library_Management_System
                 pnlCardOverdueBooks.Size = new Size(topCardWidth, topCardHeight);
                 pnlCardOverdueBooks.Location = new Point(startX + (topCardWidth + 17) * 3, topRowY);
 
-                // Second row cards - Enhanced sizes and spacing
                 if (pnlCardTodaysBorrowings != null && pnlCardTodaysReturns != null && pnlCardPendingFines != null)
                 {
-                    int secondRowY = 320; // 30px gap from top row (290 + 30)
+                    int secondRowY = 320; 
                     int secondCardWidth = 250;
                     int secondCardHeight = 150;
                     
@@ -833,10 +792,9 @@ namespace Library_Management_System
                     pnlCardPendingFines.Location = new Point(startX + (secondCardWidth + 17) * 2, secondRowY);
                 }
 
-                // Bottom panels - Enhanced sizes and spacing
                 if (pnlWeeklyCirculation != null && pnlCollectionCategory != null)
                 {
-                    int bottomRowY = 500; // 30px gap from second row (470 + 30)
+                    int bottomRowY = 500; 
                     int panelHeight = 200;
                     int leftPanelWidth = 520;
                     int rightPanelWidth = 504;
@@ -978,7 +936,6 @@ namespace Library_Management_System
 
         private void ShowDashboardView()
         {
-            // Restore original controls if they were removed
             RestoreOriginalControls();
             
             pnlMembersView.Visible = false;
@@ -990,7 +947,6 @@ namespace Library_Management_System
 
         private void ShowMembersView()
         {
-            // Restore original controls if they were removed
             RestoreOriginalControls();
             
             ShowDashboardControls(false);
@@ -1429,9 +1385,8 @@ namespace Library_Management_System
             };
 
             userInfoPanel.Controls.AddRange(new Control[] { avatarPanel, statusTag, typeTag, emailLabel, phoneLabel });
-            yPos += 205; // 180px panel height + 25px spacing
+            yPos += 205; 
 
-            // Membership Details Card
             Panel membershipCard = CreateInfoCard("Membership Details", yPos, 160);
             int cardY = 45;
 
@@ -1499,7 +1454,7 @@ namespace Library_Management_System
                 AutoSize = false
             };
             membershipCard.Controls.AddRange(new Control[] { addressLabel, addressValue });
-            yPos += 185; // 160px panel height + 25px spacing
+            yPos += 185; 
 
             Panel borrowingCard = CreateInfoCard("Borrowing Summary", yPos, 150);
             cardY = 45;
@@ -1568,7 +1523,7 @@ namespace Library_Management_System
                 AutoSize = false
             };
             borrowingCard.Controls.AddRange(new Control[] { finesLabel, finesValue });
-            yPos += 175; // 150px panel height + 25px spacing
+            yPos += 175; 
 
             Panel privilegesCard = CreateInfoCard($"Privileges ({member.Type.ToLower()})", yPos, 170);
             
@@ -1912,7 +1867,6 @@ namespace Library_Management_System
             };
             btnSave.FlatAppearance.BorderSize = 0;
 
-            // Apply rounded corners to Save button
             int radius = 8;
             using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnSave.Width, btnSave.Height), radius))
             {
@@ -1975,23 +1929,18 @@ namespace Library_Management_System
             cmbMemberType.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) cmbStatus.Focus(); };
             cmbStatus.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) btnSave.PerformClick(); };
 
-            // Input validation
             txtPhone.KeyPress += (s, e) =>
             {
-                // Allow numbers, spaces, hyphens, parentheses, plus sign, and backspace
                 if (!char.IsDigit(e.KeyChar) && !char.IsControl(e.KeyChar) &&
                     e.KeyChar != ' ' && e.KeyChar != '-' && e.KeyChar != '(' &&
                     e.KeyChar != ')' && e.KeyChar != '+')
                 {
-                    e.Handled = true; // Block the character
+                    e.Handled = true; 
                 }
             };
 
-            // Ensure address field accepts all input including numbers
             txtAddress.KeyPress += (s, e) =>
             {
-                // Allow all characters - no restrictions for address field
-                // This explicitly allows numbers, letters, symbols, etc.
             };
 
             btnSave.Click += (s, args) =>
@@ -2005,7 +1954,6 @@ namespace Library_Management_System
                     return;
                 }
 
-                // Additional validation for names
                 if (txtFirstName.Text.Trim().Length < 2)
                 {
                     MessageBox.Show("First name must be at least 2 characters long.",
@@ -2175,7 +2123,6 @@ namespace Library_Management_System
                 BackColor = ThemeConstants.BackgroundLight
             };
 
-            // Header Section
             Label titleLabel = new Label
             {
                 Text = "👤 Register New Member",
@@ -2195,7 +2142,6 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(100, 100, 100)
             };
 
-            // Personal Information Section
             Panel personalPanel = new Panel
             {
                 Location = new Point(20, 100),
@@ -2213,7 +2159,6 @@ namespace Library_Management_System
                 ForeColor = ThemeConstants.TextPrimary
             };
 
-            // Row 1: First Name, Last Name, ID Number
             Label lblFirstName = new Label { Text = "First Name *", Location = new Point(20, 45), Size = new Size(100, 20), Font = ThemeConstants.FontBodySmall, ForeColor = ThemeConstants.TextPrimary };
             TextBox txtFirstName = new TextBox { Location = new Point(20, 65), Size = new Size(200, ThemeConstants.InputHeight), Font = ThemeConstants.FontBodySmall, BackColor = ThemeConstants.BackgroundWhite, ForeColor = ThemeConstants.TextPrimary };
 
@@ -2223,7 +2168,6 @@ namespace Library_Management_System
             Label lblIdNumber = new Label { Text = "ID Number", Location = new Point(460, 45), Size = new Size(100, 20), Font = ThemeConstants.FontBodySmall, ForeColor = ThemeConstants.TextPrimary };
             TextBox txtIdNumber = new TextBox { Location = new Point(460, 65), Size = new Size(160, ThemeConstants.InputHeight), Font = ThemeConstants.FontBodySmall, BackColor = ThemeConstants.BackgroundWhite, ForeColor = ThemeConstants.TextPrimary };
             
-            // Add hint for ID Number
             Label hintId = new Label
             {
                 Text = "6 digits only",
@@ -2233,7 +2177,6 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(100, 100, 100)
             };
 
-            // Row 2: Email, Date of Birth
             Label lblEmail = new Label { Text = "Email *", Location = new Point(20, 100), Size = new Size(100, 20), Font = ThemeConstants.FontBodySmall, ForeColor = ThemeConstants.TextPrimary };
             TextBox txtEmail = new TextBox { Location = new Point(20, 120), Size = new Size(400, ThemeConstants.InputHeight), Font = ThemeConstants.FontBodySmall, BackColor = ThemeConstants.BackgroundWhite, ForeColor = ThemeConstants.TextPrimary };
 
@@ -2251,7 +2194,6 @@ namespace Library_Management_System
                 Value = DateTime.Today.AddYears(-18)
             };
 
-            // Contact Information Section
             Panel contactPanel = new Panel
             {
                 Location = new Point(20, 300),
@@ -2269,35 +2211,30 @@ namespace Library_Management_System
                 ForeColor = ThemeConstants.TextPrimary
             };
 
-            // Row 1: Phone, Address
             Label lblPhone = new Label { Text = "Phone Number", Location = new Point(20, 45), Size = new Size(100, 20), Font = ThemeConstants.FontBodySmall, ForeColor = ThemeConstants.TextPrimary };
             TextBox txtPhone = new TextBox { Location = new Point(20, 65), Size = new Size(180, 25), Font = ThemeConstants.FontBodySmall, BackColor = ThemeConstants.BackgroundWhite, ForeColor = ThemeConstants.TextPrimary };
 
             Label lblAddress = new Label { Text = "Address", Location = new Point(220, 45), Size = new Size(100, 20), Font = ThemeConstants.FontBodySmall, ForeColor = ThemeConstants.TextPrimary };
             TextBox txtAddress = new TextBox { Location = new Point(220, 65), Size = new Size(400, 25), Font = ThemeConstants.FontBodySmall, BackColor = ThemeConstants.BackgroundWhite, ForeColor = ThemeConstants.TextPrimary };
 
-            // Row 2: Emergency Contact
             Label lblEmergencyName = new Label { Text = "Emergency Contact Name", Location = new Point(20, 100), Size = new Size(150, 20), Font = ThemeConstants.FontBodySmall, ForeColor = ThemeConstants.TextPrimary };
             TextBox txtEmergencyName = new TextBox { Location = new Point(20, 120), Size = new Size(200, 25), Font = ThemeConstants.FontBodySmall, BackColor = ThemeConstants.BackgroundWhite, ForeColor = ThemeConstants.TextPrimary };
 
             Label lblEmergencyPhone = new Label { Text = "Emergency Contact Phone", Location = new Point(240, 100), Size = new Size(160, 20), Font = ThemeConstants.FontBodySmall, ForeColor = ThemeConstants.TextPrimary };
             TextBox txtEmergencyPhone = new TextBox { Location = new Point(240, 120), Size = new Size(180, 25), Font = ThemeConstants.FontBodySmall, BackColor = ThemeConstants.BackgroundWhite, ForeColor = ThemeConstants.TextPrimary };
             
-            // Restrict emergency phone to digits only, max 11 characters
             txtEmergencyPhone.KeyPress += (s, e) =>
             {
                 if (!char.IsDigit(e.KeyChar) && !char.IsControl(e.KeyChar))
                 {
                     e.Handled = true;
                 }
-                // Limit to 11 digits
                 if (char.IsDigit(e.KeyChar) && txtEmergencyPhone.Text.Length >= 11)
                 {
                     e.Handled = true;
                 }
             };
 
-            // Academic Information Section
             Panel academicPanel = new Panel
             {
                 Location = new Point(20, 490),
@@ -2365,7 +2302,7 @@ namespace Library_Management_System
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
             cmbStatus.Items.AddRange(new[] { "Active", "Inactive", "Suspended", "Expired" });
-            cmbStatus.SelectedIndex = 0; // Default to Active
+            cmbStatus.SelectedIndex = 0; 
 
             Label lblExpiryDate = new Label { Text = "Membership Expiry", Location = new Point(560, 45), Size = new Size(120, 20), Font = ThemeConstants.FontBodySmall, ForeColor = ThemeConstants.TextPrimary };
             DateTimePicker dtpExpiryDate = new DateTimePicker
@@ -2442,23 +2379,19 @@ namespace Library_Management_System
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
             };
             
-            // Enhanced keyboard navigation for two-column layout
             txtFirstName.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) txtIdNumber.Focus(); };
             txtIdNumber.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) txtLastName.Focus(); };
 
-            // Restrict ID number input to digits only
             txtIdNumber.KeyPress += (s, e) =>
             {
-                // Allow digits, backspace, and delete
                 if (!char.IsDigit(e.KeyChar) && !char.IsControl(e.KeyChar))
                 {
-                    e.Handled = true; // Cancel the key press
+                    e.Handled = true; 
                 }
 
-                // Limit to 6 digits
                 if (char.IsDigit(e.KeyChar) && txtIdNumber.Text.Length >= 6)
                 {
-                    e.Handled = true; // Don't allow more than 6 digits
+                    e.Handled = true; 
                 }
             };
             txtLastName.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) txtEmail.Focus(); };
@@ -2482,32 +2415,26 @@ namespace Library_Management_System
             cmbDepartment.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) cmbStatus.Focus(); };
             cmbStatus.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) btnRegister.PerformClick(); };
 
-            // Button styling with theme constants
             btnCancel.FlatAppearance.BorderSize = 0;
             btnCancel.MouseEnter += (s, e) => btnCancel.BackColor = ThemeConstants.GetHoverColor(ThemeConstants.BackgroundMedium);
             btnCancel.MouseLeave += (s, e) => btnCancel.BackColor = ThemeConstants.BackgroundMedium;
 
             btnRegister.FlatAppearance.BorderSize = 0;
-            btnRegister.MouseEnter += (s, e) => btnRegister.BackColor = Color.FromArgb(128, 0, 0); // Darker maroon for hover
+            btnRegister.MouseEnter += (s, e) => btnRegister.BackColor = Color.FromArgb(128, 0, 0); 
             btnRegister.MouseLeave += (s, e) => btnRegister.BackColor = Color.Maroon;
 
-            // Input validation for phone field only
             txtPhone.KeyPress += (s, e) =>
             {
-                // Allow numbers, spaces, hyphens, parentheses, plus sign, and backspace
                 if (!char.IsDigit(e.KeyChar) && !char.IsControl(e.KeyChar) &&
                     e.KeyChar != ' ' && e.KeyChar != '-' && e.KeyChar != '(' &&
                     e.KeyChar != ')' && e.KeyChar != '+')
                 {
-                    e.Handled = true; // Block the character
+                    e.Handled = true; 
                 }
             };
 
-            // Ensure address field accepts all input including numbers
             txtAddress.KeyPress += (s, e) =>
             {
-                // Allow all characters - no restrictions for address field
-                // This explicitly allows numbers, letters, symbols, etc.
             };
             
             registerForm.AcceptButton = btnRegister;
@@ -2520,7 +2447,6 @@ namespace Library_Management_System
             btnRegister.MouseDown += (s, e) => btnRegister.Invalidate();
             btnRegister.MouseUp += (s, e) => btnRegister.Invalidate();
 
-            // Add panels and their contents
             personalPanel.Controls.AddRange(new Control[] {
                 personalHeader, lblFirstName, txtFirstName, lblLastName, txtLastName,
                 lblIdNumber, txtIdNumber, lblDateOfBirth, dtpDateOfBirth, lblEmail, txtEmail, hintId
@@ -2537,7 +2463,6 @@ namespace Library_Management_System
             });
 
 
-            // Set up placeholders for all textboxes
             txtFirstName.SetPlaceholder("Enter first name");
             txtLastName.SetPlaceholder("Enter last name");
             txtIdNumber.SetPlaceholder("Enter ID number");
@@ -2583,12 +2508,10 @@ namespace Library_Management_System
                 
                 string memberType = cmbMemberType.SelectedItem?.ToString();
 
-                // Check if this member type requires UMindanao email
                 bool requiresUmindanaoEmail = memberType == "Student";
 
                 if (requiresUmindanaoEmail)
                 {
-                    // For students: require UMindanao email format
                     if (email == "firstname.lastname.IDnumber.tc@umindanao.edu.ph" ||
                         email == "firstname.lastname.idnumber.tc@umindanao.edu.ph" ||
                         string.IsNullOrWhiteSpace(email))
@@ -2611,7 +2534,6 @@ namespace Library_Management_System
                 }
                 else
                 {
-                    // For guest and staff: allow any valid email format
                     if (!IsValidRegularEmail(email))
                     {
                         MessageBox.Show("Please enter a valid email address.\n\nExample: john.doe@example.com",
@@ -2663,7 +2585,6 @@ namespace Library_Management_System
 
                 }
 
-                // Validate emergency phone if provided
                 string emergencyPhone = txtEmergencyPhone.GetActualText().Trim();
                 if (!string.IsNullOrWhiteSpace(emergencyPhone))
                 {
@@ -2683,7 +2604,6 @@ namespace Library_Management_System
 
                     var membersService = new Library_Management_System.Service.MembersService();
                     
-                    // Pre-check for duplicate email
                     if (membersService.IsEmailRegistered(email))
                     {
                         MessageBox.Show("This email address is already registered in the system.\nPlease use a different email.",
@@ -2694,7 +2614,6 @@ namespace Library_Management_System
                         return;
                     }
 
-                    // Pre-check for duplicate ID number
                     string idNumber = txtIdNumber.GetActualText().Trim();
                     if (!string.IsNullOrWhiteSpace(idNumber) && membersService.IsIdNumberRegistered(idNumber))
                     {
@@ -2718,14 +2637,13 @@ namespace Library_Management_System
                         cmbStatus.SelectedItem.ToString(),
                         idNumber,
                         dtpDateOfBirth.Value.Date,
-                        "", // Gender - will add later if needed
+                        "", 
                         cmbDepartment.Text.Trim(),
                         txtEmergencyName.GetActualText().Trim(),
                         txtEmergencyPhone.GetActualText().Trim(),
                         dtpExpiryDate.Value.Date
                     );
 
-                    // Audit log the registration
                     Library_Management_System.Helper.AuditLogger.LogMemberRegistration(
                         SiginForm.CurrentUser?.Email ?? "Unknown",
                         email);
@@ -2758,7 +2676,6 @@ namespace Library_Management_System
 
             registerForm.Load += (s, e) => txtFirstName.Focus();
 
-            // Add visual feedback for required fields
             txtFirstName.TextChanged += (s, e) => {
                 txtFirstName.BackColor = string.IsNullOrWhiteSpace(txtFirstName.Text) ?
                     Color.FromArgb(255, 245, 245) : Color.White;
@@ -2852,26 +2769,21 @@ namespace Library_Management_System
         private bool IsValidPhoneNumber(string phone)
         {
             if (string.IsNullOrWhiteSpace(phone))
-                return true; // Phone is optional
+                return true; 
 
             phone = phone.Trim();
 
-            // Remove all formatting characters for validation
             string digitsOnly = System.Text.RegularExpressions.Regex.Replace(phone, @"[^\d]", "");
 
-            // Philippine phone numbers: 10-11 digits (mobile) or with area code
             if (digitsOnly.Length < 7 || digitsOnly.Length > 12)
                 return false;
 
-            // Must start with valid prefixes for Philippine numbers
             if (digitsOnly.Length >= 10)
             {
-                // Mobile numbers should start with 09 or 63
                 if (!digitsOnly.StartsWith("09") && !digitsOnly.StartsWith("639") && !digitsOnly.StartsWith("63"))
                     return false;
             }
 
-            // Check for valid characters in original format
             return System.Text.RegularExpressions.Regex.IsMatch(phone, @"^[\d\s\-\(\)\+]+$");
         }
 
@@ -2885,11 +2797,9 @@ namespace Library_Management_System
             if (name.Length < 2 || name.Length > 50)
                 return false;
 
-            // Allow letters, spaces, hyphens, apostrophes
             if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z\s\-']+$"))
                 return false;
 
-            // Must contain at least one letter
             if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"[a-zA-Z]"))
                 return false;
 
@@ -2899,33 +2809,29 @@ namespace Library_Management_System
         private bool IsValidAddress(string address)
         {
             if (string.IsNullOrWhiteSpace(address))
-                return true; // Address is optional
+                return true; 
 
             address = address.Trim();
 
             if (address.Length < 5 || address.Length > 200)
                 return false;
 
-            // Basic validation - allow common address characters
             return System.Text.RegularExpressions.Regex.IsMatch(address, @"^[a-zA-Z0-9\s,.\-#]+$");
         }
 
         private bool IsValidIdNumber(string idNumber)
         {
             if (string.IsNullOrWhiteSpace(idNumber))
-                return true; // ID Number is optional
+                return true; 
 
             idNumber = idNumber.Trim();
 
-            // ID Number must be exactly 6 digits only (no letters)
             if (idNumber.Length != 6)
                 return false;
 
-            // Check if all characters are digits
             return System.Text.RegularExpressions.Regex.IsMatch(idNumber, @"^[0-9]{6}$");
         }
 
-        // ==================== CATALOG MANAGEMENT ====================
 
         private Panel CreateCatalogStatCard(string icon, string value, string label, Color accentColor, Point location)
         {
@@ -2937,7 +2843,6 @@ namespace Library_Management_System
                 BorderStyle = BorderStyle.None
             };
 
-            // Add subtle shadow effect - matching white card design
             card.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
@@ -2945,21 +2850,18 @@ namespace Library_Management_System
                 Rectangle shadowRect = new Rectangle(2, 2, card.Width - 2, card.Height - 2);
                 Rectangle cardRect = new Rectangle(0, 0, card.Width - 2, card.Height - 2);
                 
-                // Shadow
                 using (var shadowBrush = new SolidBrush(Color.FromArgb(8, 0, 0, 0)))
                 using (var shadowPath = CreateRoundedRectangle(shadowRect, 4))
                 {
                     e.Graphics.FillPath(shadowBrush, shadowPath);
                 }
                 
-                // White background
                 using (var bgBrush = new SolidBrush(Color.White))
                 using (var cardPath = CreateRoundedRectangle(cardRect, 4))
                 {
                     e.Graphics.FillPath(bgBrush, cardPath);
                 }
                 
-                // Subtle border
                 using (var borderPen = new Pen(Color.FromArgb(230, 230, 230), 1))
                 using (var borderPath = CreateRoundedRectangle(cardRect, 4))
                 {
@@ -2967,7 +2869,6 @@ namespace Library_Management_System
                 }
             };
 
-            // Icon label - colored icon on white background
             Label lblIcon = new Label
             {
                 Text = icon,
@@ -2979,7 +2880,6 @@ namespace Library_Management_System
                 BackColor = Color.Transparent
             };
 
-            // Value label - large bold number (increased width to prevent cutoff)
             Label lblValue = new Label
             {
                 Text = value,
@@ -2992,7 +2892,6 @@ namespace Library_Management_System
                 BackColor = Color.Transparent
             };
 
-            // Label text (increased width to prevent cutoff)
             Label lblLabel = new Label
             {
                 Text = label,
@@ -3026,10 +2925,8 @@ namespace Library_Management_System
             pnlMembersView.Visible = false;
             ShowDashboardControls(false);
 
-            // Only clear dynamically added controls, preserve Designer controls
             ClearDynamicControls();
 
-            // Title with enhanced styling - matching image design
             Label titleLabel = new Label
             {
                 Text = "Catalog",
@@ -3039,7 +2936,6 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
 
-            // Subtitle - matching image
             Label subtitleLabel = new Label
             {
                 Text = "Browse and manage library books and resources",
@@ -3049,7 +2945,6 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(100, 100, 100)
             };
 
-            // Add Book button - positioned top right like in image
             Button btnAddBookHeader = new Button
             {
                 Text = "+ Add Book",
@@ -3065,15 +2960,12 @@ namespace Library_Management_System
             btnAddBookHeader.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnAddBookHeader.Click += (s, e) => ShowAddBookDialog();
 
-            // Statistics Cards Panel - matching image design
-            // Check if statsPanel already exists to prevent duplication
             Panel statsPanel = null;
             foreach (Control ctrl in pnlMainContent.Controls)
             {
                 if (ctrl is Panel panel && panel.Tag?.ToString() == "CatalogStatsPanel")
                 {
                     statsPanel = panel;
-                    // Clear existing cards to prevent duplication
                     foreach (Control child in panel.Controls)
                     {
                         child.Dispose();
@@ -3094,7 +2986,6 @@ namespace Library_Management_System
                 };
             }
 
-            // Statistics Cards - matching image (always create new cards)
             Panel cardTotalTitles = CreateCatalogStatCard("📚", "0", "Total Titles", Color.FromArgb(128, 0, 0), new Point(0, 0));
             Panel cardAvailableCopies = CreateCatalogStatCard("📖", "0", "Available Copies", Color.FromArgb(76, 175, 80), new Point(200, 0));
             Panel cardTotalCopies = CreateCatalogStatCard("📚", "0", "Total Copies", Color.FromArgb(33, 150, 243), new Point(400, 0));
@@ -3102,7 +2993,6 @@ namespace Library_Management_System
 
             statsPanel.Controls.AddRange(new Control[] { cardTotalTitles, cardAvailableCopies, cardTotalCopies, cardCategories });
 
-            // Enhanced search and filter panel for catalog
             Panel searchPanel = new Panel
             {
                 Location = new Point(30, 190),
@@ -3111,7 +3001,6 @@ namespace Library_Management_System
                 BorderStyle = BorderStyle.None
             };
 
-            // Add subtle shadow effect and modern styling
             searchPanel.Paint += (s, e) =>
             {
                 using (var shadowBrush = new SolidBrush(Color.FromArgb(15, 0, 0, 0)))
@@ -3128,7 +3017,6 @@ namespace Library_Management_System
                 }
             };
 
-            // Enhanced search textbox with modern styling
             Panel searchContainer = new Panel
             {
                 Location = new Point(20, 15),
@@ -3137,7 +3025,6 @@ namespace Library_Management_System
                 BorderStyle = BorderStyle.None
             };
             
-            // Search icon label
             Label lblSearchIcon = new Label
             {
                 Text = "🔍",
@@ -3160,7 +3047,6 @@ namespace Library_Management_System
             };
             txtSearchBooks.SetPlaceholder("Search by title, author, or ISBN...");
 
-            // Category filter
             Label lblCategoryFilter = new Label
             {
                 Text = "Category:",
@@ -3177,7 +3063,6 @@ namespace Library_Management_System
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
 
-            // View toggle buttons - matching image (grid/list view)
             Button btnGridView = new Button
             {
                 Text = "⊞",
@@ -3206,14 +3091,12 @@ namespace Library_Management_System
             };
             btnListView.FlatAppearance.BorderSize = 0;
 
-            // Toggle view functionality
             btnGridView.Click += (s, e) =>
             {
                 btnGridView.BackColor = Color.FromArgb(128, 0, 0);
                 btnGridView.ForeColor = Color.White;
                 btnListView.BackColor = Color.FromArgb(240, 240, 240);
                 btnListView.ForeColor = Color.FromArgb(100, 100, 100);
-                // Grid view is already shown (DataGridView)
             };
 
             btnListView.Click += (s, e) =>
@@ -3222,10 +3105,8 @@ namespace Library_Management_System
                 btnListView.ForeColor = Color.White;
                 btnGridView.BackColor = Color.FromArgb(240, 240, 240);
                 btnGridView.ForeColor = Color.FromArgb(100, 100, 100);
-                // Could switch to list view here if needed
             };
 
-            // Enhanced Books DataGridView with modern styling
             DataGridView dgvBooks = new DataGridView
             {
                 Location = new Point(30, 270),
@@ -3244,7 +3125,6 @@ namespace Library_Management_System
                 CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal
             };
 
-            // Modern column header styling
             dgvBooks.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
             {
                 BackColor = Color.FromArgb(248, 249, 250),
@@ -3255,7 +3135,6 @@ namespace Library_Management_System
                 SelectionBackColor = Color.FromArgb(248, 249, 250)
             };
 
-            // Enhanced row styling
             dgvBooks.DefaultCellStyle = new DataGridViewCellStyle
             {
                 BackColor = Color.White,
@@ -3267,7 +3146,6 @@ namespace Library_Management_System
                 SelectionForeColor = Color.FromArgb(33, 37, 41)
             };
 
-            // Alternating row colors for better readability
             dgvBooks.AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle
             {
                 BackColor = Color.FromArgb(252, 252, 252),
@@ -3277,7 +3155,6 @@ namespace Library_Management_System
                 SelectionForeColor = Color.FromArgb(33, 37, 41)
             };
 
-            // Add columns
             dgvBooks.Columns.Add("BookId", "ID");
             dgvBooks.Columns.Add("Title", "Title");
             dgvBooks.Columns.Add("Author", "Author");
@@ -3286,7 +3163,6 @@ namespace Library_Management_System
             dgvBooks.Columns.Add("TotalCopies", "Total");
             dgvBooks.Columns.Add("AvailableCopies", "Available");
 
-            // Add button columns
             DataGridViewButtonColumn editButtonColumn = new DataGridViewButtonColumn
             {
                 Name = "Edit",
@@ -3311,7 +3187,6 @@ namespace Library_Management_System
             deleteButtonColumn.DefaultCellStyle.ForeColor = Color.White;
             dgvBooks.Columns.Add(deleteButtonColumn);
 
-            // Set column widths
             dgvBooks.Columns["BookId"].Width = 60;
             dgvBooks.Columns["Title"].Width = 200;
             dgvBooks.Columns["Author"].Width = 150;
@@ -3319,12 +3194,9 @@ namespace Library_Management_System
             dgvBooks.Columns["Category"].Width = 100;
             dgvBooks.Columns["TotalCopies"].Width = 70;
             dgvBooks.Columns["AvailableCopies"].Width = 80;
-            // Edit and Delete button columns already have their widths set above
 
-            // Hide BookId column
             dgvBooks.Columns["BookId"].Visible = false;
 
-            // Load books function with statistics update
             void LoadBooksData()
             {
                 try
@@ -3337,7 +3209,6 @@ namespace Library_Management_System
 
                     dgvBooks.Rows.Clear();
 
-                    // Calculate statistics
                     int totalTitles = books.Count;
                     int totalCopies = 0;
                     int availableCopies = 0;
@@ -3360,12 +3231,10 @@ namespace Library_Management_System
                         dgvBooks.Rows[rowIndex].Cells["AvailableCopies"].Value = book.AvailableCopies;
                     }
 
-                    // Update statistics cards
                     UpdateCatalogStatCard(cardTotalTitles, totalTitles.ToString());
                     UpdateCatalogStatCard(cardAvailableCopies, availableCopies.ToString());
                     UpdateCatalogStatCard(cardTotalCopies, totalCopies.ToString());
                     
-                    // Get total categories from all books (not just filtered)
                     var allCategories = bookService.GetCategories();
                     UpdateCatalogStatCard(cardCategories, allCategories.Count.ToString());
                 }
@@ -3375,7 +3244,6 @@ namespace Library_Management_System
                 }
             }
 
-            // Load categories
             void LoadCategories()
             {
                 try
@@ -3399,7 +3267,6 @@ namespace Library_Management_System
                 }
             }
 
-            // Event handlers
             txtSearchBooks.TextChanged += (s, e) =>
             {
                 if (txtSearchBooks.ForeColor != Color.Gray)
@@ -3410,7 +3277,6 @@ namespace Library_Management_System
 
             cmbCategoryFilter.SelectedIndexChanged += (s, e) => LoadBooksData();
 
-            // DataGridView cell click for button columns
             dgvBooks.CellClick += (s, e) =>
             {
                 if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
@@ -3432,7 +3298,7 @@ namespace Library_Management_System
                             var bookService = new Library_Management_System.Service.BookService();
                             bookService.DeleteBook(bookId);
                             MessageBox.Show("Book deleted successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            LoadBooksData(); // Refresh the list after deletion
+                            LoadBooksData(); 
                         }
                         catch (Exception ex)
                         {
@@ -3442,11 +3308,9 @@ namespace Library_Management_System
                 }
             };
 
-            // Add controls to panels
             searchContainer.Controls.AddRange(new Control[] { lblSearchIcon, txtSearchBooks });
             searchPanel.Controls.AddRange(new Control[] { searchContainer, lblCategoryFilter, cmbCategoryFilter, btnGridView, btnListView });
 
-            // Add controls to main content, checking for duplicates
             List<Control> controlsToAdd = new List<Control>();
             if (!pnlMainContent.Controls.Contains(titleLabel)) controlsToAdd.Add(titleLabel);
             if (!pnlMainContent.Controls.Contains(subtitleLabel)) controlsToAdd.Add(subtitleLabel);
@@ -3460,7 +3324,6 @@ namespace Library_Management_System
                 pnlMainContent.Controls.AddRange(controlsToAdd.ToArray());
             }
 
-            // Load initial data
             LoadCategories();
             LoadBooksData();
         }
@@ -3480,15 +3343,14 @@ namespace Library_Management_System
                 BackColor = Color.FromArgb(245, 245, 245)
             };
 
-            // Header Panel
             Panel headerPanel = new Panel
             {
                 Location = new Point(0, 0),
                 Size = new Size(addForm.Width, 80),
-                BackColor = Color.White
+                BackColor = Color.White,
+                Dock = DockStyle.Top
             };
 
-            // Title
             Label titleLabel = new Label
             {
                 Text = "Add New Book",
@@ -3498,7 +3360,6 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
 
-            // Subtitle
             Label subtitleLabel = new Label
             {
                 Text = "Enter the book details to add it to the catalog",
@@ -3508,34 +3369,15 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(100, 100, 100)
             };
 
-            // Close button (X)
-            Button btnClose = new Button
-            {
-                Text = "✕",
-                Location = new Point(addForm.Width - 45, 10),
-                Size = new Size(35, 35),
-                Font = new Font("Segoe UI", 14F),
-                BackColor = Color.Transparent,
-                ForeColor = Color.FromArgb(100, 100, 100),
-                FlatStyle = FlatStyle.Flat,
-                Cursor = Cursors.Hand
-            };
-            btnClose.FlatAppearance.BorderSize = 0;
-            btnClose.FlatAppearance.MouseOverBackColor = Color.FromArgb(240, 240, 240);
-            btnClose.Click += (s, e) => addForm.Close();
+            headerPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel });
 
-            headerPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnClose });
-
-            // Main content panel
             Panel contentPanel = new Panel
             {
-                Location = new Point(0, 80),
-                Size = new Size(addForm.Width, addForm.Height - 150),
                 BackColor = Color.White,
-                AutoScroll = true
+                AutoScroll = true,
+                Dock = DockStyle.Fill
             };
 
-            // Two-column layout
             int leftColumnX = 30;
             int rightColumnX = 480;
             int startY = 30;
@@ -3544,8 +3386,6 @@ namespace Library_Management_System
             int labelHeight = 20;
             int fieldWidth = 380;
 
-            // LEFT COLUMN
-            // Title *
             Label lblTitle = new Label { Text = "Title *", Location = new Point(leftColumnX, startY), Size = new Size(150, labelHeight), Font = new Font("Segoe UI", 10F), ForeColor = Color.FromArgb(40, 40, 40) };
             TextBox txtTitle = new TextBox 
             { 
@@ -3556,7 +3396,6 @@ namespace Library_Management_System
             };
             txtTitle.SetPlaceholder("Book title");
 
-            // ISBN *
             startY += fieldSpacing;
             Label lblISBN = new Label { Text = "ISBN *", Location = new Point(leftColumnX, startY), Size = new Size(150, labelHeight), Font = new Font("Segoe UI", 10F), ForeColor = Color.FromArgb(40, 40, 40) };
             TextBox txtISBN = new TextBox 
@@ -3568,7 +3407,6 @@ namespace Library_Management_System
                 Text = "978-0-00-000000-0"
             };
 
-            // Author *
             startY += fieldSpacing;
             Label lblAuthor = new Label { Text = "Author *", Location = new Point(leftColumnX, startY), Size = new Size(150, labelHeight), Font = new Font("Segoe UI", 10F), ForeColor = Color.FromArgb(40, 40, 40) };
             TextBox txtAuthor = new TextBox 
@@ -3580,7 +3418,6 @@ namespace Library_Management_System
             };
             txtAuthor.SetPlaceholder("Author name");
 
-            // Publication Year
             startY += fieldSpacing;
             Label lblYear = new Label { Text = "Publication Year", Location = new Point(leftColumnX, startY), Size = new Size(150, labelHeight), Font = new Font("Segoe UI", 10F), ForeColor = Color.FromArgb(40, 40, 40) };
             NumericUpDown numYear = new NumericUpDown
@@ -3594,7 +3431,6 @@ namespace Library_Management_System
                 BackColor = Color.White
             };
 
-            // Language
             startY += fieldSpacing;
             Label lblLanguage = new Label { Text = "Language", Location = new Point(leftColumnX, startY), Size = new Size(150, labelHeight), Font = new Font("Segoe UI", 10F), ForeColor = Color.FromArgb(40, 40, 40) };
             TextBox txtLanguage = new TextBox 
@@ -3606,7 +3442,6 @@ namespace Library_Management_System
                 Text = "English"
             };
 
-            // Resource Type
             startY += fieldSpacing;
             Label lblResourceType = new Label { Text = "Resource Type", Location = new Point(leftColumnX, startY), Size = new Size(150, labelHeight), Font = new Font("Segoe UI", 10F), ForeColor = Color.FromArgb(40, 40, 40) };
             ComboBox cmbResourceType = new ComboBox
@@ -3620,7 +3455,6 @@ namespace Library_Management_System
             cmbResourceType.Items.AddRange(new[] { "Book", "Journal", "Magazine", "E-Book", "Reference", "Other" });
             cmbResourceType.SelectedIndex = 0;
 
-            // Description
             startY += fieldSpacing;
             Label lblDescription = new Label { Text = "Description", Location = new Point(leftColumnX, startY), Size = new Size(150, labelHeight), Font = new Font("Segoe UI", 10F), ForeColor = Color.FromArgb(40, 40, 40) };
             TextBox txtDescription = new TextBox
@@ -3634,9 +3468,7 @@ namespace Library_Management_System
             };
             txtDescription.SetPlaceholder("Brief description of the book...");
 
-            // RIGHT COLUMN
             startY = 30;
-            // Subtitle
             Label lblSubtitle = new Label { Text = "Subtitle", Location = new Point(rightColumnX, startY), Size = new Size(150, labelHeight), Font = new Font("Segoe UI", 10F), ForeColor = Color.FromArgb(40, 40, 40) };
             TextBox txtSubtitle = new TextBox 
             { 
@@ -3647,7 +3479,6 @@ namespace Library_Management_System
             };
             txtSubtitle.SetPlaceholder("Optional subtitle");
 
-            // Category *
             startY += fieldSpacing;
             Label lblCategory = new Label { Text = "Category *", Location = new Point(rightColumnX, startY), Size = new Size(150, labelHeight), Font = new Font("Segoe UI", 10F), ForeColor = Color.FromArgb(40, 40, 40) };
             ComboBox cmbCategory = new ComboBox
@@ -3677,7 +3508,6 @@ namespace Library_Management_System
                 }
             };
 
-            // Publisher *
             startY += fieldSpacing;
             Label lblPublisher = new Label { Text = "Publisher *", Location = new Point(rightColumnX, startY), Size = new Size(150, labelHeight), Font = new Font("Segoe UI", 10F), ForeColor = Color.FromArgb(40, 40, 40) };
             TextBox txtPublisher = new TextBox 
@@ -3689,7 +3519,6 @@ namespace Library_Management_System
             };
             txtPublisher.SetPlaceholder("Publisher name");
 
-            // Pages
             startY += fieldSpacing;
             Label lblPages = new Label { Text = "Pages", Location = new Point(rightColumnX, startY), Size = new Size(150, labelHeight), Font = new Font("Segoe UI", 10F), ForeColor = Color.FromArgb(40, 40, 40) };
             NumericUpDown numPages = new NumericUpDown
@@ -3703,7 +3532,6 @@ namespace Library_Management_System
                 BackColor = Color.White
             };
 
-            // Copies
             startY += fieldSpacing;
             Label lblCopies = new Label { Text = "Copies", Location = new Point(rightColumnX, startY), Size = new Size(150, labelHeight), Font = new Font("Segoe UI", 10F), ForeColor = Color.FromArgb(40, 40, 40) };
             NumericUpDown numCopies = new NumericUpDown
@@ -3717,7 +3545,6 @@ namespace Library_Management_System
                 BackColor = Color.White
             };
 
-            // Location *
             startY += fieldSpacing;
             Label lblLocation = new Label { Text = "Location *", Location = new Point(rightColumnX, startY), Size = new Size(150, labelHeight), Font = new Font("Segoe UI", 10F), ForeColor = Color.FromArgb(40, 40, 40) };
             TextBox txtLocation = new TextBox 
@@ -3729,22 +3556,17 @@ namespace Library_Management_System
                 Text = "Section A, Shelf 1"
             };
 
-            // Add all controls to content panel
             contentPanel.Controls.AddRange(new Control[] {
-                // Left column
                 lblTitle, txtTitle, lblISBN, txtISBN, lblAuthor, txtAuthor,
                 lblYear, numYear, lblLanguage, txtLanguage, lblResourceType, cmbResourceType,
                 lblDescription, txtDescription,
-                // Right column
                 lblSubtitle, txtSubtitle, lblCategory, cmbCategory, lblPublisher, txtPublisher,
                 lblPages, numPages, lblCopies, numCopies, lblLocation, txtLocation
             });
 
-            // Buttons panel at bottom
             Panel buttonPanel = new Panel
             {
-                Location = new Point(0, addForm.Height - 70),
-                Size = new Size(addForm.Width, 70),
+                Height = 80,
                 BackColor = Color.White,
                 Dock = DockStyle.Bottom
             };
@@ -3752,33 +3574,42 @@ namespace Library_Management_System
             Button btnCancel = new Button
             {
                 Text = "Cancel",
-                Location = new Point(addForm.Width - 250, 15),
                 Size = new Size(100, 40),
                 Font = new Font("Segoe UI", 10F),
                 BackColor = Color.FromArgb(245, 245, 245),
                 ForeColor = Color.FromArgb(40, 40, 40),
                 FlatStyle = FlatStyle.Flat,
                 DialogResult = DialogResult.Cancel,
-                Anchor = AnchorStyles.Bottom | AnchorStyles.Right
+                Anchor = AnchorStyles.None
             };
             btnCancel.FlatAppearance.BorderSize = 0;
 
             Button btnSave = new Button
             {
                 Text = "Add Book",
-                Location = new Point(addForm.Width - 140, 15),
                 Size = new Size(110, 40),
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                 BackColor = Color.FromArgb(128, 0, 0),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Anchor = AnchorStyles.Bottom | AnchorStyles.Right
+                Anchor = AnchorStyles.None
             };
             btnSave.FlatAppearance.BorderSize = 0;
 
             buttonPanel.Controls.AddRange(new Control[] { btnCancel, btnSave });
 
-            // Load categories - Computer Course related categories
+            void PositionButtons()
+            {
+                if (buttonPanel.Width > 0)
+                {
+                    btnCancel.Location = new Point(buttonPanel.Width - 230, 20);
+                    btnSave.Location = new Point(buttonPanel.Width - 120, 20);
+                }
+            }
+
+            buttonPanel.Layout += (s, e) => PositionButtons();
+            addForm.Shown += (s, e) => PositionButtons();
+
             cmbCategory.Items.AddRange(new[] {
                 "Programming",
                 "Data Structures",
@@ -3800,7 +3631,6 @@ namespace Library_Management_System
                 "Game Development"
             });
 
-            // Validation and Save
             btnSave.Click += (s, args) =>
             {
                 if (string.IsNullOrWhiteSpace(txtTitle.GetActualText()))
@@ -3856,7 +3686,6 @@ namespace Library_Management_System
                     addForm.DialogResult = DialogResult.OK;
                     addForm.Close();
                     
-                    // Refresh catalog view after adding book
                     ShowCatalogView();
                 }
                 catch (Exception ex)
@@ -3869,8 +3698,9 @@ namespace Library_Management_System
             addForm.CancelButton = btnCancel;
             btnCancel.Click += (s, e) => addForm.Close();
 
-            // Add panels to form
-            addForm.Controls.AddRange(new Control[] { headerPanel, contentPanel, buttonPanel });
+            addForm.Controls.Add(headerPanel);
+            addForm.Controls.Add(buttonPanel);
+            addForm.Controls.Add(contentPanel);
 
             addForm.ShowDialog();
         }
@@ -3900,7 +3730,6 @@ namespace Library_Management_System
                     ShowInTaskbar = false
                 };
 
-                // Title
                 Label titleLabel = new Label
                 {
                     Text = "Edit Book",
@@ -3910,13 +3739,11 @@ namespace Library_Management_System
                     ForeColor = Color.FromArgb(40, 40, 40)
                 };
 
-                // Form fields
                 int startY = 70;
                 int fieldHeight = 35;
                 int labelWidth = 120;
                 int fieldWidth = 330;
 
-                // ISBN
                 Label lblISBN = new Label { Text = "ISBN:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
                 TextBox txtISBN = new TextBox
                 {
@@ -3926,7 +3753,6 @@ namespace Library_Management_System
                     Text = book.ISBN ?? ""
                 };
 
-                // Title
                 startY += 45;
                 Label lblTitle = new Label { Text = "Title:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
                 TextBox txtTitle = new TextBox
@@ -3937,7 +3763,6 @@ namespace Library_Management_System
                     Text = book.Title
                 };
 
-                // Author
                 startY += 45;
                 Label lblAuthor = new Label { Text = "Author:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
                 TextBox txtAuthor = new TextBox
@@ -3948,7 +3773,6 @@ namespace Library_Management_System
                     Text = book.Author
                 };
 
-                // Publisher
                 startY += 45;
                 Label lblPublisher = new Label { Text = "Publisher:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
                 TextBox txtPublisher = new TextBox
@@ -3959,7 +3783,6 @@ namespace Library_Management_System
                     Text = book.Publisher ?? ""
                 };
 
-                // Publication Year
                 startY += 45;
                 Label lblYear = new Label { Text = "Publication Year:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
                 NumericUpDown numYear = new NumericUpDown
@@ -3972,7 +3795,6 @@ namespace Library_Management_System
                     Value = book.PublicationYear ?? DateTime.Now.Year
                 };
 
-                // Category
                 startY += 45;
                 Label lblCategory = new Label { Text = "Category:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
                 ComboBox cmbCategory = new ComboBox
@@ -3984,7 +3806,6 @@ namespace Library_Management_System
                     Text = book.Category ?? ""
                 };
 
-                // Total Copies
                 startY += 45;
                 Label lblCopies = new Label { Text = "Total Copies:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
                 NumericUpDown numCopies = new NumericUpDown
@@ -3997,7 +3818,6 @@ namespace Library_Management_System
                     Value = book.TotalCopies
                 };
 
-                // Available Copies (read-only display)
                 startY += 45;
                 Label lblAvailable = new Label
                 {
@@ -4008,7 +3828,6 @@ namespace Library_Management_System
                     ForeColor = Color.FromArgb(100, 100, 100)
                 };
 
-                // Description
                 startY += 35;
                 Label lblDescription = new Label { Text = "Description:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
                 TextBox txtDescription = new TextBox
@@ -4021,7 +3840,6 @@ namespace Library_Management_System
                     Text = book.Description ?? ""
                 };
 
-                // Buttons
                 Button btnCancel = new Button
                 {
                     Text = "Cancel",
@@ -4043,7 +3861,6 @@ namespace Library_Management_System
                 };
                 btnSave.FlatAppearance.BorderSize = 0;
 
-                // Load categories
                 try
                 {
                     var categories = bookService.GetCategories();
@@ -4054,7 +3871,6 @@ namespace Library_Management_System
                     MessageBox.Show($"Error loading categories: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
 
-                // Event handlers
                 txtTitle.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) txtAuthor.Focus(); };
                 txtAuthor.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) txtPublisher.Focus(); };
                 txtPublisher.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) numYear.Focus(); };
@@ -4097,7 +3913,6 @@ namespace Library_Management_System
                         editForm.DialogResult = DialogResult.OK;
                         editForm.Close();
                         
-                        // Refresh catalog view after editing book
                         ShowCatalogView();
                     }
                     catch (Exception ex)
@@ -4125,17 +3940,14 @@ namespace Library_Management_System
             }
         }
 
-        // ==================== CIRCULATION MANAGEMENT ====================
 
         private void ShowCirculationView()
         {
             pnlMembersView.Visible = false;
             ShowDashboardControls(false);
             
-            // Only clear dynamically added controls, preserve Designer controls
             ClearDynamicControls();
 
-            // Title with enhanced styling - matching design
             Label titleLabel = new Label
             {
                 Text = "Circulation",
@@ -4145,7 +3957,6 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
 
-            // Subtitle
             Label subtitleLabel = new Label
             {
                 Text = "Manage book borrowings, returns, and renewals",
@@ -4155,7 +3966,6 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(100, 100, 100)
             };
 
-            // Statistics Cards Panel
             Panel statsPanel = new Panel
             {
                 Location = new Point(30, 100),
@@ -4164,14 +3974,12 @@ namespace Library_Management_System
                 Tag = "CirculationStatsPanel"
             };
 
-            // Statistics Cards - Currently Borrowed, Overdue, Returned Today
             Panel cardCurrentlyBorrowed = CreateCatalogStatCard("📚", "0", "Currently Borrowed", Color.FromArgb(33, 150, 243), new Point(0, 0));
             Panel cardOverdue = CreateCatalogStatCard("⚠️", "0", "Overdue", Color.FromArgb(244, 67, 54), new Point(200, 0));
             Panel cardReturnedToday = CreateCatalogStatCard("✓", "0", "Returned Today", Color.FromArgb(76, 175, 80), new Point(400, 0));
 
             statsPanel.Controls.AddRange(new Control[] { cardCurrentlyBorrowed, cardOverdue, cardReturnedToday });
 
-            // Enhanced search and filter panel
             Panel searchPanel = new Panel
             {
                 Location = new Point(30, 190),
@@ -4180,7 +3988,6 @@ namespace Library_Management_System
                 BorderStyle = BorderStyle.None
             };
 
-            // Add modern styling with subtle shadow
             searchPanel.Paint += (s, e) =>
             {
                 using (var shadowBrush = new SolidBrush(Color.FromArgb(15, 0, 0, 0)))
@@ -4197,7 +4004,6 @@ namespace Library_Management_System
                 }
             };
 
-            // Enhanced search container
             Panel searchContainer = new Panel
             {
                 Location = new Point(20, 15),
@@ -4216,26 +4022,26 @@ namespace Library_Management_System
             };
             txtSearchBorrowings.SetPlaceholder("Search transactions...");
 
-            // Status filter
             Label lblStatusFilter = new Label
             {
                 Text = "Status:",
-                Location = new Point(340, 18),
+                Location = new Point(searchPanel.Width - 200, 18),
                 Size = new Size(60, 25),
-                Font = new Font("Segoe UI", 10F)
+                Font = new Font("Segoe UI", 10F),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
 
             ComboBox cmbStatusFilter = new ComboBox
             {
-                Location = new Point(400, 15),
+                Location = new Point(searchPanel.Width - 140, 15),
                 Size = new Size(120, 30),
                 Font = new Font("Segoe UI", 10F),
-                DropDownStyle = ComboBoxStyle.DropDownList
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
             cmbStatusFilter.Items.AddRange(new[] { "All Status", "Active", "Returned", "Overdue" });
             cmbStatusFilter.SelectedIndex = 0;
 
-            // Add search icon to container
             Label searchIcon = new Label
             {
                 Text = "🔍",
@@ -4248,7 +4054,6 @@ namespace Library_Management_System
             searchContainer.Controls.Add(searchIcon);
             searchContainer.Controls.Add(txtSearchBorrowings);
 
-            // Action buttons - positioned top right
             Button btnCheckout = new Button
             {
                 Text = "Check Out",
@@ -4284,7 +4089,6 @@ namespace Library_Management_System
             btnReturn.MouseEnter += (s, e) => btnReturn.BackColor = Color.FromArgb(250, 250, 250);
             btnReturn.MouseLeave += (s, e) => btnReturn.BackColor = Color.White;
 
-            // Borrowings DataGridView - positioned below search panel
             DataGridView dgvBorrowings = new DataGridView
             {
                 Location = new Point(30, 270),
@@ -4299,7 +4103,6 @@ namespace Library_Management_System
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
             };
 
-            // Configure DataGridView
             dgvBorrowings.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
             {
                 BackColor = Color.FromArgb(240, 240, 240),
@@ -4318,8 +4121,7 @@ namespace Library_Management_System
                 SelectionForeColor = Color.White
             };
 
-            // Add columns - matching design: Accession #, Book Title, Member, Borrow Date, Due Date, Status, Fine, Actions
-            dgvBorrowings.Columns.Add("BorrowingId", "ID"); // Hidden, used for reference
+            dgvBorrowings.Columns.Add("BorrowingId", "ID"); 
             dgvBorrowings.Columns.Add("AccessionNumber", "Accession #");
             dgvBorrowings.Columns.Add("BookTitle", "Book Title");
             dgvBorrowings.Columns.Add("MemberName", "Member");
@@ -4328,7 +4130,6 @@ namespace Library_Management_System
             dgvBorrowings.Columns.Add("Status", "Status");
             dgvBorrowings.Columns.Add("Fine", "Fine");
             
-            // Add button columns for actions
             DataGridViewButtonColumn returnButtonColumn = new DataGridViewButtonColumn
             {
                 Name = "Return",
@@ -4353,7 +4154,6 @@ namespace Library_Management_System
             renewButtonColumn.DefaultCellStyle.ForeColor = Color.White;
             dgvBorrowings.Columns.Add(renewButtonColumn);
 
-            // Set column widths
             dgvBorrowings.Columns["BorrowingId"].Width = 80;
             dgvBorrowings.Columns["AccessionNumber"].Width = 120;
             dgvBorrowings.Columns["BookTitle"].Width = 200;
@@ -4363,10 +4163,8 @@ namespace Library_Management_System
             dgvBorrowings.Columns["Status"].Width = 100;
             dgvBorrowings.Columns["Fine"].Width = 80;
 
-            // Hide BorrowingId column
             dgvBorrowings.Columns["BorrowingId"].Visible = false;
 
-            // Load borrowings function with statistics
             void LoadBorrowingsData()
             {
                 try
@@ -4379,7 +4177,6 @@ namespace Library_Management_System
 
                     dgvBorrowings.Rows.Clear();
 
-                    // Calculate statistics
                     int currentlyBorrowed = 0;
                     int overdue = 0;
                     int returnedToday = 0;
@@ -4387,7 +4184,6 @@ namespace Library_Management_System
 
                     foreach (var borrowing in borrowings)
                     {
-                        // Count statistics
                         if (!borrowing.ReturnDate.HasValue)
                         {
                             currentlyBorrowed++;
@@ -4404,7 +4200,6 @@ namespace Library_Management_System
                         int rowIndex = dgvBorrowings.Rows.Add();
                         dgvBorrowings.Rows[rowIndex].Cells["BorrowingId"].Value = borrowing.BorrowingId;
                         
-                        // Accession Number (using BorrowingId format: ACC-YYYY-XXXXX)
                         string accessionNumber = $"ACC-{borrowing.BorrowDate:yyyy}-{borrowing.BorrowingId.PadLeft(5, '0')}";
                         dgvBorrowings.Rows[rowIndex].Cells["AccessionNumber"].Value = accessionNumber;
                         
@@ -4412,48 +4207,43 @@ namespace Library_Management_System
                         dgvBorrowings.Rows[rowIndex].Cells["MemberName"].Value = borrowing.MemberName;
                         dgvBorrowings.Rows[rowIndex].Cells["BorrowDate"].Value = borrowing.BorrowDate.ToString("MMM dd, yyyy");
                         
-                        // Due Date with color coding for overdue
                         var dueDateCell = dgvBorrowings.Rows[rowIndex].Cells["DueDate"];
                         dueDateCell.Value = borrowing.DueDate.ToString("MMM dd, yyyy");
                         if (!borrowing.ReturnDate.HasValue && DateTime.Now > borrowing.DueDate)
                         {
-                            dueDateCell.Style.ForeColor = Color.FromArgb(244, 67, 54); // Red for overdue
+                            dueDateCell.Style.ForeColor = Color.FromArgb(244, 67, 54); 
                         }
 
-                        // Status with color coding
                         var statusCell = dgvBorrowings.Rows[rowIndex].Cells["Status"];
                         if (borrowing.ReturnDate.HasValue)
                         {
                             statusCell.Value = "Returned";
-                            statusCell.Style.ForeColor = Color.FromArgb(76, 175, 80); // Green
+                            statusCell.Style.ForeColor = Color.FromArgb(76, 175, 80); 
                         }
                         else if (DateTime.Now > borrowing.DueDate)
                         {
                             statusCell.Value = "Overdue";
-                            statusCell.Style.ForeColor = Color.FromArgb(244, 67, 54); // Red
+                            statusCell.Style.ForeColor = Color.FromArgb(244, 67, 54); 
                         }
                         else
                         {
                             statusCell.Value = "Active";
-                            statusCell.Style.ForeColor = Color.FromArgb(33, 150, 243); // Blue
+                            statusCell.Style.ForeColor = Color.FromArgb(33, 150, 243); 
                         }
 
-                        // Fine column
                         var fineCell = dgvBorrowings.Rows[rowIndex].Cells["Fine"];
                         if (borrowing.FineAmount > 0)
                         {
                             fineCell.Value = $"${borrowing.FineAmount:F2}";
-                            fineCell.Style.ForeColor = Color.FromArgb(244, 67, 54); // Red
+                            fineCell.Style.ForeColor = Color.FromArgb(244, 67, 54); 
                         }
                         else
                         {
                             fineCell.Value = "-";
                         }
 
-                        // Actions columns - show Return and Renew buttons for active/overdue, hide for returned
                         if (borrowing.ReturnDate.HasValue)
                         {
-                            // Hide buttons and show return date in Fine column or Status
                             dgvBorrowings.Rows[rowIndex].Cells["Return"].Value = "";
                             dgvBorrowings.Rows[rowIndex].Cells["Renew"].Value = "";
                             dgvBorrowings.Rows[rowIndex].Cells["Return"].Style.BackColor = Color.Transparent;
@@ -4461,13 +4251,11 @@ namespace Library_Management_System
                         }
                         else
                         {
-                            // Show Return and Renew buttons
                             dgvBorrowings.Rows[rowIndex].Cells["Return"].Value = "Return";
                             dgvBorrowings.Rows[rowIndex].Cells["Renew"].Value = "Renew";
                         }
                     }
 
-                    // Update statistics cards
                     UpdateCatalogStatCard(cardCurrentlyBorrowed, currentlyBorrowed.ToString());
                     UpdateCatalogStatCard(cardOverdue, overdue.ToString());
                     UpdateCatalogStatCard(cardReturnedToday, returnedToday.ToString());
@@ -4478,7 +4266,6 @@ namespace Library_Management_System
                 }
             }
 
-            // Event handlers
             txtSearchBorrowings.TextChanged += (s, e) =>
             {
                 if (txtSearchBorrowings.ForeColor != Color.Gray)
@@ -4491,7 +4278,6 @@ namespace Library_Management_System
             btnCheckout.Click += (s, e) => ShowCheckoutDialog();
             btnReturn.Click += (s, e) => ShowReturnDialog();
 
-            // DataGridView cell click for actions
             dgvBorrowings.CellClick += (s, e) =>
             {
                 if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
@@ -4545,13 +4331,11 @@ namespace Library_Management_System
                 }
             };
 
-            // Add controls to panels
             searchContainer.Controls.AddRange(new Control[] { searchIcon, txtSearchBorrowings });
             searchPanel.Controls.AddRange(new Control[] { searchContainer, lblStatusFilter, cmbStatusFilter });
 
             pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnCheckout, btnReturn, statsPanel, searchPanel, dgvBorrowings });
 
-            // Load initial data
             LoadBorrowingsData();
         }
 
@@ -4569,7 +4353,6 @@ namespace Library_Management_System
                 ShowInTaskbar = false
             };
 
-            // Title
             Label titleLabel = new Label
             {
                 Text = "Checkout Book",
@@ -4579,17 +4362,14 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
 
-            // Member ID
             int startY = 70;
             Label lblMemberId = new Label { Text = "Member ID:", Location = new Point(30, startY), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
             TextBox txtMemberId = new TextBox { Location = new Point(140, startY), Size = new Size(300, 30), Font = new Font("Segoe UI", 10F) };
 
-            // Book ID
             startY += 50;
             Label lblBookId = new Label { Text = "Book ID:", Location = new Point(30, startY), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
             TextBox txtBookId = new TextBox { Location = new Point(140, startY), Size = new Size(300, 30), Font = new Font("Segoe UI", 10F) };
 
-            // Loan period
             startY += 50;
             Label lblLoanPeriod = new Label { Text = "Loan Period (days):", Location = new Point(30, startY), Size = new Size(120, 25), Font = new Font("Segoe UI", 10F) };
             NumericUpDown numLoanPeriod = new NumericUpDown
@@ -4602,7 +4382,6 @@ namespace Library_Management_System
                 Value = 14
             };
 
-            // Due date display
             Label lblDueDate = new Label
             {
                 Text = $"Due Date: {DateTime.Now.AddDays(14):yyyy-MM-dd}",
@@ -4612,7 +4391,6 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(100, 100, 100)
             };
 
-            // Buttons
             Button btnCancel = new Button
             {
                 Text = "Cancel",
@@ -4634,13 +4412,11 @@ namespace Library_Management_System
             };
             btnCheckout.FlatAppearance.BorderSize = 0;
 
-            // Update due date when loan period changes
             numLoanPeriod.ValueChanged += (s, e) =>
             {
                 lblDueDate.Text = $"Due Date: {DateTime.Now.AddDays((int)numLoanPeriod.Value):yyyy-MM-dd}";
             };
 
-            // Event handlers
             txtMemberId.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) txtBookId.Focus(); };
             txtBookId.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) numLoanPeriod.Focus(); };
             numLoanPeriod.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) btnCheckout.PerformClick(); };
@@ -4670,7 +4446,6 @@ namespace Library_Management_System
                     checkoutForm.DialogResult = DialogResult.OK;
                     checkoutForm.Close();
                     
-                    // Refresh circulation view after checkout
                     ShowCirculationView();
                 }
                 catch (Exception ex)
@@ -4684,7 +4459,6 @@ namespace Library_Management_System
 
             btnCancel.Click += (s, e) => checkoutForm.Close();
 
-            // Set up placeholders for circulation form textboxes
             txtMemberId.SetPlaceholder("Enter member ID");
             txtBookId.SetPlaceholder("Enter book ID");
 
@@ -4710,7 +4484,6 @@ namespace Library_Management_System
                 ShowInTaskbar = false
             };
 
-            // Title
             Label titleLabel = new Label
             {
                 Text = "Return Book",
@@ -4720,11 +4493,9 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
 
-            // Borrowing ID
             Label lblBorrowingId = new Label { Text = "Borrowing ID:", Location = new Point(30, 80), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
             TextBox txtBorrowingId = new TextBox { Location = new Point(140, 75), Size = new Size(200, 30), Font = new Font("Segoe UI", 10F) };
 
-            // Buttons
             Button btnCancel = new Button
             {
                 Text = "Cancel",
@@ -4746,7 +4517,6 @@ namespace Library_Management_System
             };
             btnReturn.FlatAppearance.BorderSize = 0;
 
-            // Event handlers
             txtBorrowingId.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) btnReturn.PerformClick(); };
 
             btnReturn.Click += (s, args) =>
@@ -4767,7 +4537,6 @@ namespace Library_Management_System
                     returnForm.DialogResult = DialogResult.OK;
                     returnForm.Close();
                     
-                    // Refresh circulation view after return
                     ShowCirculationView();
                 }
                 catch (Exception ex)
@@ -4781,7 +4550,6 @@ namespace Library_Management_System
 
             btnCancel.Click += (s, e) => returnForm.Close();
 
-            // Set up placeholder for return book form
             txtBorrowingId.SetPlaceholder("Enter borrowing ID");
 
             returnForm.Controls.AddRange(new Control[] {
@@ -4805,7 +4573,6 @@ namespace Library_Management_System
                 ShowInTaskbar = false
             };
 
-            // Title
             Label titleLabel = new Label
             {
                 Text = "Borrowing Details",
@@ -4819,36 +4586,29 @@ namespace Library_Management_System
             int labelWidth = 120;
             int fieldWidth = 300;
 
-            // Borrowing ID
             Label lblBorrowingId = new Label { Text = "Borrowing ID:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
             Label lblBorrowingIdValue = new Label { Text = borrowing.BorrowingId, Location = new Point(160, startY), Size = new Size(fieldWidth, 25), Font = new Font("Segoe UI", 10F, FontStyle.Bold) };
 
-            // Member
             startY += 35;
             Label lblMember = new Label { Text = "Member:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
             Label lblMemberValue = new Label { Text = borrowing.MemberName, Location = new Point(160, startY), Size = new Size(fieldWidth, 25), Font = new Font("Segoe UI", 10F) };
 
-            // Book
             startY += 35;
             Label lblBook = new Label { Text = "Book:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
             Label lblBookValue = new Label { Text = borrowing.BookTitle, Location = new Point(160, startY), Size = new Size(fieldWidth, 25), Font = new Font("Segoe UI", 10F) };
 
-            // ISBN
             startY += 35;
             Label lblISBN = new Label { Text = "ISBN:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
             Label lblISBNValue = new Label { Text = borrowing.BookISBN ?? "N/A", Location = new Point(160, startY), Size = new Size(fieldWidth, 25), Font = new Font("Segoe UI", 10F) };
 
-            // Borrow Date
             startY += 35;
             Label lblBorrowDate = new Label { Text = "Borrow Date:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
             Label lblBorrowDateValue = new Label { Text = borrowing.BorrowDate.ToString("yyyy-MM-dd"), Location = new Point(160, startY), Size = new Size(fieldWidth, 25), Font = new Font("Segoe UI", 10F) };
 
-            // Due Date
             startY += 35;
             Label lblDueDate = new Label { Text = "Due Date:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
             Label lblDueDateValue = new Label { Text = borrowing.DueDate.ToString("yyyy-MM-dd"), Location = new Point(160, startY), Size = new Size(fieldWidth, 25), Font = new Font("Segoe UI", 10F) };
 
-            // Return Date
             startY += 35;
             Label lblReturnDate = new Label { Text = "Return Date:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
             Label lblReturnDateValue = new Label
@@ -4859,7 +4619,6 @@ namespace Library_Management_System
                 Font = new Font("Segoe UI", 10F)
             };
 
-            // Fine Amount
             startY += 35;
             Label lblFine = new Label { Text = "Fine Amount:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
             Label lblFineValue = new Label
@@ -4871,7 +4630,6 @@ namespace Library_Management_System
                 ForeColor = borrowing.FineAmount > 0 ? Color.FromArgb(244, 67, 54) : Color.FromArgb(76, 175, 80)
             };
 
-            // Close button
             Button btnClose = new Button
             {
                 Text = "Close",
@@ -4893,17 +4651,14 @@ namespace Library_Management_System
             detailsForm.ShowDialog();
         }
 
-        // ==================== RESERVATIONS MANAGEMENT ====================
 
         private void ShowReservationsView()
         {
             pnlMembersView.Visible = false;
             ShowDashboardControls(false);
             
-            // Only clear dynamically added controls, preserve Designer controls
             ClearDynamicControls();
 
-            // Title with enhanced styling - matching design
             Label titleLabel = new Label
             {
                 Text = "Reservations",
@@ -4913,7 +4668,6 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
 
-            // Subtitle
             Label subtitleLabel = new Label
             {
                 Text = "Manage book reservations and pickup notifications",
@@ -4923,7 +4677,6 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(100, 100, 100)
             };
 
-            // New Reservation button - positioned top right
             Button btnNewReservation = new Button
             {
                 Text = "New Reservation",
@@ -4940,7 +4693,6 @@ namespace Library_Management_System
             btnNewReservation.MouseEnter += (s, e) => btnNewReservation.BackColor = Color.FromArgb(150, 0, 0);
             btnNewReservation.MouseLeave += (s, e) => btnNewReservation.BackColor = Color.FromArgb(128, 0, 0);
 
-            // Statistics Cards Panel
             Panel statsPanel = new Panel
             {
                 Location = new Point(30, 100),
@@ -4949,7 +4701,6 @@ namespace Library_Management_System
                 Tag = "ReservationsStatsPanel"
             };
 
-            // Statistics Cards - Pending, Ready for Pickup, Fulfilled, Expired
             Panel cardPending = CreateCatalogStatCard("🕒", "0", "Pending", Color.FromArgb(255, 193, 7), new Point(0, 0));
             Panel cardReady = CreateCatalogStatCard("🔔", "0", "Ready for Pickup", Color.FromArgb(76, 175, 80), new Point(200, 0));
             Panel cardFulfilled = CreateCatalogStatCard("✓", "0", "Fulfilled", Color.FromArgb(33, 150, 243), new Point(400, 0));
@@ -4957,7 +4708,6 @@ namespace Library_Management_System
 
             statsPanel.Controls.AddRange(new Control[] { cardPending, cardReady, cardFulfilled, cardExpired });
 
-            // Enhanced search and filter panel
             Panel searchPanel = new Panel
             {
                 Location = new Point(30, 190),
@@ -4966,7 +4716,6 @@ namespace Library_Management_System
                 BorderStyle = BorderStyle.None
             };
 
-            // Add modern styling with subtle shadow
             searchPanel.Paint += (s, e) =>
             {
                 using (var shadowBrush = new SolidBrush(Color.FromArgb(15, 0, 0, 0)))
@@ -4983,7 +4732,6 @@ namespace Library_Management_System
                 }
             };
 
-            // Enhanced search container
             Panel searchContainer = new Panel
             {
                 Location = new Point(20, 15),
@@ -5014,17 +4762,17 @@ namespace Library_Management_System
 
             searchContainer.Controls.AddRange(new Control[] { searchIcon, txtSearchReservations });
 
-            // Filter buttons - All, Pending, Ready, Fulfilled
             Button btnFilterAll = new Button
             {
                 Text = "All",
-                Location = new Point(360, 15),
+                Location = new Point(searchPanel.Width - 320, 15),
                 Size = new Size(70, 40),
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                 BackColor = Color.FromArgb(128, 0, 0),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Tag = "All"
             };
             btnFilterAll.FlatAppearance.BorderSize = 0;
@@ -5032,13 +4780,14 @@ namespace Library_Management_System
             Button btnFilterPending = new Button
             {
                 Text = "Pending",
-                Location = new Point(440, 15),
+                Location = new Point(searchPanel.Width - 240, 15),
                 Size = new Size(80, 40),
                 Font = new Font("Segoe UI", 10F),
                 BackColor = Color.FromArgb(240, 240, 240),
                 ForeColor = Color.FromArgb(100, 100, 100),
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Tag = "Pending"
             };
             btnFilterPending.FlatAppearance.BorderSize = 0;
@@ -5046,13 +4795,14 @@ namespace Library_Management_System
             Button btnFilterReady = new Button
             {
                 Text = "Ready",
-                Location = new Point(530, 15),
+                Location = new Point(searchPanel.Width - 150, 15),
                 Size = new Size(80, 40),
                 Font = new Font("Segoe UI", 10F),
                 BackColor = Color.FromArgb(240, 240, 240),
                 ForeColor = Color.FromArgb(100, 100, 100),
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Tag = "Ready"
             };
             btnFilterReady.FlatAppearance.BorderSize = 0;
@@ -5060,18 +4810,18 @@ namespace Library_Management_System
             Button btnFilterFulfilled = new Button
             {
                 Text = "Fulfilled",
-                Location = new Point(620, 15),
+                Location = new Point(searchPanel.Width - 60, 15),
                 Size = new Size(80, 40),
                 Font = new Font("Segoe UI", 10F),
                 BackColor = Color.FromArgb(240, 240, 240),
                 ForeColor = Color.FromArgb(100, 100, 100),
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Tag = "Fulfilled"
             };
             btnFilterFulfilled.FlatAppearance.BorderSize = 0;
 
-            // Reservations DataGridView - declare first
             DataGridView dgvReservations = new DataGridView
             {
                 Location = new Point(30, 270),
@@ -5086,7 +4836,6 @@ namespace Library_Management_System
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
             };
 
-            // Configure DataGridView
             dgvReservations.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
             {
                 BackColor = Color.FromArgb(240, 240, 240),
@@ -5105,7 +4854,6 @@ namespace Library_Management_System
                 SelectionForeColor = Color.White
             };
 
-            // Add columns - Book, Member, Reserved On, Expires, Status, Notified, Actions
             dgvReservations.Columns.Add("ReservationId", "ID");
             dgvReservations.Columns.Add("BookTitle", "Book");
             dgvReservations.Columns.Add("MemberName", "Member");
@@ -5114,7 +4862,6 @@ namespace Library_Management_System
             dgvReservations.Columns.Add("Status", "Status");
             dgvReservations.Columns.Add("Notified", "Notified");
             
-            // Cancel button column
             DataGridViewButtonColumn cancelButtonColumn = new DataGridViewButtonColumn
             {
                 Name = "Cancel",
@@ -5127,7 +4874,6 @@ namespace Library_Management_System
             cancelButtonColumn.DefaultCellStyle.ForeColor = Color.White;
             dgvReservations.Columns.Add(cancelButtonColumn);
 
-            // Set column widths
             dgvReservations.Columns["ReservationId"].Width = 80;
             dgvReservations.Columns["BookTitle"].Width = 200;
             dgvReservations.Columns["MemberName"].Width = 150;
@@ -5136,10 +4882,8 @@ namespace Library_Management_System
             dgvReservations.Columns["Status"].Width = 100;
             dgvReservations.Columns["Notified"].Width = 80;
 
-            // Hide ReservationId column
             dgvReservations.Columns["ReservationId"].Visible = false;
 
-            // Filter button variables - declare before LoadReservationsData
             string currentFilter = "All";
             Action<string> setActiveFilter = (filter) =>
             {
@@ -5161,7 +4905,6 @@ namespace Library_Management_System
                 btnFilterFulfilled.Font = new Font("Segoe UI", 10F, filter == "Fulfilled" ? FontStyle.Bold : FontStyle.Regular);
             };
 
-            // Load reservations function with statistics
             void LoadReservationsData()
             {
                 try
@@ -5174,7 +4917,6 @@ namespace Library_Management_System
 
                     dgvReservations.Rows.Clear();
 
-                    // Calculate statistics
                     int pending = 0;
                     int ready = 0;
                     int fulfilled = 0;
@@ -5182,7 +4924,6 @@ namespace Library_Management_System
 
                     foreach (var reservation in reservations)
                     {
-                        // Count statistics (from all reservations, not just filtered)
                         if (reservation.Status == "Pending")
                             pending++;
                         else if (reservation.Status == "Ready")
@@ -5198,38 +4939,34 @@ namespace Library_Management_System
                         dgvReservations.Rows[rowIndex].Cells["MemberName"].Value = reservation.MemberName;
                         dgvReservations.Rows[rowIndex].Cells["ReservedDate"].Value = reservation.ReservedDate.ToString("MMM dd, yyyy");
                         
-                        // Expiry Date with expiration indicator
                         var expiryCell = dgvReservations.Rows[rowIndex].Cells["ExpiryDate"];
                         expiryCell.Value = reservation.ExpiryDate.ToString("MMM dd, yyyy");
                         if (DateTime.Now > reservation.ExpiryDate && reservation.Status != "Fulfilled" && reservation.Status != "Cancelled")
                         {
-                            expiryCell.Style.ForeColor = Color.FromArgb(244, 67, 54); // Red for expired
+                            expiryCell.Style.ForeColor = Color.FromArgb(244, 67, 54); 
                         }
 
-                        // Status with color coding
                         var statusCell = dgvReservations.Rows[rowIndex].Cells["Status"];
                         statusCell.Value = reservation.Status;
                         if (reservation.Status == "Pending")
                         {
-                            statusCell.Style.ForeColor = Color.FromArgb(255, 152, 0); // Orange
+                            statusCell.Style.ForeColor = Color.FromArgb(255, 152, 0); 
                         }
                         else if (reservation.Status == "Ready")
                         {
-                            statusCell.Style.ForeColor = Color.FromArgb(76, 175, 80); // Green
+                            statusCell.Style.ForeColor = Color.FromArgb(76, 175, 80); 
                         }
                         else if (reservation.Status == "Fulfilled")
                         {
-                            statusCell.Style.ForeColor = Color.FromArgb(33, 150, 243); // Blue
+                            statusCell.Style.ForeColor = Color.FromArgb(33, 150, 243); 
                         }
                         else if (reservation.Status == "Cancelled" || reservation.Status == "Expired")
                         {
-                            statusCell.Style.ForeColor = Color.FromArgb(158, 158, 158); // Gray
+                            statusCell.Style.ForeColor = Color.FromArgb(158, 158, 158); 
                         }
 
-                        // Notified column - bell icon
                         dgvReservations.Rows[rowIndex].Cells["Notified"].Value = reservation.IsNotified ? "🔔" : "○";
 
-                        // Cancel button - hide for fulfilled/cancelled/expired
                         if (reservation.Status == "Fulfilled" || reservation.Status == "Cancelled" || reservation.Status == "Expired")
                         {
                             dgvReservations.Rows[rowIndex].Cells["Cancel"].Value = "";
@@ -5241,7 +4978,6 @@ namespace Library_Management_System
                         }
                     }
 
-                    // Update statistics cards - need to get all reservations for accurate stats
                     var allReservations = reservationService.GetReservations("", "All");
                     pending = 0;
                     ready = 0;
@@ -5266,13 +5002,11 @@ namespace Library_Management_System
                 }
             }
 
-            // Set up filter button handlers after LoadReservationsData is defined
             btnFilterAll.Click += (s, e) => { setActiveFilter("All"); LoadReservationsData(); };
             btnFilterPending.Click += (s, e) => { setActiveFilter("Pending"); LoadReservationsData(); };
             btnFilterReady.Click += (s, e) => { setActiveFilter("Ready"); LoadReservationsData(); };
             btnFilterFulfilled.Click += (s, e) => { setActiveFilter("Fulfilled"); LoadReservationsData(); };
 
-            // Event handlers
             txtSearchReservations.TextChanged += (s, e) =>
             {
                 if (txtSearchReservations.ForeColor != Color.Gray)
@@ -5283,7 +5017,6 @@ namespace Library_Management_System
 
             btnNewReservation.Click += (s, e) => ShowNewReservationDialog();
 
-            // DataGridView cell click for actions
             dgvReservations.CellClick += (s, e) =>
             {
                 if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
@@ -5315,12 +5048,10 @@ namespace Library_Management_System
                 }
             };
 
-            // Add controls to panels
             searchPanel.Controls.AddRange(new Control[] { searchContainer, btnFilterAll, btnFilterPending, btnFilterReady, btnFilterFulfilled });
 
             pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnNewReservation, statsPanel, searchPanel, dgvReservations });
 
-            // Load initial data
             LoadReservationsData();
         }
 
@@ -5338,7 +5069,6 @@ namespace Library_Management_System
                 ShowInTaskbar = false
             };
 
-            // Title
             Label titleLabel = new Label
             {
                 Text = "New Reservation",
@@ -5348,17 +5078,14 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
 
-            // Member ID
             int startY = 70;
             Label lblMemberId = new Label { Text = "Member ID:", Location = new Point(30, startY), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
             TextBox txtMemberId = new TextBox { Location = new Point(140, startY), Size = new Size(300, 30), Font = new Font("Segoe UI", 10F) };
 
-            // Book ID
             startY += 50;
             Label lblBookId = new Label { Text = "Book ID:", Location = new Point(30, startY), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
             TextBox txtBookId = new TextBox { Location = new Point(140, startY), Size = new Size(300, 30), Font = new Font("Segoe UI", 10F) };
 
-            // Reservation period
             startY += 50;
             Label lblReservationDays = new Label { Text = "Reservation Period (days):", Location = new Point(30, startY), Size = new Size(150, 25), Font = new Font("Segoe UI", 10F) };
             NumericUpDown numReservationDays = new NumericUpDown
@@ -5371,7 +5098,6 @@ namespace Library_Management_System
                 Value = 7
             };
 
-            // Buttons
             Button btnCancel = new Button
             {
                 Text = "Cancel",
@@ -5393,7 +5119,6 @@ namespace Library_Management_System
             };
             btnCreate.FlatAppearance.BorderSize = 0;
 
-            // Event handlers
             txtMemberId.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) txtBookId.Focus(); };
             txtBookId.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) numReservationDays.Focus(); };
             numReservationDays.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) btnCreate.PerformClick(); };
@@ -5427,7 +5152,6 @@ namespace Library_Management_System
                     newReservationForm.DialogResult = DialogResult.OK;
                     newReservationForm.Close();
 
-                    // Refresh reservations view after creating reservation
                     ShowReservationsView();
                 }
                 catch (Exception ex)
@@ -5441,7 +5165,6 @@ namespace Library_Management_System
 
             btnCancel.Click += (s, e) => newReservationForm.Close();
 
-            // Set up placeholders
             txtMemberId.SetPlaceholder("Enter member ID");
             txtBookId.SetPlaceholder("Enter book ID");
 
@@ -5453,17 +5176,14 @@ namespace Library_Management_System
             newReservationForm.ShowDialog();
         }
 
-        // ==================== FINES MANAGEMENT ====================
 
         private void ShowFinesView()
         {
             pnlMembersView.Visible = false;
             ShowDashboardControls(false);
             
-            // Only clear dynamically added controls, preserve Designer controls
             ClearDynamicControls();
 
-            // Title with enhanced styling - matching design
             Label titleLabel = new Label
             {
                 Text = "Fines & Penalties",
@@ -5473,7 +5193,6 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
 
-            // Subtitle
             Label subtitleLabel = new Label
             {
                 Text = "Manage member fines, payments, and waivers",
@@ -5483,7 +5202,6 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(100, 100, 100)
             };
 
-            // Add Fine button - positioned top right
             Button btnAddFine = new Button
             {
                 Text = "Add Fine",
@@ -5500,7 +5218,6 @@ namespace Library_Management_System
             btnAddFine.MouseEnter += (s, e) => btnAddFine.BackColor = Color.FromArgb(150, 0, 0);
             btnAddFine.MouseLeave += (s, e) => btnAddFine.BackColor = Color.FromArgb(128, 0, 0);
 
-            // Statistics Cards Panel
             Panel statsPanel = new Panel
             {
                 Location = new Point(30, 100),
@@ -5509,7 +5226,6 @@ namespace Library_Management_System
                 Tag = "FinesStatsPanel"
             };
 
-            // Statistics Cards - Pending Fines, Collected, Waived, Pending Cases
             Panel cardPendingFines = CreateCatalogStatCard("⚠️", "₱0.00", "Pending Fines", Color.FromArgb(128, 0, 0), new Point(0, 0));
             Panel cardCollected = CreateCatalogStatCard("✓", "₱0.00", "Collected", Color.FromArgb(76, 175, 80), new Point(200, 0));
             Panel cardWaived = CreateCatalogStatCard("✗", "₱0.00", "Waived", Color.FromArgb(33, 150, 243), new Point(400, 0));
@@ -5517,7 +5233,6 @@ namespace Library_Management_System
 
             statsPanel.Controls.AddRange(new Control[] { cardPendingFines, cardCollected, cardWaived, cardPendingCases });
 
-            // Search and Filter Panel
             Panel searchPanel = new Panel
             {
                 Location = new Point(30, 190),
@@ -5571,17 +5286,17 @@ namespace Library_Management_System
             txtSearchFines.SetPlaceholder("Search fines...");
             searchContainer.Controls.Add(txtSearchFines);
 
-            // Filter buttons
             Button btnFilterAll = new Button
             {
                 Text = "All",
-                Location = new Point(350, 15),
+                Location = new Point(searchPanel.Width - 340, 15),
                 Size = new Size(80, 40),
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                 BackColor = Color.FromArgb(128, 0, 0),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Tag = "All"
             };
             btnFilterAll.FlatAppearance.BorderSize = 0;
@@ -5589,13 +5304,14 @@ namespace Library_Management_System
             Button btnFilterPending = new Button
             {
                 Text = "Pending",
-                Location = new Point(440, 15),
+                Location = new Point(searchPanel.Width - 250, 15),
                 Size = new Size(80, 40),
                 Font = new Font("Segoe UI", 10F),
                 BackColor = Color.FromArgb(240, 240, 240),
                 ForeColor = Color.FromArgb(100, 100, 100),
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Tag = "Pending"
             };
             btnFilterPending.FlatAppearance.BorderSize = 0;
@@ -5603,13 +5319,14 @@ namespace Library_Management_System
             Button btnFilterPaid = new Button
             {
                 Text = "Paid",
-                Location = new Point(530, 15),
+                Location = new Point(searchPanel.Width - 160, 15),
                 Size = new Size(80, 40),
                 Font = new Font("Segoe UI", 10F),
                 BackColor = Color.FromArgb(240, 240, 240),
                 ForeColor = Color.FromArgb(100, 100, 100),
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Tag = "Paid"
             };
             btnFilterPaid.FlatAppearance.BorderSize = 0;
@@ -5617,13 +5334,14 @@ namespace Library_Management_System
             Button btnFilterWaived = new Button
             {
                 Text = "Waived",
-                Location = new Point(620, 15),
+                Location = new Point(searchPanel.Width - 70, 15),
                 Size = new Size(80, 40),
                 Font = new Font("Segoe UI", 10F),
                 BackColor = Color.FromArgb(240, 240, 240),
                 ForeColor = Color.FromArgb(100, 100, 100),
                 FlatStyle = FlatStyle.Flat,
                 Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Tag = "Waived"
             };
             btnFilterWaived.FlatAppearance.BorderSize = 0;
@@ -5649,7 +5367,6 @@ namespace Library_Management_System
                 btnFilterWaived.Font = new Font("Segoe UI", 10F, filter == "Waived" ? FontStyle.Bold : FontStyle.Regular);
             };
 
-            // Fines DataGridView
             DataGridView dgvFines = new DataGridView
             {
                 Location = new Point(30, 270),
@@ -5668,7 +5385,6 @@ namespace Library_Management_System
                 CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal
             };
 
-            // Configure DataGridView
             dgvFines.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
             {
                 BackColor = Color.FromArgb(248, 249, 250),
@@ -5699,7 +5415,6 @@ namespace Library_Management_System
                 SelectionForeColor = Color.FromArgb(33, 37, 41)
             };
 
-            // Add columns - Member, Book/Reason, Type, Amount, Paid, Status, Date, Actions
             dgvFines.Columns.Add("FineId", "ID");
             dgvFines.Columns.Add("MemberName", "Member");
             dgvFines.Columns.Add("BookReason", "Book/Reason");
@@ -5710,7 +5425,6 @@ namespace Library_Management_System
             dgvFines.Columns.Add("Date", "Date");
             dgvFines.Columns.Add("Actions", "Actions");
 
-            // Set column widths
             dgvFines.Columns["FineId"].Visible = false;
             dgvFines.Columns["MemberName"].Width = 150;
             dgvFines.Columns["BookReason"].Width = 250;
@@ -5720,7 +5434,6 @@ namespace Library_Management_System
             dgvFines.Columns["Status"].Width = 100;
             dgvFines.Columns["Date"].Width = 120;
 
-            // Add Pay and Waive button columns for Actions
             DataGridViewButtonColumn payButtonColumn = new DataGridViewButtonColumn
             {
                 Name = "Pay",
@@ -5746,7 +5459,6 @@ namespace Library_Management_System
             waiveButtonColumn.DefaultCellStyle.SelectionBackColor = Color.White;
             dgvFines.Columns.Add(waiveButtonColumn);
 
-            // Load fines function
             void LoadFinesData()
             {
                 try
@@ -5757,7 +5469,6 @@ namespace Library_Management_System
 
                     var fines = finesService.GetFines(searchText, statusFilter);
 
-                    // Update summary statistics - get all fines for accurate totals
                     var allFines = finesService.GetFines("", "All Status");
                     decimal pendingFines = allFines.Where(f => f.Status == "Unpaid").Sum(f => f.Amount);
                     decimal collectedFines = allFines.Where(f => f.Status == "Paid").Sum(f => f.Amount);
@@ -5777,68 +5488,123 @@ namespace Library_Management_System
                         dgvFines.Rows[rowIndex].Cells["FineId"].Value = fine.FineId;
                         dgvFines.Rows[rowIndex].Cells["MemberName"].Value = fine.MemberName;
                         
-                        // Book/Reason column - combine book title and reason
-                        string bookReason = fine.BookTitle;
-                        if (!string.IsNullOrEmpty(fine.Reason) && fine.Reason != "Overdue return")
+                        string bookReason = "";
+                        if (!string.IsNullOrEmpty(fine.BookTitle))
                         {
-                            bookReason += "\n" + fine.Reason;
+                            bookReason = fine.BookTitle;
                         }
+                        
+                        if (!string.IsNullOrEmpty(fine.Reason))
+                        {
+                            if (fine.Reason == "Overdue return")
+                            {
+                                if (string.IsNullOrEmpty(bookReason))
+                                {
+                                    bookReason = fine.Reason;
+                                }
+                            }
+                            else
+                            {
+                                if (string.IsNullOrEmpty(bookReason))
+                                {
+                                    bookReason = fine.Reason;
+                                }
+                                else
+                                {
+                                    if (!fine.Reason.Contains(fine.BookTitle))
+                                    {
+                                        bookReason += "\n" + fine.Reason;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (string.IsNullOrEmpty(bookReason))
+                        {
+                            bookReason = "N/A";
+                        }
+                        
                         dgvFines.Rows[rowIndex].Cells["BookReason"].Value = bookReason;
                         
-                        // Type column - determine from reason
                         var typeCell = dgvFines.Rows[rowIndex].Cells["Type"];
-                        if (fine.Reason?.Contains("Lost") == true || fine.Reason?.Contains("lost") == true)
+                        string reasonUpper = fine.Reason?.ToUpper() ?? "";
+                        if (reasonUpper.Contains("LOST") || reasonUpper.StartsWith("LOST"))
                         {
                             typeCell.Value = "Lost";
-                            typeCell.Style.ForeColor = Color.FromArgb(244, 67, 54); // Red
+                            typeCell.Style.ForeColor = Color.FromArgb(244, 67, 54); 
+                        }
+                        else if (reasonUpper.Contains("DAMAGED") || reasonUpper.StartsWith("DAMAGED"))
+                        {
+                            typeCell.Value = "Damaged";
+                            typeCell.Style.ForeColor = Color.FromArgb(255, 87, 34); 
+                        }
+                        else if (reasonUpper.Contains("OVERDUE") || reasonUpper.StartsWith("OVERDUE"))
+                        {
+                            typeCell.Value = "Overdue";
+                            typeCell.Style.ForeColor = Color.FromArgb(255, 193, 7); 
                         }
                         else
                         {
-                            typeCell.Value = "Overdue";
-                            typeCell.Style.ForeColor = Color.FromArgb(255, 193, 7); // Yellow/Orange
+                            string type = "Other";
+                            if (fine.Reason != null)
+                            {
+                                int dashIndex = fine.Reason.IndexOf(" - ");
+                                if (dashIndex > 0)
+                                {
+                                    type = fine.Reason.Substring(0, dashIndex).Trim();
+                                }
+                                else if (fine.Reason.Length > 0)
+                                {
+                                    string[] parts = fine.Reason.Split(new[] { ' ', '-' }, StringSplitOptions.RemoveEmptyEntries);
+                                    if (parts.Length > 0 && (parts[0].Equals("Other", StringComparison.OrdinalIgnoreCase) ||
+                                        parts[0].Equals("Lost", StringComparison.OrdinalIgnoreCase) ||
+                                        parts[0].Equals("Damaged", StringComparison.OrdinalIgnoreCase) ||
+                                        parts[0].Equals("Overdue", StringComparison.OrdinalIgnoreCase)))
+                                    {
+                                        type = parts[0];
+                                    }
+                                }
+                            }
+                            typeCell.Value = type;
+                            typeCell.Style.ForeColor = Color.FromArgb(96, 125, 139); 
                         }
                         
-                        // Amount column
                         dgvFines.Rows[rowIndex].Cells["Amount"].Value = $"₱{fine.Amount:F2}";
                         
-                        // Paid column - show paid amount if paid, otherwise ₱0.00
                         var paidCell = dgvFines.Rows[rowIndex].Cells["Paid"];
                         if (fine.Status == "Paid")
                         {
                             paidCell.Value = $"₱{fine.Amount:F2}";
-                            paidCell.Style.ForeColor = Color.FromArgb(76, 175, 80); // Green
+                            paidCell.Style.ForeColor = Color.FromArgb(76, 175, 80); 
                         }
                         else
                         {
                             paidCell.Value = "₱0.00";
-                            paidCell.Style.ForeColor = Color.FromArgb(76, 175, 80); // Green
+                            paidCell.Style.ForeColor = Color.FromArgb(76, 175, 80); 
                         }
 
-                        // Status with color coding
                         var statusCell = dgvFines.Rows[rowIndex].Cells["Status"];
                         switch (fine.Status)
                         {
                             case "Unpaid":
                                 statusCell.Value = "Pending";
-                                statusCell.Style.ForeColor = Color.FromArgb(255, 152, 0); // Orange
+                                statusCell.Style.ForeColor = Color.FromArgb(255, 152, 0); 
                                 break;
                             case "Paid":
                                 statusCell.Value = "Paid";
-                                statusCell.Style.ForeColor = Color.FromArgb(76, 175, 80); // Green
+                                statusCell.Style.ForeColor = Color.FromArgb(76, 175, 80); 
                                 break;
                             case "Waived":
                                 statusCell.Value = "Waived";
-                                statusCell.Style.ForeColor = Color.FromArgb(158, 158, 158); // Gray
+                                statusCell.Style.ForeColor = Color.FromArgb(158, 158, 158); 
                                 break;
                             default:
                                 statusCell.Value = fine.Status;
                                 break;
                         }
 
-                        // Date column
                         dgvFines.Rows[rowIndex].Cells["Date"].Value = fine.CreatedDate.ToString("MMM dd, yyyy");
 
-                        // Actions column - Show Pay and Waive buttons for unpaid fines, hide for paid/waived
                         if (fine.Status == "Unpaid")
                         {
                             dgvFines.Rows[rowIndex].Cells["Pay"].Value = "Pay";
@@ -5864,7 +5630,6 @@ namespace Library_Management_System
                 }
             }
 
-            // Event handlers
             txtSearchFines.TextChanged += (s, e) =>
             {
                 if (txtSearchFines.ForeColor != Color.Gray)
@@ -5879,10 +5644,8 @@ namespace Library_Management_System
             btnFilterWaived.Click += (s, e) => { setActiveFilter("Waived"); LoadFinesData(); };
             btnAddFine.Click += (s, e) => ShowAddFineDialog();
             
-            // Initialize filter buttons with default state
             setActiveFilter("All");
 
-            // DataGridView cell click for actions
             dgvFines.CellClick += (s, e) =>
             {
                 if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
@@ -5895,7 +5658,6 @@ namespace Library_Management_System
                     var fine = new Library_Management_System.Service.FinesService().GetFineById(fineId);
                     if (fine != null && fine.Status == "Unpaid")
                         {
-                            // Process payment
                         if (MessageBox.Show($"Process payment of ₱{fine.Amount:F2} for {fine.MemberName}?",
                                 "Confirm Payment", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                             {
@@ -5918,24 +5680,350 @@ namespace Library_Management_System
                     var fine = new Library_Management_System.Service.FinesService().GetFineById(fineId);
                     if (fine != null && fine.Status == "Unpaid")
                     {
-                        // Show waive dialog
                         ShowWaiveFineDialog(fineId, fine.MemberName, fine.Amount);
                     }
                 }
             };
 
-            // Add controls to panels
             searchPanel.Controls.AddRange(new Control[] { searchContainer, btnFilterAll, btnFilterPending, btnFilterPaid, btnFilterWaived });
             pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnAddFine, statsPanel, searchPanel, dgvFines });
 
-            // Load initial data
             LoadFinesData();
         }
 
         private void ShowAddFineDialog()
         {
-            // Implementation for Add Fine dialog
-            MessageBox.Show("Add Fine dialog - to be implemented", "Add Fine", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            Form addFineForm = new Form
+            {
+                Text = "Add New Fine",
+                Size = new Size(600, 700),
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox = false,
+                MinimizeBox = false,
+                ControlBox = false,
+                ShowInTaskbar = false,
+                BackColor = Color.FromArgb(245, 245, 245)
+            };
+
+            Panel headerPanel = new Panel
+            {
+                Location = new Point(0, 0),
+                Size = new Size(addFineForm.ClientSize.Width, 80),
+                BackColor = Color.White,
+                Dock = DockStyle.Top
+            };
+
+            Label titleLabel = new Label
+            {
+                Text = "Add New Fine",
+                Font = new Font("Segoe UI", 18F, FontStyle.Bold),
+                Location = new Point(30, 20),
+                Size = new Size(300, 30),
+                ForeColor = Color.FromArgb(40, 40, 40)
+            };
+
+            Label subtitleLabel = new Label
+            {
+                Text = "Create a new fine for a member.",
+                Font = new Font("Segoe UI", 10F),
+                Location = new Point(30, 50),
+                Size = new Size(400, 20),
+                ForeColor = Color.FromArgb(100, 100, 100)
+            };
+
+            Button btnClose = new Button
+            {
+                Text = "✕",
+                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                Location = new Point(headerPanel.Width - 40, 10),
+                Size = new Size(30, 30),
+                BackColor = Color.Transparent,
+                ForeColor = Color.FromArgb(100, 100, 100),
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            btnClose.FlatAppearance.BorderSize = 0;
+            btnClose.Click += (s, e) => addFineForm.Close();
+
+            headerPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnClose });
+
+            Panel contentPanel = new Panel
+            {
+                BackColor = Color.White,
+                Dock = DockStyle.Fill,
+                Padding = new Padding(35, 25, 35, 25)
+            };
+
+            int startY = 0;
+            int fieldSpacing = 60; 
+            int fieldHeight = 35;
+            int labelHeight = 20;
+            int fieldWidth = 510; 
+
+            Label lblMember = new Label 
+            { 
+                Text = "Select Member *", 
+                Location = new Point(0, startY), 
+                Size = new Size(200, labelHeight), 
+                Font = new Font("Segoe UI", 10F), 
+                ForeColor = Color.FromArgb(40, 40, 40) 
+            };
+            ComboBox cmbMember = new ComboBox
+            {
+                Location = new Point(0, startY + labelHeight + 5),
+                Size = new Size(fieldWidth, fieldHeight),
+                Font = new Font("Segoe UI", 10F),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                BackColor = Color.White,
+                ForeColor = Color.Gray
+            };
+            cmbMember.Items.Add("Choose a member...");
+            cmbMember.SelectedIndex = 0;
+            cmbMember.SelectedIndexChanged += (s, e) =>
+            {
+                if (cmbMember.SelectedIndex > 0)
+                {
+                    cmbMember.ForeColor = Color.Black;
+                }
+                else
+                {
+                    cmbMember.ForeColor = Color.Gray;
+                }
+            };
+
+            try
+            {
+                var membersService = new Library_Management_System.Service.MembersService();
+                var members = membersService.GetMembers("", "All Status", "All Types");
+                foreach (var member in members)
+                {
+                    cmbMember.Items.Add($"{member.Name} ({member.MemberId})");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading members: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+            startY += fieldSpacing + labelHeight + 5;
+            Label lblFineType = new Label 
+            { 
+                Text = "Fine Type *", 
+                Location = new Point(0, startY), 
+                Size = new Size(200, labelHeight), 
+                Font = new Font("Segoe UI", 10F), 
+                ForeColor = Color.FromArgb(40, 40, 40) 
+            };
+            ComboBox cmbFineType = new ComboBox
+            {
+                Location = new Point(0, startY + labelHeight + 5),
+                Size = new Size(fieldWidth, fieldHeight),
+                Font = new Font("Segoe UI", 10F),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                BackColor = Color.White
+            };
+            cmbFineType.Items.AddRange(new[] { "Overdue", "Lost Book", "Damaged Book", "Other" });
+            cmbFineType.SelectedIndex = 3; 
+
+            startY += fieldSpacing + labelHeight + 5;
+            Label lblAmount = new Label 
+            { 
+                Text = "Amount *", 
+                Location = new Point(0, startY), 
+                Size = new Size(200, labelHeight), 
+                Font = new Font("Segoe UI", 10F), 
+                ForeColor = Color.FromArgb(40, 40, 40) 
+            };
+            Panel amountPanel = new Panel
+            {
+                Location = new Point(0, startY + labelHeight + 5),
+                Size = new Size(fieldWidth, fieldHeight),
+                BackColor = Color.White
+            };
+            Label lblCurrency = new Label
+            {
+                Text = "₱",
+                Location = new Point(10, 8),
+                Size = new Size(20, 20),
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.FromArgb(40, 40, 40)
+            };
+            NumericUpDown numAmount = new NumericUpDown
+            {
+                Location = new Point(30, 0),
+                Size = new Size(fieldWidth - 30, fieldHeight),
+                Font = new Font("Segoe UI", 10F),
+                Minimum = 0,
+                Maximum = 999999.99m,
+                DecimalPlaces = 2,
+                BackColor = Color.White,
+                BorderStyle = BorderStyle.None
+            };
+            amountPanel.Controls.AddRange(new Control[] { lblCurrency, numAmount });
+            amountPanel.Paint += (s, e) =>
+            {
+                ControlPaint.DrawBorder(e.Graphics, amountPanel.ClientRectangle, Color.FromArgb(200, 200, 200), ButtonBorderStyle.Solid);
+            };
+
+            startY += fieldSpacing + labelHeight + 5;
+            Label lblBookTitle = new Label 
+            { 
+                Text = "Book Title (optional)", 
+                Location = new Point(0, startY), 
+                Size = new Size(200, labelHeight), 
+                Font = new Font("Segoe UI", 10F), 
+                ForeColor = Color.FromArgb(40, 40, 40) 
+            };
+            TextBox txtBookTitle = new TextBox
+            {
+                Location = new Point(0, startY + labelHeight + 5),
+                Size = new Size(fieldWidth, fieldHeight),
+                Font = new Font("Segoe UI", 10F),
+                BackColor = Color.White
+            };
+            txtBookTitle.SetPlaceholder("Related book title...");
+
+            startY += fieldSpacing + labelHeight + 5;
+            Label lblNotes = new Label
+            {
+                Text = "Notes",
+                Location = new Point(0, startY),
+                Size = new Size(200, labelHeight),
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.FromArgb(40, 40, 40)
+            };
+            TextBox txtNotes = new TextBox
+            {
+                Location = new Point(0, startY + labelHeight + 5),
+                Size = new Size(fieldWidth, 100),
+                Font = new Font("Segoe UI", 10F),
+                Multiline = true,
+                ScrollBars = ScrollBars.Vertical,
+                BackColor = Color.White
+            };
+            txtNotes.SetPlaceholder("Additional notes...");
+
+            startY += labelHeight + 5 + 100 + 20; 
+
+            contentPanel.Controls.AddRange(new Control[] {
+                lblMember, cmbMember, lblFineType, cmbFineType, lblAmount, amountPanel,
+                lblBookTitle, txtBookTitle, lblNotes, txtNotes
+            });
+
+            Panel buttonPanel = new Panel
+            {
+                Height = 80,
+                BackColor = Color.White,
+                Dock = DockStyle.Bottom
+            };
+
+            Button btnCancel = new Button
+            {
+                Text = "Cancel",
+                Size = new Size(100, 40),
+                Font = new Font("Segoe UI", 10F),
+                BackColor = Color.FromArgb(245, 245, 245),
+                ForeColor = Color.FromArgb(40, 40, 40),
+                FlatStyle = FlatStyle.Flat,
+                DialogResult = DialogResult.Cancel,
+                Anchor = AnchorStyles.None,
+                Cursor = Cursors.Hand
+            };
+            btnCancel.FlatAppearance.BorderSize = 0;
+            btnCancel.Click += (s, e) => addFineForm.Close();
+
+            Button btnAddFine = new Button
+            {
+                Text = "Add Fine",
+                Size = new Size(110, 40),
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                BackColor = Color.FromArgb(128, 0, 0),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Anchor = AnchorStyles.None,
+                Cursor = Cursors.Hand
+            };
+            btnAddFine.FlatAppearance.BorderSize = 0;
+            btnAddFine.MouseEnter += (s, e) => btnAddFine.BackColor = Color.FromArgb(150, 0, 0);
+            btnAddFine.MouseLeave += (s, e) => btnAddFine.BackColor = Color.FromArgb(128, 0, 0);
+
+            buttonPanel.Controls.AddRange(new Control[] { btnCancel, btnAddFine });
+
+            void PositionButtons()
+            {
+                if (buttonPanel.Width > 0)
+                {
+                    btnCancel.Location = new Point(buttonPanel.Width - 230, 20);
+                    btnAddFine.Location = new Point(buttonPanel.Width - 120, 20);
+                }
+            }
+
+            buttonPanel.Layout += (s, e) => PositionButtons();
+            addFineForm.Shown += (s, e) => PositionButtons();
+
+            btnAddFine.Click += (s, args) =>
+            {
+                if (cmbMember.SelectedIndex <= 0)
+                {
+                    MessageBox.Show("Please select a member.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    cmbMember.Focus();
+                    return;
+                }
+
+                if (numAmount.Value <= 0)
+                {
+                    MessageBox.Show("Please enter a valid amount greater than zero.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    numAmount.Focus();
+                    return;
+                }
+
+                try
+                {
+                    string selectedMember = cmbMember.SelectedItem.ToString();
+                    string memberId = selectedMember.Substring(selectedMember.LastIndexOf('(') + 1).TrimEnd(')');
+
+                    string fineType = cmbFineType.SelectedItem.ToString();
+                    decimal amount = numAmount.Value;
+                    string bookTitle = txtBookTitle.GetActualText().Trim();
+                    string notes = txtNotes.GetActualText().Trim();
+
+                    var finesService = new Library_Management_System.Service.FinesService();
+                    bool success = finesService.AddFine(memberId, amount, fineType, 
+                        string.IsNullOrWhiteSpace(bookTitle) ? null : bookTitle,
+                        string.IsNullOrWhiteSpace(notes) ? null : notes);
+
+                    if (success)
+                    {
+                        MessageBox.Show("Fine added successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        addFineForm.DialogResult = DialogResult.OK;
+                        addFineForm.Close();
+                        
+                        if (pnlMainContent.Controls.Count > 0)
+                        {
+                            var finesViewControls = pnlMainContent.Controls.Cast<Control>()
+                                .Where(c => c.Tag?.ToString() == "FinesStatsPanel" || c is DataGridView)
+                                .ToList();
+                            if (finesViewControls.Count > 0)
+                            {
+                                ShowFinesView();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show("Failed to add fine. Please try again.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error adding fine: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            };
+
+            addFineForm.Controls.AddRange(new Control[] { headerPanel, contentPanel, buttonPanel });
+            addFineForm.ShowDialog();
         }
 
         private void ShowWaiveFineDialog(string fineId, string memberName, decimal amount)
@@ -6033,7 +6121,6 @@ namespace Library_Management_System
 
             waiveForm.ShowDialog();
             
-            // Reload fines view if fine was waived
             if (waived)
             {
                 ShowFinesView();
@@ -6054,7 +6141,6 @@ namespace Library_Management_System
                 ShowInTaskbar = false
             };
 
-            // Title
             Label titleLabel = new Label
             {
                 Text = "Process Payment",
@@ -6064,11 +6150,9 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
 
-            // Fine ID
             Label lblFineId = new Label { Text = "Fine ID:", Location = new Point(30, 80), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
             TextBox txtFineId = new TextBox { Location = new Point(140, 75), Size = new Size(200, 30), Font = new Font("Segoe UI", 10F) };
 
-            // Buttons
             Button btnCancel = new Button
             {
                 Text = "Cancel",
@@ -6090,7 +6174,6 @@ namespace Library_Management_System
             };
             btnProcess.FlatAppearance.BorderSize = 0;
 
-            // Event handlers
             txtFineId.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) btnProcess.PerformClick(); };
 
             btnProcess.Click += (s, args) =>
@@ -6127,7 +6210,6 @@ namespace Library_Management_System
 
             btnCancel.Click += (s, e) => paymentForm.Close();
 
-            // Set up placeholder for fine payment form
             txtFineId.SetPlaceholder("Enter fine ID");
 
             paymentForm.Controls.AddRange(new Control[] {
@@ -6151,7 +6233,6 @@ namespace Library_Management_System
                 ShowInTaskbar = false
             };
 
-            // Title
             Label titleLabel = new Label
             {
                 Text = "Waive Fine",
@@ -6161,11 +6242,9 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
 
-            // Fine ID
             Label lblFineId = new Label { Text = "Fine ID:", Location = new Point(30, 70), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
             TextBox txtFineId = new TextBox { Location = new Point(140, 65), Size = new Size(250, 30), Font = new Font("Segoe UI", 10F) };
 
-            // Reason
             Label lblReason = new Label { Text = "Reason:", Location = new Point(30, 110), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
             TextBox txtReason = new TextBox
             {
@@ -6176,7 +6255,6 @@ namespace Library_Management_System
                 ScrollBars = ScrollBars.Vertical
             };
 
-            // Buttons
             Button btnCancel = new Button
             {
                 Text = "Cancel",
@@ -6198,7 +6276,6 @@ namespace Library_Management_System
             };
             btnWaive.FlatAppearance.BorderSize = 0;
 
-            // Event handlers
             txtFineId.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) txtReason.Focus(); };
 
             btnWaive.Click += (s, args) =>
@@ -6242,7 +6319,6 @@ namespace Library_Management_System
 
             btnCancel.Click += (s, e) => waiveForm.Close();
 
-            // Set up placeholders for fine waiver form
             txtFineId.SetPlaceholder("Enter fine ID");
             txtReason.SetPlaceholder("Enter reason for fine");
 
@@ -6267,7 +6343,6 @@ namespace Library_Management_System
                 ShowInTaskbar = false
             };
 
-            // Title
             Label titleLabel = new Label
             {
                 Text = "Fine Details",
@@ -6281,31 +6356,25 @@ namespace Library_Management_System
             int labelWidth = 120;
             int fieldWidth = 300;
 
-            // Fine ID
             Label lblFineId = new Label { Text = "Fine ID:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
             Label lblFineIdValue = new Label { Text = fine.FineId, Location = new Point(160, startY), Size = new Size(fieldWidth, 25), Font = new Font("Segoe UI", 10F, FontStyle.Bold) };
 
-            // Member
             startY += 35;
             Label lblMember = new Label { Text = "Member:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
             Label lblMemberValue = new Label { Text = fine.MemberName, Location = new Point(160, startY), Size = new Size(fieldWidth, 25), Font = new Font("Segoe UI", 10F) };
 
-            // Book
             startY += 35;
             Label lblBook = new Label { Text = "Book:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
             Label lblBookValue = new Label { Text = fine.BookTitle, Location = new Point(160, startY), Size = new Size(fieldWidth, 25), Font = new Font("Segoe UI", 10F) };
 
-            // Amount
             startY += 35;
             Label lblAmount = new Label { Text = "Amount:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
             Label lblAmountValue = new Label { Text = $"${fine.Amount:F2}", Location = new Point(160, startY), Size = new Size(fieldWidth, 25), Font = new Font("Segoe UI", 10F, FontStyle.Bold), ForeColor = Color.FromArgb(244, 67, 54) };
 
-            // Reason
             startY += 35;
             Label lblReason = new Label { Text = "Reason:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
             Label lblReasonValue = new Label { Text = fine.Reason ?? "N/A", Location = new Point(160, startY), Size = new Size(fieldWidth, 25), Font = new Font("Segoe UI", 10F) };
 
-            // Status
             startY += 35;
             Label lblStatus = new Label { Text = "Status:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
             Label lblStatusValue = new Label
@@ -6319,12 +6388,10 @@ namespace Library_Management_System
                            Color.FromArgb(244, 67, 54)
             };
 
-            // Created Date
             startY += 35;
             Label lblCreated = new Label { Text = "Created:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
             Label lblCreatedValue = new Label { Text = fine.CreatedDate.ToString("yyyy-MM-dd HH:mm"), Location = new Point(160, startY), Size = new Size(fieldWidth, 25), Font = new Font("Segoe UI", 10F) };
 
-            // Paid Date
             startY += 35;
             Label lblPaid = new Label { Text = "Paid Date:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
             Label lblPaidValue = new Label
@@ -6335,7 +6402,6 @@ namespace Library_Management_System
                 Font = new Font("Segoe UI", 10F)
             };
 
-            // Close button
             Button btnClose = new Button
             {
                 Text = "Close",
@@ -6357,17 +6423,14 @@ namespace Library_Management_System
             detailsForm.ShowDialog();
         }
 
-        // ==================== INVENTORY MANAGEMENT ====================
 
         private void ShowInventoryView()
         {
             pnlMembersView.Visible = false;
             ShowDashboardControls(false);
             
-            // Only clear dynamically added controls, preserve Designer controls
             ClearDynamicControls();
 
-            // Title with enhanced styling - matching design
             Label titleLabel = new Label
             {
                 Text = "Inventory Management",
@@ -6377,7 +6440,6 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
 
-            // Subtitle
             Label subtitleLabel = new Label
             {
                 Text = "Track and manage book copies, locations, and conditions",
@@ -6387,7 +6449,6 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(100, 100, 100)
             };
 
-            // Export Inventory button - positioned top right
             Button btnExportInventory = new Button
             {
                 Text = "Export Inventory",
@@ -6404,29 +6465,27 @@ namespace Library_Management_System
             btnExportInventory.MouseEnter += (s, e) => btnExportInventory.BackColor = Color.FromArgb(150, 0, 0);
             btnExportInventory.MouseLeave += (s, e) => btnExportInventory.BackColor = Color.FromArgb(128, 0, 0);
 
-            // Statistics Cards Panel
             Panel statsPanel = new Panel
             {
                 Location = new Point(30, 100),
-                Size = new Size(pnlMainContent.Width - 60, 80),
+                Size = new Size(pnlMainContent.Width - 60, 160), 
                 BackColor = Color.Transparent,
                 Tag = "InventoryStatsPanel"
             };
 
-            // Statistics Cards - Total Titles, Total Copies, Available, Borrowed, Damaged, Lost
             Panel cardTotalTitles = CreateCatalogStatCard("📚", "0", "Total Titles", Color.FromArgb(128, 0, 0), new Point(0, 0));
-            Panel cardTotalCopies = CreateCatalogStatCard("📖", "0", "Total Copies", Color.White, new Point(200, 0));
-            Panel cardAvailable = CreateCatalogStatCard("✓", "0", "Available", Color.FromArgb(76, 175, 80), new Point(400, 0));
-            Panel cardBorrowed = CreateCatalogStatCard("📗", "0", "Borrowed", Color.FromArgb(33, 150, 243), new Point(600, 0));
-            Panel cardDamaged = CreateCatalogStatCard("⚠", "0", "Damaged", Color.FromArgb(255, 193, 7), new Point(800, 0));
-            Panel cardLost = CreateCatalogStatCard("❌", "0", "Lost", Color.FromArgb(244, 67, 54), new Point(1000, 0));
+            Panel cardTotalCopies = CreateCatalogStatCard("📖", "0", "Total Copies", Color.White, new Point(250, 0));
+            Panel cardAvailable = CreateCatalogStatCard("✓", "0", "Available", Color.FromArgb(76, 175, 80), new Point(500, 0));
+
+            Panel cardBorrowed = CreateCatalogStatCard("📗", "0", "Borrowed", Color.FromArgb(33, 150, 243), new Point(0, 80));
+            Panel cardDamaged = CreateCatalogStatCard("⚠", "0", "Damaged", Color.FromArgb(255, 193, 7), new Point(250, 80));
+            Panel cardLost = CreateCatalogStatCard("❌", "0", "Lost", Color.FromArgb(244, 67, 54), new Point(500, 80));
 
             statsPanel.Controls.AddRange(new Control[] { cardTotalTitles, cardTotalCopies, cardAvailable, cardBorrowed, cardDamaged, cardLost });
 
-            // Collection by Category Panel
             Panel categoryPanel = new Panel
             {
-                Location = new Point(30, 190),
+                Location = new Point(30, 270), 
                 Size = new Size(pnlMainContent.Width - 60, 120),
                 BackColor = Color.White,
                 BorderStyle = BorderStyle.None,
@@ -6475,10 +6534,9 @@ namespace Library_Management_System
 
             categoryPanel.Controls.AddRange(new Control[] { categoryTitle, categorySubtitle, categoryContentPanel });
 
-            // Search and Filter Panel
             Panel searchPanel = new Panel
             {
-                Location = new Point(30, 320),
+                Location = new Point(30, 400), 
                 Size = new Size(pnlMainContent.Width - 60, 70),
                 BackColor = Color.White,
                 BorderStyle = BorderStyle.None
@@ -6529,30 +6587,30 @@ namespace Library_Management_System
             txtSearchInventory.SetPlaceholder("Search by title, accession number, or location...");
             searchContainer.Controls.Add(txtSearchInventory);
 
-            // Status filter
             Label lblStatusFilter = new Label
             {
                 Text = "Status:",
-                Location = new Point(440, 18),
+                Location = new Point(searchPanel.Width - 220, 18),
                 Size = new Size(60, 25),
-                Font = new Font("Segoe UI", 10F)
+                Font = new Font("Segoe UI", 10F),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
 
             ComboBox cmbStatusFilter = new ComboBox
             {
-                Location = new Point(510, 15),
-                Size = new Size(150, 30),
+                Location = new Point(searchPanel.Width - 160, 15),
+                Size = new Size(140, 30),
                 Font = new Font("Segoe UI", 10F),
-                DropDownStyle = ComboBoxStyle.DropDownList
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
             cmbStatusFilter.Items.AddRange(new[] { "All Status", "Available", "Borrowed", "Damaged", "Lost" });
             cmbStatusFilter.SelectedIndex = 0;
 
-            // Inventory DataGridView
             DataGridView dgvInventory = new DataGridView
             {
-                Location = new Point(30, 400),
-                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 430),
+                Location = new Point(30, 480), 
+                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 510), 
                 BackgroundColor = Color.White,
                 BorderStyle = BorderStyle.FixedSingle,
                 AllowUserToAddRows = false,
@@ -6563,7 +6621,6 @@ namespace Library_Management_System
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
             };
 
-            // Configure DataGridView
             dgvInventory.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
             {
                 BackColor = Color.FromArgb(240, 240, 240),
@@ -6582,7 +6639,6 @@ namespace Library_Management_System
                 SelectionForeColor = Color.White
             };
 
-            // Add columns - Copy ID, Book Title, Accession #, Location, Condition, Status, Actions
             dgvInventory.Columns.Add("BookId", "ID");
             dgvInventory.Columns.Add("CopyId", "Copy ID");
             dgvInventory.Columns.Add("BookTitle", "Book Title");
@@ -6592,7 +6648,6 @@ namespace Library_Management_System
             dgvInventory.Columns.Add("Status", "Status");
             dgvInventory.Columns.Add("Actions", "Actions");
 
-            // Set column widths
             dgvInventory.Columns["BookId"].Visible = false;
             dgvInventory.Columns["CopyId"].Width = 100;
             dgvInventory.Columns["BookTitle"].Width = 250;
@@ -6601,7 +6656,6 @@ namespace Library_Management_System
             dgvInventory.Columns["Condition"].Width = 100;
             dgvInventory.Columns["Status"].Width = 120;
 
-            // Add Edit button column
             DataGridViewButtonColumn editButtonColumn = new DataGridViewButtonColumn
             {
                 Name = "Edit",
@@ -6612,7 +6666,6 @@ namespace Library_Management_System
             };
             dgvInventory.Columns.Add(editButtonColumn);
 
-            // Load inventory function - generates individual copy rows
             void LoadInventoryData()
             {
                 try
@@ -6623,19 +6676,16 @@ namespace Library_Management_System
                     string searchText = txtSearchInventory.GetActualText();
                     string statusFilter = cmbStatusFilter.SelectedItem?.ToString() ?? "All Status";
 
-                    // Get all books (no category filter for inventory view)
                     var books = bookService.GetBooks("", "All Categories");
                     var summary = inventoryService.GetInventorySummary();
 
-                    // Calculate statistics
                     int totalTitles = books.Count;
                     int totalCopies = summary.ContainsKey("TotalCopies") ? summary["TotalCopies"] : 0;
                     int availableCopies = summary.ContainsKey("AvailableCopies") ? summary["AvailableCopies"] : 0;
                     int borrowedCopies = summary.ContainsKey("BorrowedCopies") ? summary["BorrowedCopies"] : 0;
-                    int damagedCopies = 0; // Will be calculated from copy status
-                    int lostCopies = 0; // Will be calculated from copy status
+                    int damagedCopies = 0; 
+                    int lostCopies = 0; 
 
-                    // Update stat cards
                     UpdateCatalogStatCard(cardTotalTitles, totalTitles.ToString());
                     UpdateCatalogStatCard(cardTotalCopies, totalCopies.ToString());
                     UpdateCatalogStatCard(cardAvailable, availableCopies.ToString());
@@ -6643,7 +6693,6 @@ namespace Library_Management_System
                     UpdateCatalogStatCard(cardDamaged, damagedCopies.ToString());
                     UpdateCatalogStatCard(cardLost, lostCopies.ToString());
 
-                    // Generate category distribution
                     var categoryStats = new Dictionary<string, (int available, int total)>();
                     foreach (var book in books)
                     {
@@ -6656,7 +6705,6 @@ namespace Library_Management_System
                         categoryStats[cat] = (current.available + book.AvailableCopies, current.total + book.TotalCopies);
                     }
 
-                    // Update category distribution panel
                     categoryContentPanel.Controls.Clear();
                     int categoryY = 0;
                     foreach (var kvp in categoryStats)
@@ -6697,16 +6745,13 @@ namespace Library_Management_System
                         categoryY += 22;
                     }
 
-                    // Clear and populate DataGridView with individual copies
                     dgvInventory.Rows.Clear();
                     int copyNumber = 1;
 
                     foreach (var book in books)
                     {
-                        // Generate rows for each copy
                         for (int copyIndex = 1; copyIndex <= book.TotalCopies; copyIndex++)
                         {
-                            // Determine status for this copy
                             string copyStatus;
                             if (copyIndex <= book.AvailableCopies)
                             {
@@ -6717,13 +6762,11 @@ namespace Library_Management_System
                                 copyStatus = "Borrowed";
                             }
 
-                            // Apply status filter
                             if (statusFilter != "All Status" && copyStatus != statusFilter)
                             {
                                 continue;
                             }
 
-                            // Apply search filter
                             if (!string.IsNullOrEmpty(searchText))
                             {
                                 string searchLower = searchText.ToLower();
@@ -6740,13 +6783,10 @@ namespace Library_Management_System
                                 }
                             }
 
-                            // Generate accession number
                             string accessionNumber = $"ACC-2024-{copyNumber:D5}";
 
-                            // Generate location (simplified - in real app this would come from database)
                             string location = "Section A, Shelf 3";
                             
-                            // Condition (simplified - in real app this would come from database)
                             string condition = "Good";
 
                             int rowIndex = dgvInventory.Rows.Add();
@@ -6757,40 +6797,37 @@ namespace Library_Management_System
                             dgvInventory.Rows[rowIndex].Cells["Location"].Value = $"📍 {location}";
                             dgvInventory.Rows[rowIndex].Cells["Condition"].Value = condition;
                             
-                            // Status with color coding and icons
                             var statusCell = dgvInventory.Rows[rowIndex].Cells["Status"];
                             if (copyStatus == "Available")
                             {
                                 statusCell.Value = "✓ Available";
-                                statusCell.Style.ForeColor = Color.FromArgb(76, 175, 80); // Green
+                                statusCell.Style.ForeColor = Color.FromArgb(76, 175, 80); 
                             }
                             else if (copyStatus == "Borrowed")
                             {
                                 statusCell.Value = "📗 Borrowed";
-                                statusCell.Style.ForeColor = Color.FromArgb(33, 150, 243); // Blue
+                                statusCell.Style.ForeColor = Color.FromArgb(33, 150, 243); 
                             }
                             else if (copyStatus == "Damaged")
                             {
                                 statusCell.Value = "⚠ Damaged";
-                                statusCell.Style.ForeColor = Color.FromArgb(255, 152, 0); // Orange
+                                statusCell.Style.ForeColor = Color.FromArgb(255, 152, 0); 
                                 damagedCopies++;
                             }
                             else if (copyStatus == "Lost")
                             {
                                 statusCell.Value = "❌ Lost";
-                                statusCell.Style.ForeColor = Color.FromArgb(244, 67, 54); // Red
+                                statusCell.Style.ForeColor = Color.FromArgb(244, 67, 54); 
                                 lostCopies++;
                             }
 
-                            // Condition color coding
                             var conditionCell = dgvInventory.Rows[rowIndex].Cells["Condition"];
-                            conditionCell.Style.ForeColor = Color.FromArgb(33, 150, 243); // Blue for "Good"
+                            conditionCell.Style.ForeColor = Color.FromArgb(33, 150, 243); 
 
                             copyNumber++;
                         }
                     }
 
-                    // Update damaged/lost counts in stat cards (will be 0 for now since we don't track this)
                     UpdateCatalogStatCard(cardDamaged, damagedCopies.ToString());
                     UpdateCatalogStatCard(cardLost, lostCopies.ToString());
                 }
@@ -6800,7 +6837,6 @@ namespace Library_Management_System
                 }
             }
 
-            // Event handlers
             txtSearchInventory.TextChanged += (s, e) =>
             {
                 if (txtSearchInventory.ForeColor != Color.Gray)
@@ -6815,44 +6851,133 @@ namespace Library_Management_System
             {
                 try
                 {
-                    SaveFileDialog saveDialog = new SaveFileDialog
+                    Form exportDialog = new Form
                     {
-                        Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
-                        FileName = $"Inventory_Export_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
+                        Text = "Export Inventory",
+                        Size = new Size(450, 300),
+                        StartPosition = FormStartPosition.CenterParent,
+                        FormBorderStyle = FormBorderStyle.FixedDialog,
+                        MaximizeBox = false,
+                        MinimizeBox = false,
+                        ControlBox = false,
+                        BackColor = Color.FromArgb(245, 245, 245)
                     };
 
-                    if (saveDialog.ShowDialog() == DialogResult.OK)
+                    Panel headerPanel = new Panel
                     {
-                        using (System.IO.StreamWriter writer = new System.IO.StreamWriter(saveDialog.FileName))
-                        {
-                            // Write header
-                            writer.WriteLine("Copy ID,Book Title,Accession #,Location,Condition,Status");
+                        Location = new Point(0, 0),
+                        Size = new Size(exportDialog.ClientSize.Width, 70),
+                        BackColor = Color.White
+                    };
 
-                            // Write data
-                            foreach (DataGridViewRow row in dgvInventory.Rows)
-                            {
-                                if (row.Cells["CopyId"].Value != null)
-                                {
-                                    writer.WriteLine($"{row.Cells["CopyId"].Value}," +
-                                                   $"\"{row.Cells["BookTitle"].Value}\"," +
-                                                   $"{row.Cells["AccessionNumber"].Value}," +
-                                                   $"\"{row.Cells["Location"].Value}\"," +
-                                                   $"{row.Cells["Condition"].Value}," +
-                                                   $"{row.Cells["Status"].Value}");
-                                }
-                            }
-                        }
+                    Label dialogTitleLabel = new Label
+                    {
+                        Text = "Choose Export Format",
+                        Font = new Font("Segoe UI", 16F, FontStyle.Bold),
+                        Location = new Point(30, 15),
+                        Size = new Size(300, 25),
+                        ForeColor = Color.FromArgb(40, 40, 40)
+                    };
 
-                        MessageBox.Show("Inventory exported successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
+                    Label dialogSubtitleLabel = new Label
+                    {
+                        Text = "Select your preferred format for the inventory data",
+                        Font = new Font("Segoe UI", 9F),
+                        Location = new Point(30, 42),
+                        Size = new Size(350, 20),
+                        ForeColor = Color.FromArgb(100, 100, 100)
+                    };
+
+                    Button btnCloseDialog = new Button
+                    {
+                        Text = "✕",
+                        Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                        Location = new Point(exportDialog.Width - 45, 15),
+                        Size = new Size(30, 30),
+                        BackColor = Color.Transparent,
+                        ForeColor = Color.FromArgb(100, 100, 100),
+                        FlatStyle = FlatStyle.Flat,
+                        Cursor = Cursors.Hand
+                    };
+                    btnCloseDialog.FlatAppearance.BorderSize = 0;
+                    btnCloseDialog.Click += (sd, ed) => exportDialog.Close();
+
+                    headerPanel.Controls.AddRange(new Control[] { dialogTitleLabel, dialogSubtitleLabel, btnCloseDialog });
+
+                    Panel contentPanel = new Panel
+                    {
+                        Location = new Point(0, 70),
+                        Size = new Size(exportDialog.ClientSize.Width, exportDialog.ClientSize.Height - 70),
+                        BackColor = Color.FromArgb(250, 250, 250)
+                    };
+
+                    Label lblFormat = new Label
+                    {
+                        Text = "Select export format:",
+                        Location = new Point(30, 20),
+                        Size = new Size(200, 25),
+                        Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                        ForeColor = Color.FromArgb(40, 40, 40)
+                    };
+
+                    ComboBox cmbFormat = new ComboBox
+                    {
+                        Location = new Point(30, 50),
+                        Size = new Size(350, 35),
+                        Font = new Font("Segoe UI", 11F),
+                        DropDownStyle = ComboBoxStyle.DropDownList,
+                        BackColor = Color.White
+                    };
+                    cmbFormat.Items.AddRange(new[] { "CSV (Comma Separated Values)", "Excel (XLSX)", "Word (DOCX)", "PDF (Portable Document Format)" });
+                    cmbFormat.SelectedIndex = 0;
+
+                    Button btnCancel = new Button
+                    {
+                        Text = "Cancel",
+                        Size = new Size(100, 40),
+                        Location = new Point(120, 130),
+                        Font = new Font("Segoe UI", 11F),
+                        BackColor = Color.FromArgb(240, 240, 240),
+                        ForeColor = Color.FromArgb(40, 40, 40),
+                        FlatStyle = FlatStyle.Flat,
+                        Cursor = Cursors.Hand,
+                        DialogResult = DialogResult.Cancel
+                    };
+                    btnCancel.FlatAppearance.BorderSize = 0;
+                    btnCancel.Click += (sd, ed) => exportDialog.Close();
+
+                    Button btnExport = new Button
+                    {
+                        Text = "Export",
+                        Size = new Size(100, 40),
+                        Location = new Point(240, 130),
+                        Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                        BackColor = Color.FromArgb(128, 0, 0),
+                        ForeColor = Color.White,
+                        FlatStyle = FlatStyle.Flat,
+                        Cursor = Cursors.Hand
+                    };
+                    btnExport.FlatAppearance.BorderSize = 0;
+                    btnExport.MouseEnter += (sd, ed) => btnExport.BackColor = Color.FromArgb(150, 0, 0);
+                    btnExport.MouseLeave += (sd, ed) => btnExport.BackColor = Color.FromArgb(128, 0, 0);
+
+                    btnExport.Click += (sd, ed) =>
+                    {
+                        string format = cmbFormat.SelectedItem.ToString().Split(' ')[0];
+                        ExportInventoryData(format);
+                        exportDialog.Close();
+                    };
+
+                    contentPanel.Controls.AddRange(new Control[] { lblFormat, cmbFormat, btnCancel, btnExport });
+                    exportDialog.Controls.AddRange(new Control[] { headerPanel, contentPanel });
+                    exportDialog.ShowDialog();
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Error exporting inventory: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             };
 
-            // DataGridView cell click handler for Edit button
             dgvInventory.CellClick += (s, e) =>
             {
                 if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
@@ -6869,7 +6994,6 @@ namespace Library_Management_System
                 }
             };
 
-            // Add controls to panels
             searchPanel.Controls.AddRange(new Control[] { searchContainer, lblStatusFilter, cmbStatusFilter });
 
             pnlMainContent.Controls.AddRange(new Control[] { 
@@ -6877,13 +7001,251 @@ namespace Library_Management_System
                 statsPanel, categoryPanel, searchPanel, dgvInventory 
             });
 
-            // Load initial data
             LoadInventoryData();
+        }
+
+        private void ExportInventoryData(string format)
+        {
+            try
+            {
+                string fileName = "";
+                string filter = "";
+                string defaultExt = "";
+
+                switch (format.ToUpper())
+                {
+                    case "CSV":
+                        filter = "CSV files (*.csv)|*.csv";
+                        defaultExt = ".csv";
+                        fileName = $"Inventory_Export_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+                        break;
+                    case "EXCEL":
+                        filter = "Excel files (*.xlsx)|*.xlsx";
+                        defaultExt = ".xlsx";
+                        fileName = $"Inventory_Export_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+                        break;
+                    case "WORD":
+                        filter = "Word files (*.docx)|*.docx";
+                        defaultExt = ".docx";
+                        fileName = $"Inventory_Export_{DateTime.Now:yyyyMMdd_HHmmss}.docx";
+                        break;
+                    case "PDF":
+                        filter = "PDF files (*.pdf)|*.pdf";
+                        defaultExt = ".pdf";
+                        fileName = $"Inventory_Export_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+                        break;
+                }
+
+                SaveFileDialog saveDialog = new SaveFileDialog
+                {
+                    Filter = filter,
+                    FileName = fileName,
+                    DefaultExt = defaultExt
+                };
+
+                if (saveDialog.ShowDialog() == DialogResult.OK)
+                {
+                    switch (format.ToUpper())
+                    {
+                        case "CSV":
+                            ExportToCSV(saveDialog.FileName);
+                            break;
+                        case "EXCEL":
+                            ExportToExcel(saveDialog.FileName);
+                            break;
+                        case "WORD":
+                            ExportToWord(saveDialog.FileName);
+                            break;
+                        case "PDF":
+                            ExportToPDF(saveDialog.FileName);
+                            break;
+                    }
+
+                    MessageBox.Show("Inventory exported successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error exporting inventory: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ExportToCSV(string filePath)
+        {
+            var dgvInventory = pnlMainContent.Controls.Find("dgvInventory", true).FirstOrDefault() as DataGridView;
+            if (dgvInventory == null) return;
+
+            using (System.IO.StreamWriter writer = new System.IO.StreamWriter(filePath))
+            {
+                writer.WriteLine("Copy ID,Book Title,Accession Number,Location,Condition,Status");
+
+                foreach (DataGridViewRow row in dgvInventory.Rows)
+                {
+                    if (row.Cells["CopyId"].Value != null)
+                    {
+                        writer.WriteLine($"\"{row.Cells["CopyId"].Value}\"," +
+                                       $"\"{row.Cells["BookTitle"].Value}\"," +
+                                       $"\"{row.Cells["AccessionNumber"].Value}\"," +
+                                       $"\"{row.Cells["Location"].Value}\"," +
+                                       $"\"{row.Cells["Condition"].Value}\"," +
+                                       $"\"{row.Cells["Status"].Value}\"");
+                    }
+                }
+            }
+        }
+
+        private void ExportToExcel(string filePath)
+        {
+            var dgvInventory = pnlMainContent.Controls.Find("dgvInventory", true).FirstOrDefault() as DataGridView;
+            if (dgvInventory == null) return;
+
+            using (System.IO.StreamWriter writer = new System.IO.StreamWriter(filePath))
+            {
+                writer.WriteLine("<?xml version=\"1.0\"?>");
+                writer.WriteLine("<?mso-application progid=\"Excel.Sheet\"?>");
+                writer.WriteLine("<Workbook xmlns=\"urn:schemas-microsoft-com:office:spreadsheet\"");
+                writer.WriteLine(" xmlns:o=\"urn:schemas-microsoft-com:office:office\"");
+                writer.WriteLine(" xmlns:x=\"urn:schemas-microsoft-com:office:excel\"");
+                writer.WriteLine(" xmlns:ss=\"urn:schemas-microsoft-com:office:spreadsheet\">");
+                writer.WriteLine(" <Worksheet ss:Name=\"Inventory\">");
+                writer.WriteLine("  <Table>");
+
+                writer.WriteLine("   <Row>");
+                writer.WriteLine("    <Cell><Data ss:Type=\"String\">Copy ID</Data></Cell>");
+                writer.WriteLine("    <Cell><Data ss:Type=\"String\">Book Title</Data></Cell>");
+                writer.WriteLine("    <Cell><Data ss:Type=\"String\">Accession Number</Data></Cell>");
+                writer.WriteLine("    <Cell><Data ss:Type=\"String\">Location</Data></Cell>");
+                writer.WriteLine("    <Cell><Data ss:Type=\"String\">Condition</Data></Cell>");
+                writer.WriteLine("    <Cell><Data ss:Type=\"String\">Status</Data></Cell>");
+                writer.WriteLine("   </Row>");
+
+                foreach (DataGridViewRow row in dgvInventory.Rows)
+                {
+                    if (row.Cells["CopyId"].Value != null)
+                    {
+                        writer.WriteLine("   <Row>");
+                        writer.WriteLine($"    <Cell><Data ss:Type=\"String\">{row.Cells["CopyId"].Value}</Data></Cell>");
+                        writer.WriteLine($"    <Cell><Data ss:Type=\"String\">{row.Cells["BookTitle"].Value}</Data></Cell>");
+                        writer.WriteLine($"    <Cell><Data ss:Type=\"String\">{row.Cells["AccessionNumber"].Value}</Data></Cell>");
+                        writer.WriteLine($"    <Cell><Data ss:Type=\"String\">{row.Cells["Location"].Value}</Data></Cell>");
+                        writer.WriteLine($"    <Cell><Data ss:Type=\"String\">{row.Cells["Condition"].Value}</Data></Cell>");
+                        writer.WriteLine($"    <Cell><Data ss:Type=\"String\">{row.Cells["Status"].Value}</Data></Cell>");
+                        writer.WriteLine("   </Row>");
+                    }
+                }
+
+                writer.WriteLine("  </Table>");
+                writer.WriteLine(" </Worksheet>");
+                writer.WriteLine("</Workbook>");
+            }
+        }
+
+        private void ExportToWord(string filePath)
+        {
+            var dgvInventory = pnlMainContent.Controls.Find("dgvInventory", true).FirstOrDefault() as DataGridView;
+            if (dgvInventory == null) return;
+
+            using (System.IO.StreamWriter writer = new System.IO.StreamWriter(filePath))
+            {
+                writer.WriteLine("{\\rtf1\\ansi\\deff0");
+                writer.WriteLine("{\\fonttbl{\\f0\\fswiss\\fcharset0 Arial;}}");
+                writer.WriteLine("\\viewkind4\\uc1\\pard\\lang1033\\f0\\fs24");
+
+                writer.WriteLine("\\b Library Inventory Report\\b0\\par");
+                writer.WriteLine($"Generated on: {DateTime.Now:MMMM dd, yyyy} at {DateTime.Now:hh:mm tt}\\par\\par");
+
+                writer.WriteLine("\\trowd\\trgaph108\\trleft0");
+                writer.WriteLine("\\clbrdrt\\brdrs\\clbrdrl\\brdrs\\clbrdrb\\brdrs\\clbrdrr\\brdrs");
+                writer.WriteLine("\\cellx1440 Copy ID\\cellx4320 Book Title\\cellx5760 Accession #\\cellx7200 Location\\cellx8640 Condition\\cellx10080 Status\\cell\\row");
+
+                foreach (DataGridViewRow row in dgvInventory.Rows)
+                {
+                    if (row.Cells["CopyId"].Value != null)
+                    {
+                        writer.WriteLine("\\trowd\\trgaph108\\trleft0");
+                        writer.WriteLine("\\clbrdrt\\brdrs\\clbrdrl\\brdrs\\clbrdrb\\brdrs\\clbrdrr\\brdrs");
+                        writer.WriteLine($"\\cellx1440 {row.Cells["CopyId"].Value}\\cellx4320 {row.Cells["BookTitle"].Value}\\cellx5760 {row.Cells["AccessionNumber"].Value}\\cellx7200 {row.Cells["Location"].Value}\\cellx8640 {row.Cells["Condition"].Value}\\cellx10080 {row.Cells["Status"].Value}\\cell\\row");
+                    }
+                }
+
+                writer.WriteLine("\\par");
+                writer.WriteLine("Total Records: " + dgvInventory.Rows.Count.ToString());
+                writer.WriteLine("}");
+            }
+        }
+
+        private void ExportToPDF(string filePath)
+        {
+            var dgvInventory = pnlMainContent.Controls.Find("dgvInventory", true).FirstOrDefault() as DataGridView;
+            if (dgvInventory == null) return;
+
+            using (System.IO.StreamWriter writer = new System.IO.StreamWriter(filePath))
+            {
+                writer.WriteLine("<!DOCTYPE html>");
+                writer.WriteLine("<html><head>");
+                writer.WriteLine("<title>Library Inventory Report</title>");
+                writer.WriteLine("<style>");
+                writer.WriteLine("body { font-family: Arial, sans-serif; margin: 20px; }");
+                writer.WriteLine("h1 { color: #800000; text-align: center; }");
+                writer.WriteLine("table { width: 100%; border-collapse: collapse; margin-top: 20px; }");
+                writer.WriteLine("th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }");
+                writer.WriteLine("th { background-color: #f2f2f2; font-weight: bold; }");
+                writer.WriteLine("tr:nth-child(even) { background-color: #f9f9f9; }");
+                writer.WriteLine(".header { text-align: center; margin-bottom: 10px; color: #666; }");
+                writer.WriteLine("</style>");
+                writer.WriteLine("</head><body>");
+
+                writer.WriteLine("<h1>Library Inventory Report</h1>");
+                writer.WriteLine($"<div class='header'>Generated on: {DateTime.Now:MMMM dd, yyyy} at {DateTime.Now:hh:mm tt}</div>");
+
+                writer.WriteLine("<table>");
+                writer.WriteLine("<tr>");
+                writer.WriteLine("<th>Copy ID</th>");
+                writer.WriteLine("<th>Book Title</th>");
+                writer.WriteLine("<th>Accession Number</th>");
+                writer.WriteLine("<th>Location</th>");
+                writer.WriteLine("<th>Condition</th>");
+                writer.WriteLine("<th>Status</th>");
+                writer.WriteLine("</tr>");
+
+                foreach (DataGridViewRow row in dgvInventory.Rows)
+                {
+                    if (row.Cells["CopyId"].Value != null)
+                    {
+                        writer.WriteLine("<tr>");
+                        writer.WriteLine($"<td>{HtmlEncode(row.Cells["CopyId"].Value.ToString())}</td>");
+                        writer.WriteLine($"<td>{HtmlEncode(row.Cells["BookTitle"].Value.ToString())}</td>");
+                        writer.WriteLine($"<td>{HtmlEncode(row.Cells["AccessionNumber"].Value.ToString())}</td>");
+                        writer.WriteLine($"<td>{HtmlEncode(row.Cells["Location"].Value.ToString())}</td>");
+                        writer.WriteLine($"<td>{HtmlEncode(row.Cells["Condition"].Value.ToString())}</td>");
+                        writer.WriteLine($"<td>{HtmlEncode(row.Cells["Status"].Value.ToString())}</td>");
+                        writer.WriteLine("</tr>");
+                    }
+                }
+
+                writer.WriteLine("</table>");
+                writer.WriteLine($"<p><strong>Total Records: {dgvInventory.Rows.Count.ToString()}</strong></p>");
+                writer.WriteLine("</body></html>");
+            }
+
+            string htmlFilePath = Path.ChangeExtension(filePath, ".html");
+            File.Move(filePath, htmlFilePath);
+
+            MessageBox.Show("HTML file created successfully! You can open it in a web browser and print/save as PDF.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private string HtmlEncode(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+            return text.Replace("&", "&amp;")
+                      .Replace("<", "&lt;")
+                      .Replace(">", "&gt;")
+                      .Replace("\"", "&quot;")
+                      .Replace("'", "&#39;");
         }
 
         private void ShowEditCopyDialog(string bookId, string copyId)
         {
-            // Implementation for Edit Copy dialog
             MessageBox.Show($"Edit Copy dialog for {copyId} of Book ID: {bookId}\n\nThis feature will allow editing:\n- Location\n- Condition\n- Status", 
                 "Edit Copy", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
@@ -6902,7 +7264,6 @@ namespace Library_Management_System
                 ShowInTaskbar = false
             };
 
-            // Title
             Label titleLabel = new Label
             {
                 Text = "Update Stock Level",
@@ -6912,11 +7273,9 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
 
-            // Book ID
             Label lblBookId = new Label { Text = "Book ID:", Location = new Point(30, 70), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
             TextBox txtBookId = new TextBox { Location = new Point(140, 65), Size = new Size(200, 30), Font = new Font("Segoe UI", 10F) };
 
-            // Current stock info
             Label lblCurrentInfo = new Label
             {
                 Text = "Current: Total - 0, Available - 0",
@@ -6926,7 +7285,6 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(100, 100, 100)
             };
 
-            // New total copies
             Label lblNewTotal = new Label { Text = "New Total Copies:", Location = new Point(30, 150), Size = new Size(120, 25), Font = new Font("Segoe UI", 10F) };
             NumericUpDown numNewTotal = new NumericUpDown
             {
@@ -6938,7 +7296,6 @@ namespace Library_Management_System
                 Value = 0
             };
 
-            // Preview available
             Label lblPreview = new Label
             {
                 Text = "Available after update: 0",
@@ -6948,7 +7305,6 @@ namespace Library_Management_System
                 ForeColor = Color.FromArgb(33, 150, 243)
             };
 
-            // Buttons
             Button btnCancel = new Button
             {
                 Text = "Cancel",
@@ -6970,7 +7326,6 @@ namespace Library_Management_System
             };
             btnUpdate.FlatAppearance.BorderSize = 0;
 
-            // Load book info when Book ID changes
             txtBookId.TextChanged += (s, e) =>
             {
                 if (!string.IsNullOrWhiteSpace(txtBookId.Text))
@@ -6985,7 +7340,6 @@ namespace Library_Management_System
                             lblCurrentInfo.Text = $"Current: Total - {book.TotalCopies}, Available - {book.AvailableCopies}";
                             numNewTotal.Value = book.TotalCopies;
 
-                            // Update preview
                             int borrowed = book.TotalCopies - book.AvailableCopies;
                             int newAvailable = System.Math.Max(0, (int)numNewTotal.Value - borrowed);
                             lblPreview.Text = $"Available after update: {newAvailable}";
@@ -7004,7 +7358,6 @@ namespace Library_Management_System
                 }
             };
 
-            // Update preview when total changes
             numNewTotal.ValueChanged += (s, e) =>
             {
                 try
@@ -7028,7 +7381,6 @@ namespace Library_Management_System
                 }
             };
 
-            // Event handlers
             txtBookId.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) numNewTotal.Focus(); };
 
             btnUpdate.Click += (s, args) =>

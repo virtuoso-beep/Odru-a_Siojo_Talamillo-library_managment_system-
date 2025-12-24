@@ -11,6 +11,7 @@ namespace Library_Management_System.Interfaces
         decimal GetTotalFines(string memberId = null, string status = null);
         FinesService.FineInfo GetFineById(string fineId);
         void CalculateOverdueFines();
-        void ProcessOverdueFines(); // Alias for CalculateOverdueFines for backward compatibility
+        void ProcessOverdueFines(); 
+        bool AddFine(string memberId, decimal amount, string reason, string bookTitle = null, string notes = null);
     }
 }

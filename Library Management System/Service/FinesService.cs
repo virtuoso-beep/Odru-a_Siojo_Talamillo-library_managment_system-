@@ -36,17 +36,17 @@ namespace Library_Management_System.Service
                     string query = @"
                         SELECT f.FineId, f.BorrowingId, f.MemberId, f.Amount, f.Reason, f.Status, f.CreatedDate, f.PaidDate,
                                CONCAT(u.FirstName, ' ', u.LastName) as MemberName,
-                               bk.Title as BookTitle
+                               COALESCE(bk.Title, '') as BookTitle
                         FROM Fines f
-                        INNER JOIN Borrowings b ON f.BorrowingId = b.BorrowingId
                         INNER JOIN Members m ON f.MemberId = m.MemberId
                         INNER JOIN Users u ON m.UserId = u.UserId
-                        INNER JOIN Books bk ON b.BookId = bk.BookId
+                        LEFT JOIN Borrowings b ON f.BorrowingId = b.BorrowingId
+                        LEFT JOIN Books bk ON b.BookId = bk.BookId
                         WHERE 1=1";
 
                     if (!string.IsNullOrEmpty(searchText))
                     {
-                        query += " AND (CONCAT(u.FirstName, ' ', u.LastName) LIKE @search OR bk.Title LIKE @search)";
+                        query += " AND (CONCAT(u.FirstName, ' ', u.LastName) LIKE @search OR COALESCE(bk.Title, '') LIKE @search OR f.Reason LIKE @search)";
                     }
 
                     if (statusFilter != "All Status")
@@ -74,10 +74,10 @@ namespace Library_Management_System.Service
                                 fines.Add(new FineInfo
                                 {
                                     FineId = reader["FineId"].ToString(),
-                                    BorrowingId = reader["BorrowingId"].ToString(),
+                                    BorrowingId = reader["BorrowingId"] != DBNull.Value ? reader["BorrowingId"].ToString() : null,
                                     MemberId = reader["MemberId"].ToString(),
                                     MemberName = reader["MemberName"].ToString(),
-                                    BookTitle = reader["BookTitle"].ToString(),
+                                    BookTitle = reader["BookTitle"] != DBNull.Value ? reader["BookTitle"].ToString() : "",
                                     Amount = Convert.ToDecimal(reader["Amount"]),
                                     Reason = reader["Reason"]?.ToString(),
                                     Status = reader["Status"].ToString(),
@@ -210,12 +210,12 @@ namespace Library_Management_System.Service
                     string query = @"
                         SELECT f.FineId, f.BorrowingId, f.MemberId, f.Amount, f.Reason, f.Status, f.CreatedDate, f.PaidDate,
                                CONCAT(u.FirstName, ' ', u.LastName) as MemberName,
-                               bk.Title as BookTitle
+                               COALESCE(bk.Title, '') as BookTitle
                         FROM Fines f
-                        INNER JOIN Borrowings b ON f.BorrowingId = b.BorrowingId
                         INNER JOIN Members m ON f.MemberId = m.MemberId
                         INNER JOIN Users u ON m.UserId = u.UserId
-                        INNER JOIN Books bk ON b.BookId = bk.BookId
+                        LEFT JOIN Borrowings b ON f.BorrowingId = b.BorrowingId
+                        LEFT JOIN Books bk ON b.BookId = bk.BookId
                         WHERE f.FineId = @fineId";
 
                     using (var command = new MySqlCommand(query, connection))
@@ -229,10 +229,10 @@ namespace Library_Management_System.Service
                                 return new FineInfo
                                 {
                                     FineId = reader["FineId"].ToString(),
-                                    BorrowingId = reader["BorrowingId"].ToString(),
+                                    BorrowingId = reader["BorrowingId"] != DBNull.Value ? reader["BorrowingId"].ToString() : null,
                                     MemberId = reader["MemberId"].ToString(),
                                     MemberName = reader["MemberName"].ToString(),
-                                    BookTitle = reader["BookTitle"].ToString(),
+                                    BookTitle = reader["BookTitle"] != DBNull.Value ? reader["BookTitle"].ToString() : "",
                                     Amount = Convert.ToDecimal(reader["Amount"]),
                                     Reason = reader["Reason"]?.ToString(),
                                     Status = reader["Status"].ToString(),
@@ -321,6 +321,47 @@ namespace Library_Management_System.Service
         public void ProcessOverdueFines()
         {
             CalculateOverdueFines();
+        }
+
+        public bool AddFine(string memberId, decimal amount, string reason, string bookTitle = null, string notes = null)
+        {
+            try
+            {
+                using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
+                {
+                    connection.Open();
+
+                    // Build reason string - include book title and notes if provided
+                    string fullReason = reason;
+                    if (!string.IsNullOrWhiteSpace(bookTitle))
+                    {
+                        fullReason = $"{reason} - {bookTitle}";
+                    }
+                    if (!string.IsNullOrWhiteSpace(notes))
+                    {
+                        fullReason += string.IsNullOrWhiteSpace(bookTitle) ? $" - {notes}" : $" ({notes})";
+                    }
+
+                    string query = @"
+                        INSERT INTO Fines (BorrowingId, MemberId, Amount, Reason, Status, CreatedDate)
+                        VALUES (NULL, @memberId, @amount, @reason, 'Unpaid', NOW())";
+
+                    using (var command = new MySqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@memberId", memberId);
+                        command.Parameters.AddWithValue("@amount", amount);
+                        command.Parameters.AddWithValue("@reason", fullReason);
+                        int rowsAffected = command.ExecuteNonQuery();
+
+                        return rowsAffected > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error adding fine: {ex.Message}");
+                throw;
+            }
         }
     }
 }
