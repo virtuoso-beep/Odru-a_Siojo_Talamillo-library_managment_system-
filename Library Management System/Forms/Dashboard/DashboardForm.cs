@@ -7,6 +7,7 @@
     using System.Linq;
     using System.Web;
     using System.Windows.Forms;
+    using System.Windows.Forms.DataVisualization.Charting;
 using Library_Management_System.Helper;
 using Library_Management_System.Models;
 using Library_Management_System.Service;
@@ -22,6 +23,31 @@ namespace Library_Management_System
         private System.Windows.Forms.Timer _sessionTimer;
         private const int SessionTimeoutMinutes = 30; 
         
+        // Reports View Controls
+        private Panel pnlReportsView;
+        private Panel pnlReportsSubNav;
+        private Panel pnlReportsContent;
+        private Button btnReportCirculation;
+        private Button btnReportMembers;
+        private Button btnReportCollection;
+        private Button btnReportFines;
+
+        // Search View Controls
+        private Panel pnlSearchView;
+        private Panel pnlSearchContent;
+        private TextBox txtSearchInput;
+        private Button btnTriggerSearch;
+        private Button btnSearchFilters;
+
+        // Settings View Controls
+        private Panel pnlSettingsView;
+        private Panel pnlSettingsSubNav;
+        private Panel pnlSettingsContent;
+        private Button btnSettingGeneral;
+        private Button btnSettingNotifications;
+        private Button btnSettingBorrowing;
+        private Button btnSettingFines;
+
         private List<Control> _originalMainContentControls = new List<Control>();
 
         public DashboardForm()
@@ -91,6 +117,9 @@ namespace Library_Management_System
             SetupSidebarStyling();
             
             SetupMembersView();
+            SetupReportsView();
+            SetupSearchView();
+            SetupSettingsView();
             
             this.Load += (s, e) => {
                 if (pnlMainContent.Controls.Contains(pnlCardTotalBooks))
@@ -704,6 +733,23 @@ namespace Library_Management_System
             {
                 AdjustMembersViewLayout();
             }
+            else if (pnlReportsView != null && pnlMainContent.Controls.Contains(pnlReportsView))
+            {
+               pnlReportsView.Size = pnlMainContent.ClientSize;
+               if(pnlReportsContent != null)
+                   pnlReportsContent.Size = new Size(pnlReportsView.Width, pnlReportsView.Height - pnlReportsSubNav.Height);
+            }
+            else if (pnlSearchView != null && pnlMainContent.Controls.Contains(pnlSearchView))
+            {
+                pnlSearchView.Size = pnlMainContent.ClientSize;
+                // Adjust search content if needed
+            }
+            else if (pnlSettingsView != null && pnlMainContent.Controls.Contains(pnlSettingsView))
+            {
+                pnlSettingsView.Size = pnlMainContent.ClientSize;
+                if(pnlSettingsContent != null)
+                   pnlSettingsContent.Size = new Size(pnlSettingsView.Width, pnlSettingsView.Height - pnlSettingsSubNav.Height);
+            }
             else
             {
                 AdjustModuleViewLayout();
@@ -869,29 +915,15 @@ namespace Library_Management_System
                     break;
 
                 case "Reports":
-                    ShowFeatureMessage("Reports", 
-                        "The Reports module will provide:\n" +
-                        "• Borrowing reports\n" +
-                        "• Member activity reports\n" +
-                        "• Financial reports\n" +
-                        "• Statistical analysis");
+                    ShowReportsView();
                     break;
 
                 case "Search":
-                    ShowFeatureMessage("Search", 
-                        "The Search module will allow you to:\n" +
-                        "• Search for books\n" +
-                        "• Search for members\n" +
-                        "• Advanced search options");
+                    ShowSearchView();
                     break;
 
                 case "Settings":
-                    ShowFeatureMessage("Settings", 
-                        "The Settings module will allow you to:\n" +
-                        "• Configure system settings\n" +
-                        "• Manage user accounts\n" +
-                        "• Set borrowing rules\n" +
-                        "• Customize preferences");
+                    ShowSettingsView();
                     break;
 
                 default:
@@ -956,6 +988,240 @@ namespace Library_Management_System
             LoadMembersData();
         }
 
+        private void ShowReportsView()
+        {
+            RestoreOriginalControls();
+            ShowDashboardControls(false);
+            pnlMembersView.Visible = false;
+
+            if (pnlReportsView == null)
+            {
+                SetupReportsView();
+            }
+            
+            if (!pnlMainContent.Controls.Contains(pnlReportsView))
+            {
+                pnlMainContent.Controls.Add(pnlReportsView);
+            }
+
+            pnlReportsView.Visible = true;
+            pnlReportsView.BringToFront();
+            pnlReportsView.Dock = DockStyle.Fill;
+            
+            // Default to Circulation tab
+            ShowReportsCirculation();
+        }
+
+        private void SetupReportsView()
+        {
+            if (pnlReportsView != null) return;
+
+            pnlReportsView = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = ThemeConstants.BackgroundLight,
+                Visible = false
+            };
+
+            // Sub-navigation for Reports
+            pnlReportsSubNav = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 60,
+                BackColor = Color.White,
+                Padding = new Padding(20, 0, 20, 0)
+            };
+
+            btnReportCirculation = CreateReportSubNavButton("Circulation", true);
+            btnReportMembers = CreateReportSubNavButton("Members", false);
+            btnReportCollection = CreateReportSubNavButton("Collection", false);
+            btnReportFines = CreateReportSubNavButton("Fines", false);
+
+            // Layout buttons in sub-nav
+            int x = 20;
+            int gap = 10;
+            
+            btnReportCirculation.Location = new Point(x, 10);
+            x += btnReportCirculation.Width + gap;
+            
+            btnReportMembers.Location = new Point(x, 10);
+            x += btnReportMembers.Width + gap;
+            
+            btnReportCollection.Location = new Point(x, 10);
+            x += btnReportCollection.Width + gap;
+            
+            btnReportFines.Location = new Point(x, 10);
+
+            pnlReportsSubNav.Controls.AddRange(new Control[] { 
+                btnReportCirculation, btnReportMembers, btnReportCollection, btnReportFines 
+            });
+
+            // Content Area
+            pnlReportsContent = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = ThemeConstants.BackgroundLight,
+                Padding = new Padding(20)
+            };
+
+            pnlReportsView.Controls.Add(pnlReportsContent);
+            pnlReportsView.Controls.Add(pnlReportsSubNav);
+            
+            // Wire up events
+            btnReportCirculation.Click += (s, e) => ShowReportsCirculation();
+            btnReportMembers.Click += (s, e) => ShowReportsMembers();
+            btnReportCollection.Click += (s, e) => ShowReportsCollection();
+            btnReportFines.Click += (s, e) => ShowReportsFines();
+        }
+
+        private Button CreateReportSubNavButton(string text, bool isActive)
+        {
+            return new Button
+            {
+                Text = text,
+                Size = new Size(150, 40),
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 0 },
+                BackColor = isActive ? Color.White : Color.White, // Simplified logic, will handle Paint for active state
+                Font = new Font("Segoe UI", 10F, isActive ? FontStyle.Bold : FontStyle.Regular),
+                ForeColor = isActive ? ThemeConstants.PrimaryMaroon : Color.Gray,
+                Cursor = Cursors.Hand,
+                Tag = text
+            };
+        }
+
+        private void ResetReportNavButtons()
+        {
+             foreach(Control c in pnlReportsSubNav.Controls)
+             {
+                 if(c is Button btn)
+                 {
+                     btn.Font = new Font("Segoe UI", 10F, FontStyle.Regular);
+                     btn.ForeColor = Color.Gray;
+                     // Optional: remove bottom border indicator
+                     btn.Invalidate();
+                 }
+             }
+        }
+
+        private void SetActiveReportNavButton(Button btn)
+        {
+            ResetReportNavButtons();
+            btn.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btn.ForeColor = ThemeConstants.PrimaryMaroon;
+            // Optional: add bottom border indicator via Paint event
+        }
+
+        private void ShowReportsCirculation()
+        {
+            SetActiveReportNavButton(btnReportCirculation);
+            pnlReportsContent.Controls.Clear();
+
+            // 1. Daily Circulation Chart (Top Left)
+            // 2. Most Borrowed Books (Top Right)
+            // 3. Overdue Books List (Bottom)
+
+            int chartHeight = 300;
+            int gap = 20;
+
+            // Chart Panel
+            Panel pnlChart = new Panel
+            {
+                Size = new Size((pnlReportsContent.Width - gap) / 2, chartHeight),
+                Location = new Point(0, 0),
+                BackColor = Color.White,
+                Padding = new Padding(15)
+            };
+            
+            Label lblChartTitle = new Label { Text = "Daily Circulation", Font = new Font("Segoe UI", 14F, FontStyle.Bold), AutoSize = true, Location = new Point(15, 15) };
+            Label lblChartSub = new Label { Text = "Borrowings and returns over time", Font = new Font("Segoe UI", 9F), ForeColor = Color.Gray, AutoSize = true, Location = new Point(15, 45) };
+            
+            Chart chart = new Chart { Dock = DockStyle.Bottom, Height = 220 };
+            ChartArea ca = new ChartArea("MainArea");
+            ca.AxisX.MajorGrid.LineColor = Color.LightGray;
+            ca.AxisY.MajorGrid.LineColor = Color.LightGray;
+            ca.AxisX.MajorGrid.LineDashStyle = ChartDashStyle.Dash;
+            ca.AxisY.MajorGrid.LineDashStyle = ChartDashStyle.Dash;
+            ca.BackColor = Color.White;
+            chart.ChartAreas.Add(ca);
+
+            Series sBorrow = new Series("Borrowing") { ChartType = SeriesChartType.Line, Color = Color.Green, BorderWidth = 2 };
+            // Dummy Data
+            sBorrow.Points.AddXY("Dec 28", 1);
+            sBorrow.Points.AddXY("Dec 29", 3);
+            sBorrow.Points.AddXY("Dec 30", 2);
+            sBorrow.Points.AddXY("Dec 31", 0);
+            sBorrow.Points.AddXY("Jan 1", 4);
+            sBorrow.Points.AddXY("Jan 2", 2);
+            sBorrow.Points.AddXY("Jan 3", 1);
+            
+            chart.Series.Add(sBorrow);
+            pnlChart.Controls.AddRange(new Control[] { lblChartTitle, lblChartSub, chart });
+
+
+            // Most Borrowed Panel
+            Panel pnlTopBooks = new Panel
+            {
+                Size = new Size((pnlReportsContent.Width - gap) / 2, chartHeight), // Same width for symmetry for now
+                Location = new Point((pnlReportsContent.Width - gap) / 2 + gap, 0),
+                BackColor = Color.White,
+                Padding = new Padding(15)
+            };
+            Label lblTopBooks = new Label { Text = "Most Borrowed Books", Font = new Font("Segoe UI", 14F, FontStyle.Bold), AutoSize = true, Location = new Point(15, 15) };
+            Label lblTopBooksSub = new Label { Text = "Top 10 most popular books", Font = new Font("Segoe UI", 9F), ForeColor = Color.Gray, AutoSize = true, Location = new Point(15, 45) };
+            Label lblNoData = new Label { Text = "No data for selected period", Font = new Font("Segoe UI", 10F), ForeColor = Color.Gray, AutoSize = true, Location = new Point(100, 100) };
+            
+            pnlTopBooks.Controls.AddRange(new Control[] { lblTopBooks, lblTopBooksSub, lblNoData });
+            pnlTopBooks.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right; // Make it stretch properly if we want
+
+            // Overdue List Panel (Bottom)
+            Panel pnlOverdue = new Panel
+            {
+                Size = new Size(pnlReportsContent.Width, 200), // Fixed height for now
+                Location = new Point(0, chartHeight + gap),
+                BackColor = Color.White,
+                Padding = new Padding(15),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            };
+            Label lblOverdue = new Label { Text = "Overdue Books", Font = new Font("Segoe UI", 14F, FontStyle.Bold), AutoSize = true, Location = new Point(15, 15) };
+            Label lblOverdueSub = new Label { Text = "Books that are past their due date", Font = new Font("Segoe UI", 9F), ForeColor = Color.Gray, AutoSize = true, Location = new Point(15, 45) };
+            
+            // Simple Table Header for Overdue
+            Label lblHeader = new Label { 
+                Text = String.Format("{0,-40} {1,-30} {2,-20} {3,-20} {4,-15}", "Book", "Member", "Borrow Date", "Due Date", "Days Overdue"),
+                Font = new Font("Consolas", 9F, FontStyle.Bold),
+                Location = new Point(15, 75),
+                AutoSize = true
+            };
+            Label lblRow1 = new Label { 
+                 Text = String.Format("{0,-40} {1,-30} {2,-20} {3,-20} {4,-15}", "Pride and Prejudice", "Michael Brown", "Oct 20, 2024", "Nov 10, 2024", "420 days"),
+                 Font = new Font("Consolas", 9F),
+                 Location = new Point(15, 100),
+                 ForeColor = Color.Red,
+                 AutoSize = true
+            };
+
+            pnlOverdue.Controls.AddRange(new Control[] { lblOverdue, lblOverdueSub, lblHeader, lblRow1 });
+
+
+            pnlReportsContent.Controls.Add(pnlChart);
+            pnlReportsContent.Controls.Add(pnlTopBooks);
+            pnlReportsContent.Controls.Add(pnlOverdue);
+            
+            // Quick layout adjustment
+            pnlReportsContent.Resize += (s,ev) => {
+                 int w = pnlReportsContent.Width;
+                 pnlChart.Width = (w - gap) / 2;
+                 pnlTopBooks.Location = new Point(pnlChart.Width + gap, 0);
+                 pnlTopBooks.Width = w - pnlChart.Width - gap;
+                 pnlOverdue.Width = w;
+            };
+        }
+
+        private void ShowReportsMembers() { SetActiveReportNavButton(btnReportMembers); pnlReportsContent.Controls.Clear(); }
+        private void ShowReportsCollection() { SetActiveReportNavButton(btnReportCollection); pnlReportsContent.Controls.Clear(); }
+        private void ShowReportsFines() { SetActiveReportNavButton(btnReportFines); pnlReportsContent.Controls.Clear(); }
+
         private void ShowDashboardControls(bool show)
         {
             lblWelcome.Visible = show;
@@ -969,6 +1235,417 @@ namespace Library_Management_System
             pnlCardPendingFines.Visible = show;
             pnlWeeklyCirculation.Visible = show;
             pnlCollectionCategory.Visible = show;
+            
+            if (pnlReportsView != null) pnlReportsView.Visible = false;
+            if (pnlSearchView != null) pnlSearchView.Visible = false;
+            if (pnlSettingsView != null) pnlSettingsView.Visible = false;
+        }
+
+        private void ShowSettingsView()
+        {
+             RestoreOriginalControls();
+            ShowDashboardControls(false);
+            pnlMembersView.Visible = false;
+            
+            if (pnlSettingsView == null) SetupSettingsView();
+
+            if (!pnlMainContent.Controls.Contains(pnlSettingsView))
+            {
+                pnlMainContent.Controls.Add(pnlSettingsView);
+            }
+
+            pnlSettingsView.Visible = true;
+            pnlSettingsView.BringToFront();
+            pnlSettingsView.Dock = DockStyle.Fill;
+            
+            // Default to General tab
+            ShowSettingsGeneral();
+        }
+
+        private void SetupSettingsView()
+        {
+            if (pnlSettingsView != null) return;
+
+             pnlSettingsView = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = ThemeConstants.BackgroundLight,
+                Visible = false
+            };
+
+            // 1. Header is part of the content in this design, or we can make a dedicated header
+            // The design shows "Settings" title at top.
+            Panel pnlHeader = new Panel { Dock = DockStyle.Top, Height = 80, BackColor = ThemeConstants.BackgroundLight, Padding = new Padding(30, 20, 30, 0) };
+            Label lblTitle = new Label { Text = "Settings", Font = new Font("Georgia", 24F, FontStyle.Bold), ForeColor = ThemeConstants.PrimaryMaroon, AutoSize = true, Location = new Point(30, 15) };
+            Label lblSubtitle = new Label { Text = "Configure library system settings and policies", Font = new Font("Segoe UI", 10F), ForeColor = Color.Gray, AutoSize = true, Location = new Point(32, 55) };
+            pnlHeader.Controls.AddRange(new Control[] { lblTitle, lblSubtitle });
+
+
+            // 2. Sub-Nav
+            pnlSettingsSubNav = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 50,
+                BackColor = Color.FromArgb(240, 240, 240), // Light gray background for tabs strip
+                Padding = new Padding(30, 0, 30, 0)
+            };
+            
+            btnSettingGeneral = CreateSettingsTabButton("General", true);
+            btnSettingNotifications = CreateSettingsTabButton("Notifications", false);
+            btnSettingBorrowing = CreateSettingsTabButton("Borrowing", false);
+            btnSettingFines = CreateSettingsTabButton("Fines", false);
+            
+            // Layout (using FlowLayout or manual) - Manual for spread
+             int tabWidth = 200;
+             btnSettingGeneral.Bounds = new Rectangle(30, 5, tabWidth, 45);
+             btnSettingNotifications.Bounds = new Rectangle(30 + tabWidth, 5, tabWidth, 45);
+             btnSettingBorrowing.Bounds = new Rectangle(30 + tabWidth * 2, 5, tabWidth, 45);
+             btnSettingFines.Bounds = new Rectangle(30 + tabWidth * 3, 5, tabWidth, 45);
+
+            pnlSettingsSubNav.Controls.AddRange(new Control[] { btnSettingGeneral, btnSettingNotifications, btnSettingBorrowing, btnSettingFines });
+
+
+            // 3. Content
+            pnlSettingsContent = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.White,
+                Padding = new Padding(30),
+                AutoScroll = true
+            };
+            // Border for content panel to match "Card" look
+             pnlSettingsContent.Paint += (s, e) => {
+                 // Draw a border around the white card content
+                 // In the design, the whole content area acts like a card
+             };
+
+
+            pnlSettingsView.Controls.Add(pnlSettingsContent);
+            pnlSettingsView.Controls.Add(pnlSettingsSubNav);
+            pnlSettingsView.Controls.Add(pnlHeader);
+
+            // Events
+            btnSettingGeneral.Click += (s, e) => ShowSettingsGeneral();
+            btnSettingNotifications.Click += (s, e) => ShowSettingsNotifications();
+            btnSettingBorrowing.Click += (s, e) => ShowSettingsBorrowing();
+            btnSettingFines.Click += (s, e) => ShowSettingsFines();
+        }
+
+        private Button CreateSettingsTabButton(string text, bool isActive)
+        {
+             Button btn = new Button
+            {
+                Text = text,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 0 },
+                BackColor = isActive ? Color.White : Color.Transparent,
+                Font = new Font("Segoe UI", 10F, isActive ? FontStyle.Bold : FontStyle.Regular),
+                ForeColor = isActive ? Color.Black : Color.Gray,
+                Cursor = Cursors.Hand
+            };
+            return btn;
+        }
+
+        private void ResetSettingsTabs()
+        {
+            foreach(Control c in pnlSettingsSubNav.Controls)
+            {
+                if (c is Button btn)
+                {
+                    btn.BackColor = Color.Transparent;
+                    btn.Font = new Font("Segoe UI", 10F, FontStyle.Regular);
+                    btn.ForeColor = Color.Gray;
+                }
+            }
+        }
+        
+        private void SetActiveSettingsTab(Button btn)
+        {
+            ResetSettingsTabs();
+            btn.BackColor = Color.White;
+            btn.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btn.ForeColor = Color.Black;
+        }
+
+        private void ShowSettingsGeneral()
+        {
+            SetActiveSettingsTab(btnSettingGeneral);
+            pnlSettingsContent.Controls.Clear();
+
+            // Card Container for General Info
+            Panel pnlCard = new Panel
+            {
+                Dock = DockStyle.Fill, // Or fixed size
+                BackColor = Color.White,
+                Padding = new Padding(20)
+            };
+            
+             Label lblSectionIcon = new Label { Text = "📚", Font = new Font("Segoe UI", 14F), AutoSize = true, Location = new Point(20, 20), ForeColor = ThemeConstants.PrimaryMaroon };
+             Label lblSectionTitle = new Label { Text = "Library Information", Font = new Font("Georgia", 16F, FontStyle.Bold), AutoSize = true, Location = new Point(50, 20), ForeColor = Color.Black };
+             Label lblSectionSub = new Label { Text = "Basic library details and contact information", Font = new Font("Segoe UI", 9F), AutoSize = true, Location = new Point(52, 50), ForeColor = Color.Gray };
+
+             int y = 90;
+             int col1X = 20;
+             int col2X = 520;
+             int fieldWidth = 450;
+
+             // Row 1
+             AddSettingsField(pnlCard, "Library Name", "Central University Library", col1X, y, fieldWidth);
+             AddSettingsField(pnlCard, "Email", "library@university.edu", col2X, y, fieldWidth);
+             
+             y += 80;
+             // Row 2
+             AddSettingsField(pnlCard, "Phone", "+1 555-123-4567", col1X, y, fieldWidth);
+             AddSettingsField(pnlCard, "Address", "123 Campus Drive, University City", col2X, y, fieldWidth);
+
+             // Save Button
+             Button btnSave = new Button
+             {
+                 Text = "💾 Save Changes",
+                 BackColor = ThemeConstants.PrimaryMaroon,
+                 ForeColor = Color.White,
+                 FlatStyle = FlatStyle.Flat,
+                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                 Size = new Size(150, 45),
+                 Location = new Point(col2X + fieldWidth - 150, y + 100),
+                 Cursor = Cursors.Hand
+             };
+             btnSave.FlatAppearance.BorderSize = 0;
+             btnSave.Click += (s, e) => {
+                 MessageBox.Show("Settings saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+             };
+
+             pnlCard.Controls.AddRange(new Control[] { lblSectionIcon, lblSectionTitle, lblSectionSub, btnSave });
+             pnlSettingsContent.Controls.Add(pnlCard);
+        }
+
+        private void AddSettingsField(Panel parent, string label, string value, int x, int y, int width)
+        {
+             Label lbl = new Label { Text = label, Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.Gray, AutoSize = true, Location = new Point(x, y) };
+             TextBox txt = new TextBox
+             {
+                 Text = value,
+                 Font = new Font("Segoe UI", 11F),
+                 Location = new Point(x, y + 25),
+                 Size = new Size(width, 35),
+                 BorderStyle = BorderStyle.FixedSingle
+             };
+             // Make pseudo-rounded border manually if needed, or stick to default for now
+             parent.Controls.Add(lbl);
+             parent.Controls.Add(txt);
+        }
+
+        private void ShowSettingsNotifications() { SetActiveSettingsTab(btnSettingNotifications); pnlSettingsContent.Controls.Clear(); }
+        private void ShowSettingsBorrowing() { SetActiveSettingsTab(btnSettingBorrowing); pnlSettingsContent.Controls.Clear(); }
+        private void ShowSettingsFines() { SetActiveSettingsTab(btnSettingFines); pnlSettingsContent.Controls.Clear(); }
+
+        private void ShowSearchView()
+        {
+            RestoreOriginalControls();
+            ShowDashboardControls(false);
+            pnlMembersView.Visible = false;
+            
+            if (pnlSearchView == null) SetupSearchView();
+
+            if (!pnlMainContent.Controls.Contains(pnlSearchView))
+            {
+                pnlMainContent.Controls.Add(pnlSearchView);
+            }
+
+            pnlSearchView.Visible = true;
+            pnlSearchView.BringToFront();
+            pnlSearchView.Dock = DockStyle.Fill;
+        }
+
+        private void SetupSearchView()
+        {
+            if (pnlSearchView != null) return;
+
+            pnlSearchView = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = ThemeConstants.BackgroundLight,
+                Padding = new Padding(30)
+            };
+
+            // 1. Header Section
+            Label lblTitle = new Label
+            {
+                Text = "Search & Discovery",
+                Font = new Font("Georgia", 20F, FontStyle.Bold), // Using Georgia for serif look similar to image
+                ForeColor = ThemeConstants.PrimaryMaroon,
+                AutoSize = true,
+                Location = new Point(0, 0)
+            };
+            Label lblSubtitle = new Label
+            {
+                Text = "Find books, resources, and check availability",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = Color.Gray,
+                AutoSize = true,
+                Location = new Point(2, 35)
+            };
+
+            // 2. Search Bar Panel
+            Panel pnlSearchBar = new Panel
+            {
+                Size = new Size(pnlSearchView.Width - 60, 60),
+                Location = new Point(0, 70),
+                BackColor = Color.White,
+                Padding = new Padding(10),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            };
+            // Add rounded border effect via Paint
+            pnlSearchBar.Paint += (s, e) => {
+                using (Pen p = new Pen(Color.LightGray)) {
+                    e.Graphics.DrawRectangle(p, 0, 0, pnlSearchBar.Width - 1, pnlSearchBar.Height - 1);
+                }
+            };
+
+            btnTriggerSearch = new Button
+            {
+                Text = "🔍 Search",
+                Size = new Size(100, 40),
+                BackColor = ThemeConstants.PrimaryMaroon,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Dock = DockStyle.Right,
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnTriggerSearch.FlatAppearance.BorderSize = 0;
+
+            btnSearchFilters = new Button
+            {
+                Text = "Reference  ▼", // Simplified filter icon
+                Size = new Size(100, 40),
+                BackColor = Color.White,
+                ForeColor = Color.Black,
+                FlatStyle = FlatStyle.Flat,
+                Dock = DockStyle.Right,
+                Font = new Font("Segoe UI", 10F),
+                 Cursor = Cursors.Hand
+            };
+             btnSearchFilters.FlatAppearance.BorderSize = 0;
+
+            txtSearchInput = new TextBox
+            {
+                BorderStyle = BorderStyle.None,
+                Font = new Font("Segoe UI", 12F),
+                ForeColor = Color.Gray,
+                Text = "Search by title, author, ISBN, subject...",
+                Location = new Point(40, 18), // Offset for icon
+                Width = 500, // Initial width
+                Anchor = AnchorStyles.Left | AnchorStyles.Right
+            };
+            // Search Icon (Label)
+            Label lblSearchIcon = new Label { Text = "🔍", Font = new Font("Segoe UI", 12F), Location = new Point(10, 15), AutoSize = true, ForeColor = Color.Gray };
+
+            // Resize txBox with panel
+            pnlSearchBar.Resize += (s, e) => {
+                txtSearchInput.Width = pnlSearchBar.Width - 260; // Adjust based on buttons
+            };
+
+            txtSearchInput.Enter += (s, e) => {
+                if(txtSearchInput.Text == "Search by title, author, ISBN, subject...") {
+                    txtSearchInput.Text = "";
+                    txtSearchInput.ForeColor = Color.Black;
+                }
+            };
+            txtSearchInput.Leave += (s, e) => {
+                if(string.IsNullOrWhiteSpace(txtSearchInput.Text)) {
+                    txtSearchInput.Text = "Search by title, author, ISBN, subject...";
+                    txtSearchInput.ForeColor = Color.Gray;
+                }
+            };
+
+            pnlSearchBar.Controls.Add(txtSearchInput);
+            pnlSearchBar.Controls.Add(lblSearchIcon);
+            pnlSearchBar.Controls.Add(btnSearchFilters);
+            pnlSearchBar.Controls.Add(btnTriggerSearch);
+
+
+            // 3. Content Panel (Empty State)
+            pnlSearchContent = new Panel
+            {
+                Location = new Point(0, 150),
+                Size = new Size(pnlSearchView.Width - 60, 500),
+                BackColor = Color.White,
+                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
+            };
+             pnlSearchContent.Paint += (s, e) => {
+                using (Pen p = new Pen(Color.LightGray)) {
+                    e.Graphics.DrawRectangle(p, 0, 0, pnlSearchContent.Width - 1, pnlSearchContent.Height - 1);
+                }
+            };
+
+            // Empty State Controls
+            Label lblEmptyIcon = new Label 
+            { 
+                Text = "🔍", 
+                Font = new Font("Segoe UI", 60F), 
+                ForeColor = Color.LightGray, 
+                AutoSize = true 
+            };
+            
+            Label lblEmptyTitle = new Label 
+            { 
+                Text = "Start your search", 
+                Font = new Font("Georgia", 16F, FontStyle.Bold), 
+                ForeColor = ThemeConstants.PrimaryMaroon, 
+                AutoSize = true 
+            };
+
+            Label lblEmptySub = new Label 
+            { 
+                Text = "Enter a search term to find books in the library catalog", 
+                Font = new Font("Segoe UI", 10F), 
+                ForeColor = Color.Gray, 
+                AutoSize = true 
+            };
+
+            // Center them
+            pnlSearchContent.Resize += (s, e) => {
+                int cx = pnlSearchContent.Width / 2;
+                int cy = pnlSearchContent.Height / 2;
+                
+                lblEmptyIcon.Location = new Point(cx - lblEmptyIcon.Width / 2, cy - 80);
+                lblEmptyTitle.Location = new Point(cx - lblEmptyTitle.Width / 2, cy + 20);
+                lblEmptySub.Location = new Point(cx - lblEmptySub.Width / 2, cy + 50);
+            };
+
+            // Chips
+            FlowLayoutPanel flpChips = new FlowLayoutPanel 
+            { 
+                AutoSize = true, 
+                Anchor = AnchorStyles.None 
+            };
+            string[] topics = { "Fiction", "Science", "History", "Technology" };
+            foreach(var t in topics)
+            {
+                Label chip = new Label { 
+                    Text = t, 
+                    AutoSize = true, 
+                    Padding = new Padding(10, 5, 10, 5), 
+                    BackColor = Color.FromArgb(240, 240, 240),
+                    ForeColor = Color.Gray,
+                    Font = new Font("Segoe UI", 9F),
+                    Margin = new Padding(5)
+                };
+                 chip.Paint += (s,e) => ControlPaint.DrawBorder(e.Graphics, chip.ClientRectangle, Color.LightGray, ButtonBorderStyle.Solid);
+                flpChips.Controls.Add(chip);
+            }
+             pnlSearchContent.Resize += (s, e) => {
+                 flpChips.Location = new Point((pnlSearchContent.Width - flpChips.Width) / 2, (pnlSearchContent.Height / 2) + 90);
+             };
+
+
+            pnlSearchContent.Controls.AddRange(new Control[] { lblEmptyIcon, lblEmptyTitle, lblEmptySub, flpChips });
+
+            pnlSearchView.Controls.Add(lblTitle);
+            pnlSearchView.Controls.Add(lblSubtitle);
+            pnlSearchView.Controls.Add(pnlSearchBar);
+            pnlSearchView.Controls.Add(pnlSearchContent);
         }
 
         private void LoadMembersData()
