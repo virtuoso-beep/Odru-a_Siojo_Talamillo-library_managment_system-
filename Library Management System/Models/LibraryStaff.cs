@@ -6,22 +6,18 @@ namespace Library_Management_System.Models
         {
             Role = UserRole.Staff;
         }
-
         public LibraryStaff(string email, string firstName, string lastName)
             : base(email, firstName, lastName)
         {
             Role = UserRole.Staff;
         }
- 
         public override string GetRoleDescription()
         {
             return "Library Staff - Process borrowing, returns, and member registration";
         }
-
         public override bool HasAccessToModule(string moduleName)
         {
             if (!IsActive) return false;
-
             switch (moduleName.ToLower())
             {
                 case "circulation":
@@ -39,4 +35,3 @@ namespace Library_Management_System.Models
         }
     }
 }
-

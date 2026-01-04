@@ -1,6 +1,5 @@
 using System;
 using System.Text.RegularExpressions;
-
 namespace Library_Management_System.Models
 {
     public abstract class User
@@ -13,7 +12,6 @@ namespace Library_Management_System.Models
         protected UserRole _role;
         protected bool _isActive;
         protected DateTime _createdDate;
-
         public int UserId
         {
             get { return _userId; }
@@ -24,7 +22,6 @@ namespace Library_Management_System.Models
                 _userId = value;
             }
         }
-
         public string Email
         {
             get { return _email; }
@@ -37,7 +34,6 @@ namespace Library_Management_System.Models
                 _email = value.Trim().ToLower();
             }
         }
-
         public string PasswordHash
         {
             get { return _passwordHash; }
@@ -48,7 +44,6 @@ namespace Library_Management_System.Models
                 _passwordHash = value;
             }
         }
-
         public string FirstName
         {
             get { return _firstName; }
@@ -59,7 +54,6 @@ namespace Library_Management_System.Models
                 _firstName = value.Trim();
             }
         }
-
         public string LastName
         {
             get { return _lastName; }
@@ -70,51 +64,38 @@ namespace Library_Management_System.Models
                 _lastName = value.Trim();
             }
         }
-
         public string FullName => $"{FirstName} {LastName}";
-
         public UserRole Role
         {
             get { return _role; }
             protected set { _role = value; }
         }
-
         public bool IsActive
         {
             get { return _isActive; }
             set { _isActive = value; }
         }
-
         public DateTime CreatedDate
         {
             get { return _createdDate; }
             set { _createdDate = value; }
         }
-
         public abstract string GetRoleDescription();
-
         public virtual bool HasAccessToModule(string moduleName)
         {
             return IsActive;
         }
-
         private bool IsValidEducationalEmail(string email)
         {
             if (string.IsNullOrWhiteSpace(email))
                 return false;
-
             email = email.Trim().ToLower();
-
             if (!email.EndsWith("@umindanao.edu.ph"))
                 return false;
-
             string localPart = email.Split('@')[0];
-
             string pattern = @"^[a-zA-Z]+\.[a-zA-Z]+\.[0-9]+\.tc$";
-
             if (!Regex.IsMatch(localPart, pattern))
                 return false;
-
             try
             {
                 var addr = new System.Net.Mail.MailAddress(email);
@@ -125,13 +106,11 @@ namespace Library_Management_System.Models
                 return false;
             }
         }
-
         protected User()
         {
             _createdDate = DateTime.Now;
             _isActive = true;   
         }
-
         protected User(string email, string firstName, string lastName)
         {
             Email = email;
@@ -142,4 +121,3 @@ namespace Library_Management_System.Models
         }
     }
 }
-

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Library_Management_System.Service;
-
 namespace Library_Management_System.Interfaces
 {
     public interface IMembersService

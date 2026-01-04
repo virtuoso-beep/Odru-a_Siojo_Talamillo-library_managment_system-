@@ -6,22 +6,18 @@ namespace Library_Management_System.Models
         {
             Role = UserRole.Administrator;
         }
-
         public Librarian(string email, string firstName, string lastName)
             : base(email, firstName, lastName)
         {
             Role = UserRole.Administrator;
         }
-
         public override string GetRoleDescription()
         {
             return "Librarian/Administrator - Full system access";
         }
-
         public override bool HasAccessToModule(string moduleName)
         {
             return IsActive;
         }
     }
 }
-

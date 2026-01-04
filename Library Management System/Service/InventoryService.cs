@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Data;
 using Library_Management_System.Helper;
 using MySql.Data.MySqlClient;
-
 namespace Library_Management_System.Service
 {
     public class InventoryService
@@ -22,32 +21,26 @@ namespace Library_Management_System.Service
             public string Condition { get; set; }
             public DateTime LastInventoryCheck { get; set; }
         }
-
         public List<InventoryInfo> GetInventory(string searchText = "", string categoryFilter = "All Categories", string statusFilter = "All Status")
         {
             var inventory = new List<InventoryInfo>();
-
             try
             {
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
                     string query = @"
                         SELECT BookId, ISBN, Title, Author, Category, TotalCopies, AvailableCopies,
                                CreatedDate as LastInventoryCheck
                         FROM Books WHERE 1=1";
-
                     if (!string.IsNullOrEmpty(searchText))
                     {
                         query += " AND (Title LIKE @search OR Author LIKE @search OR ISBN LIKE @search)";
                     }
-
                     if (categoryFilter != "All Categories")
                     {
                         query += " AND Category = @category";
                     }
-
                     if (statusFilter != "All Status")
                     {
                         switch (statusFilter)
@@ -63,9 +56,7 @@ namespace Library_Management_System.Service
                                 break;
                         }
                     }
-
                     query += " ORDER BY Title";
-
                     using (var command = new MySqlCommand(query, connection))
                     {
                         if (!string.IsNullOrEmpty(searchText))
@@ -76,7 +67,6 @@ namespace Library_Management_System.Service
                         {
                             command.Parameters.AddWithValue("@category", categoryFilter);
                         }
-
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -90,8 +80,8 @@ namespace Library_Management_System.Service
                                     Category = reader["Category"]?.ToString(),
                                     TotalCopies = Convert.ToInt32(reader["TotalCopies"]),
                                     AvailableCopies = Convert.ToInt32(reader["AvailableCopies"]),
-                                    Location = "Main Library", // Default location
-                                    Condition = "Good", // Default condition
+                                    Location = "Main Library",
+                                    Condition = "Good",
                                     LastInventoryCheck = Convert.ToDateTime(reader["LastInventoryCheck"])
                                 });
                             }
@@ -103,45 +93,32 @@ namespace Library_Management_System.Service
             {
                 System.Diagnostics.Debug.WriteLine($"Error getting inventory: {ex.Message}");
             }
-
             return inventory;
         }
-
         public Dictionary<string, int> GetInventorySummary()
         {
             var summary = new Dictionary<string, int>();
-
             try
             {
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
-                    // Total books
                     string totalQuery = "SELECT SUM(TotalCopies) FROM Books";
                     using (var cmd = new MySqlCommand(totalQuery, connection))
                     {
                         summary["TotalCopies"] = Convert.ToInt32(cmd.ExecuteScalar() ?? 0);
                     }
-
-                    // Available books
                     string availableQuery = "SELECT SUM(AvailableCopies) FROM Books";
                     using (var cmd = new MySqlCommand(availableQuery, connection))
                     {
                         summary["AvailableCopies"] = Convert.ToInt32(cmd.ExecuteScalar() ?? 0);
                     }
-
-                    // Borrowed books
                     summary["BorrowedCopies"] = summary["TotalCopies"] - summary["AvailableCopies"];
-
-                    // Out of stock books
                     string outOfStockQuery = "SELECT COUNT(*) FROM Books WHERE AvailableCopies = 0";
                     using (var cmd = new MySqlCommand(outOfStockQuery, connection))
                     {
                         summary["OutOfStock"] = Convert.ToInt32(cmd.ExecuteScalar() ?? 0);
                     }
-
-                    // Low stock books (2 or fewer available)
                     string lowStockQuery = "SELECT COUNT(*) FROM Books WHERE AvailableCopies > 0 AND AvailableCopies <= 2";
                     using (var cmd = new MySqlCommand(lowStockQuery, connection))
                     {
@@ -153,10 +130,8 @@ namespace Library_Management_System.Service
             {
                 System.Diagnostics.Debug.WriteLine($"Error getting inventory summary: {ex.Message}");
             }
-
             return summary;
         }
-
         public bool UpdateInventory(string bookId, int newTotalCopies)
         {
             try
@@ -164,11 +139,8 @@ namespace Library_Management_System.Service
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
-                    // Get current available copies
                     string getCurrentQuery = "SELECT AvailableCopies FROM Books WHERE BookId = @bookId";
                     int currentAvailable = 0;
-
                     using (var getCmd = new MySqlCommand(getCurrentQuery, connection))
                     {
                         getCmd.Parameters.AddWithValue("@bookId", bookId);
@@ -178,15 +150,11 @@ namespace Library_Management_System.Service
                             currentAvailable = Convert.ToInt32(result);
                         }
                     }
-
-                    // Calculate new available copies (can't exceed total, can't go below 0)
                     int newAvailable = System.Math.Min(System.Math.Max(0, currentAvailable), newTotalCopies);
-
                     string updateQuery = @"
                         UPDATE Books
                         SET TotalCopies = @totalCopies, AvailableCopies = @availableCopies
                         WHERE BookId = @bookId";
-
                     using (var command = new MySqlCommand(updateQuery, connection))
                     {
                         command.Parameters.AddWithValue("@bookId", bookId);
@@ -203,23 +171,19 @@ namespace Library_Management_System.Service
                 throw;
             }
         }
-
         public List<string> GetLowStockAlerts()
         {
             var alerts = new List<string>();
-
             try
             {
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
                     string query = @"
                         SELECT Title, AvailableCopies
                         FROM Books
                         WHERE AvailableCopies > 0 AND AvailableCopies <= 2
                         ORDER BY AvailableCopies";
-
                     using (var command = new MySqlCommand(query, connection))
                     {
                         using (var reader = command.ExecuteReader())
@@ -238,26 +202,21 @@ namespace Library_Management_System.Service
             {
                 System.Diagnostics.Debug.WriteLine($"Error getting low stock alerts: {ex.Message}");
             }
-
             return alerts;
         }
-
         public List<string> GetOutOfStockItems()
         {
             var outOfStock = new List<string>();
-
             try
             {
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
                     string query = @"
                         SELECT Title
                         FROM Books
                         WHERE AvailableCopies = 0
                         ORDER BY Title";
-
                     using (var command = new MySqlCommand(query, connection))
                     {
                         using (var reader = command.ExecuteReader())
@@ -274,10 +233,8 @@ namespace Library_Management_System.Service
             {
                 System.Diagnostics.Debug.WriteLine($"Error getting out of stock items: {ex.Message}");
             }
-
             return outOfStock;
         }
-
         public bool PerformInventoryAudit()
         {
             try
@@ -285,10 +242,7 @@ namespace Library_Management_System.Service
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
-                    // Update last inventory check date for all books
                     string updateQuery = "UPDATE Books SET CreatedDate = NOW()";
-
                     using (var command = new MySqlCommand(updateQuery, connection))
                     {
                         command.ExecuteNonQuery();

@@ -6,21 +6,18 @@ using System.Threading.Tasks;
 using System.Configuration;
 using System.Threading;
 using MySql.Data.MySqlClient;
-
 namespace Library_Management_System.Helper
 {
     public class MYSqlHelper
     {
         private const int MaxRetryAttempts = 3;
-        private const int RetryDelayMs = 1000; // 1 second
+        private const int RetryDelayMs = 1000;
         private const int ConnectionTimeoutSeconds = 30;
-
         public static MySqlConnection CreateConnection()
         {
             string connectionString = GetConnectionString();
             return CreateConnectionWithRetry(connectionString);
         }
-
         private static MySqlConnection CreateConnectionWithRetry(string connectionString, int retryCount = 0)
         {
             try
@@ -31,28 +28,24 @@ namespace Library_Management_System.Helper
             }
             catch (MySqlException ex) when (retryCount < MaxRetryAttempts)
             {
-                // Retry on connection timeout or network errors
-                if (ex.Number == 1042 || ex.Number == 2003 || ex.Number == 0) // Connection errors
+                if (ex.Number == 1042 || ex.Number == 2003 || ex.Number == 0)
                 {
                     System.Diagnostics.Debug.WriteLine($"Database connection attempt {retryCount + 1} failed: {ex.Message}. Retrying...");
-                    Thread.Sleep(RetryDelayMs * (retryCount + 1)); // Exponential backoff
+                    Thread.Sleep(RetryDelayMs * (retryCount + 1));
                     return CreateConnectionWithRetry(connectionString, retryCount + 1);
                 }
                 throw;
             }
         }
-
         public static string GetConnectionString()
         {
             return ConfigurationManager.ConnectionStrings["MySQLConnection"].ConnectionString;
         }
-
         public static string GetBaseConnectionString()
         {
             var builder = new MySql.Data.MySqlClient.MySqlConnectionStringBuilder(ConfigurationManager.ConnectionStrings["MySQLConnection"].ConnectionString);
             builder.Database = "";
             return builder.ConnectionString;
         }
-
     }
 }

@@ -1,0 +1,11 @@
+using System;
+namespace Library_Management_System.Helper
+{
+    public class DatabaseException : Exception
+    {
+        public DatabaseException() : base() { }
+        public DatabaseException(string message) : base(message) { }
+        public DatabaseException(string message, Exception innerException) 
+            : base(message, innerException) { }
+    }
+}

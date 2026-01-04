@@ -4,7 +4,6 @@ using System.Data;
 using Library_Management_System.Helper;
 using Library_Management_System.Interfaces;
 using MySql.Data.MySqlClient;
-
 namespace Library_Management_System.Service
 {
     public class FinesService : IFineService
@@ -12,61 +11,29 @@ namespace Library_Management_System.Service
         public class FineInfo
         {
             public string FineId { get; set; }
-            public string BorrowingId { get; set; }
             public string MemberId { get; set; }
             public string MemberName { get; set; }
-            public string BookTitle { get; set; }
+            public string MemberNumber { get; set; }
             public decimal Amount { get; set; }
             public string Reason { get; set; }
             public string Status { get; set; }
             public DateTime CreatedDate { get; set; }
             public DateTime? PaidDate { get; set; }
+            public string BorrowingId { get; set; }
+            public string BookTitle { get; set; }
         }
-
-        public List<FineInfo> GetFines(string searchText = "", string statusFilter = "All Status")
+        public List<FineInfo> GetFines(string searchText = "", string statusFilter = "All")
         {
             var fines = new List<FineInfo>();
-
             try
             {
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
-                    string query = @"
-                        SELECT f.FineId, f.BorrowingId, f.MemberId, f.Amount, f.Reason, f.Status, f.CreatedDate, f.PaidDate,
-                               CONCAT(u.FirstName, ' ', u.LastName) as MemberName,
-                               COALESCE(bk.Title, '') as BookTitle
-                        FROM Fines f
-                        INNER JOIN Members m ON f.MemberId = m.MemberId
-                        INNER JOIN Users u ON m.UserId = u.UserId
-                        LEFT JOIN Borrowings b ON f.BorrowingId = b.BorrowingId
-                        LEFT JOIN Books bk ON b.BookId = bk.BookId
-                        WHERE 1=1";
-
-                    if (!string.IsNullOrEmpty(searchText))
+                    using (var command = StoredProcedureHelper.CreateCommand("SP_GetAllFines", connection))
                     {
-                        query += " AND (CONCAT(u.FirstName, ' ', u.LastName) LIKE @search OR COALESCE(bk.Title, '') LIKE @search OR f.Reason LIKE @search)";
-                    }
-
-                    if (statusFilter != "All Status")
-                    {
-                        query += " AND f.Status = @status";
-                    }
-
-                    query += " ORDER BY f.CreatedDate DESC";
-
-                    using (var command = new MySqlCommand(query, connection))
-                    {
-                        if (!string.IsNullOrEmpty(searchText))
-                        {
-                            command.Parameters.AddWithValue("@search", $"%{searchText}%");
-                        }
-                        if (statusFilter != "All Status")
-                        {
-                            command.Parameters.AddWithValue("@status", statusFilter);
-                        }
-
+                        StoredProcedureHelper.AddParameter(command, "p_SearchText", string.IsNullOrWhiteSpace(searchText) ? null : searchText);
+                        StoredProcedureHelper.AddParameter(command, "p_StatusFilter", statusFilter == "All" ? null : statusFilter);
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -74,15 +41,15 @@ namespace Library_Management_System.Service
                                 fines.Add(new FineInfo
                                 {
                                     FineId = reader["FineId"].ToString(),
-                                    BorrowingId = reader["BorrowingId"] != DBNull.Value ? reader["BorrowingId"].ToString() : null,
                                     MemberId = reader["MemberId"].ToString(),
+                                    MemberNumber = reader["MemberNumber"].ToString(),
                                     MemberName = reader["MemberName"].ToString(),
-                                    BookTitle = reader["BookTitle"] != DBNull.Value ? reader["BookTitle"].ToString() : "",
                                     Amount = Convert.ToDecimal(reader["Amount"]),
-                                    Reason = reader["Reason"]?.ToString(),
+                                    Reason = reader["Reason"].ToString(),
                                     Status = reader["Status"].ToString(),
                                     CreatedDate = Convert.ToDateTime(reader["CreatedDate"]),
-                                    PaidDate = reader["PaidDate"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["PaidDate"]) : null
+                                    PaidDate = reader["PaidDate"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["PaidDate"]) : null,
+                                    BorrowingId = reader["BorrowingId"]?.ToString()
                                 });
                             }
                         }
@@ -93,10 +60,8 @@ namespace Library_Management_System.Service
             {
                 System.Diagnostics.Debug.WriteLine($"Error getting fines: {ex.Message}");
             }
-
             return fines;
         }
-
         public bool ProcessFinePayment(string fineId)
         {
             try
@@ -104,19 +69,19 @@ namespace Library_Management_System.Service
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
-                    string query = @"
-                        UPDATE Fines
-                        SET Status = 'Paid', PaidDate = NOW()
-                        WHERE FineId = @fineId AND Status = 'Unpaid'";
-
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = StoredProcedureHelper.CreateCommand("SP_ProcessFinePayment", connection))
                     {
-                        command.Parameters.AddWithValue("@fineId", fineId);
-                        int rowsAffected = command.ExecuteNonQuery();
-
-                        return rowsAffected > 0;
+                        StoredProcedureHelper.AddParameter(command, "p_FineId", int.Parse(fineId));
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                int rowsAffected = Convert.ToInt32(reader["RowsAffected"]);
+                                return rowsAffected > 0;
+                            }
+                        }
                     }
+                    return false;
                 }
             }
             catch (Exception ex)
@@ -125,7 +90,6 @@ namespace Library_Management_System.Service
                 throw;
             }
         }
-
         public bool WaiveFine(string fineId, string reason)
         {
             try
@@ -133,20 +97,19 @@ namespace Library_Management_System.Service
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
-                    string query = @"
-                        UPDATE Fines
-                        SET Status = 'Waived', PaidDate = NOW(), Reason = CONCAT(IFNULL(Reason, ''), ' [WAIVED: ', @reason, ']')
-                        WHERE FineId = @fineId AND Status = 'Unpaid'";
-
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = StoredProcedureHelper.CreateCommand("SP_WaiveFine", connection))
                     {
-                        command.Parameters.AddWithValue("@fineId", fineId);
-                        command.Parameters.AddWithValue("@reason", reason);
-                        int rowsAffected = command.ExecuteNonQuery();
-
-                        return rowsAffected > 0;
+                        StoredProcedureHelper.AddParameter(command, "p_FineId", int.Parse(fineId));
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                int rowsAffected = Convert.ToInt32(reader["RowsAffected"]);
+                                return rowsAffected > 0;
+                            }
+                        }
                     }
+                    return false;
                 }
             }
             catch (Exception ex)
@@ -155,7 +118,6 @@ namespace Library_Management_System.Service
                 throw;
             }
         }
-
         public decimal GetTotalFines(string memberId = null, string status = null)
         {
             try
@@ -163,42 +125,45 @@ namespace Library_Management_System.Service
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
-                    string query = "SELECT SUM(Amount) FROM Fines WHERE 1=1";
-
-                    if (!string.IsNullOrEmpty(memberId))
+                    if (string.IsNullOrWhiteSpace(memberId))
                     {
-                        query += " AND MemberId = @memberId";
-                    }
-
-                    if (!string.IsNullOrEmpty(status))
-                    {
-                        query += " AND Status = @status";
-                    }
-
-                    using (var command = new MySqlCommand(query, connection))
-                    {
-                        if (!string.IsNullOrEmpty(memberId))
+                        using (var command = StoredProcedureHelper.CreateCommand("SP_GetAllFines", connection))
                         {
-                            command.Parameters.AddWithValue("@memberId", memberId);
+                            StoredProcedureHelper.AddParameter(command, "p_SearchText", null);
+                            StoredProcedureHelper.AddParameter(command, "p_StatusFilter", status ?? "Pending");
+                            decimal total = 0;
+                            using (var reader = command.ExecuteReader())
+                            {
+                                while (reader.Read())
+                                {
+                                    total += Convert.ToDecimal(reader["Amount"]);
+                                }
+                            }
+                            return total;
                         }
-                        if (!string.IsNullOrEmpty(status))
+                    }
+                    else
+                    {
+                        using (var command = StoredProcedureHelper.CreateCommand("SP_GetTotalFines", connection))
                         {
-                            command.Parameters.AddWithValue("@status", status);
+                            StoredProcedureHelper.AddParameter(command, "p_MemberId", int.Parse(memberId));
+                            using (var reader = command.ExecuteReader())
+                            {
+                                if (reader.Read())
+                                {
+                                    return Convert.ToDecimal(reader["TotalFines"]);
+                                }
+                            }
                         }
-
-                        var result = command.ExecuteScalar();
-                        return result != DBNull.Value ? Convert.ToDecimal(result) : 0;
                     }
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error getting total fines: {ex.Message}");
-                return 0;
             }
+            return 0;
         }
-
         public FineInfo GetFineById(string fineId)
         {
             try
@@ -206,22 +171,9 @@ namespace Library_Management_System.Service
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
-                    string query = @"
-                        SELECT f.FineId, f.BorrowingId, f.MemberId, f.Amount, f.Reason, f.Status, f.CreatedDate, f.PaidDate,
-                               CONCAT(u.FirstName, ' ', u.LastName) as MemberName,
-                               COALESCE(bk.Title, '') as BookTitle
-                        FROM Fines f
-                        INNER JOIN Members m ON f.MemberId = m.MemberId
-                        INNER JOIN Users u ON m.UserId = u.UserId
-                        LEFT JOIN Borrowings b ON f.BorrowingId = b.BorrowingId
-                        LEFT JOIN Books bk ON b.BookId = bk.BookId
-                        WHERE f.FineId = @fineId";
-
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = StoredProcedureHelper.CreateCommand("SP_GetFineById", connection))
                     {
-                        command.Parameters.AddWithValue("@fineId", fineId);
-
+                        StoredProcedureHelper.AddParameter(command, "p_FineId", int.Parse(fineId));
                         using (var reader = command.ExecuteReader())
                         {
                             if (reader.Read())
@@ -229,15 +181,16 @@ namespace Library_Management_System.Service
                                 return new FineInfo
                                 {
                                     FineId = reader["FineId"].ToString(),
-                                    BorrowingId = reader["BorrowingId"] != DBNull.Value ? reader["BorrowingId"].ToString() : null,
                                     MemberId = reader["MemberId"].ToString(),
+                                    MemberNumber = reader["MemberNumber"].ToString(),
                                     MemberName = reader["MemberName"].ToString(),
-                                    BookTitle = reader["BookTitle"] != DBNull.Value ? reader["BookTitle"].ToString() : "",
+                                    BorrowingId = reader["BorrowingId"]?.ToString(),
                                     Amount = Convert.ToDecimal(reader["Amount"]),
-                                    Reason = reader["Reason"]?.ToString(),
+                                    Reason = reader["Reason"].ToString(),
                                     Status = reader["Status"].ToString(),
                                     CreatedDate = Convert.ToDateTime(reader["CreatedDate"]),
-                                    PaidDate = reader["PaidDate"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["PaidDate"]) : null
+                                    PaidDate = reader["PaidDate"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["PaidDate"]) : null,
+                                    BookTitle = reader["BookTitle"]?.ToString()
                                 };
                             }
                         }
@@ -248,11 +201,8 @@ namespace Library_Management_System.Service
             {
                 System.Diagnostics.Debug.WriteLine($"Error getting fine: {ex.Message}");
             }
-
             return null;
         }
-
-        // Calculate fines for overdue books (can be called periodically)
         public void CalculateOverdueFines()
         {
             try
@@ -260,53 +210,15 @@ namespace Library_Management_System.Service
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
-                    // Find overdue borrowings without fines
-                    string query = @"
-                        SELECT b.BorrowingId, b.MemberId, b.BookId, b.DueDate
-                        FROM Borrowings b
-                        WHERE b.ReturnDate IS NULL
-                        AND b.DueDate < CURDATE()
-                        AND NOT EXISTS (
-                            SELECT 1 FROM Fines f
-                            WHERE f.BorrowingId = b.BorrowingId
-                            AND f.Status = 'Unpaid'
-                        )";
-
-                    var overdueBorrowings = new List<(string borrowingId, string memberId, DateTime dueDate)>();
-
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = StoredProcedureHelper.CreateCommand("SP_CalculateOverdueFines", connection))
                     {
                         using (var reader = command.ExecuteReader())
                         {
-                            while (reader.Read())
+                            if (reader.Read())
                             {
-                                overdueBorrowings.Add((
-                                    reader["BorrowingId"].ToString(),
-                                    reader["MemberId"].ToString(),
-                                    Convert.ToDateTime(reader["DueDate"])
-                                ));
+                                int finesCreated = Convert.ToInt32(reader["FinesCreated"]);
+                                System.Diagnostics.Debug.WriteLine($"Created {finesCreated} overdue fines");
                             }
-                        }
-                    }
-
-                    // Create fines for overdue borrowings
-                    foreach (var (borrowingId, memberId, dueDate) in overdueBorrowings)
-                    {
-                        TimeSpan overdue = DateTime.Now - dueDate;
-                        int overdueDays = (int)System.Math.Ceiling(overdue.TotalDays);
-                        decimal fineAmount = overdueDays * 5.00m; // $5 per day
-
-                        string insertFineQuery = @"
-                            INSERT INTO Fines (BorrowingId, MemberId, Amount, Reason, Status)
-                            VALUES (@borrowingId, @memberId, @amount, 'Overdue return', 'Unpaid')";
-
-                        using (var fineCmd = new MySqlCommand(insertFineQuery, connection))
-                        {
-                            fineCmd.Parameters.AddWithValue("@borrowingId", borrowingId);
-                            fineCmd.Parameters.AddWithValue("@memberId", memberId);
-                            fineCmd.Parameters.AddWithValue("@amount", fineAmount);
-                            fineCmd.ExecuteNonQuery();
                         }
                     }
                 }
@@ -316,13 +228,10 @@ namespace Library_Management_System.Service
                 System.Diagnostics.Debug.WriteLine($"Error calculating overdue fines: {ex.Message}");
             }
         }
-
-        // Alias method for backward compatibility
         public void ProcessOverdueFines()
         {
             CalculateOverdueFines();
         }
-
         public bool AddFine(string memberId, decimal amount, string reason, string bookTitle = null, string notes = null)
         {
             try
@@ -330,31 +239,23 @@ namespace Library_Management_System.Service
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
-                    // Build reason string - include book title and notes if provided
-                    string fullReason = reason;
-                    if (!string.IsNullOrWhiteSpace(bookTitle))
+                    using (var command = StoredProcedureHelper.CreateCommand("SP_AddFine", connection))
                     {
-                        fullReason = $"{reason} - {bookTitle}";
+                        StoredProcedureHelper.AddParameter(command, "p_MemberId", int.Parse(memberId));
+                        StoredProcedureHelper.AddParameter(command, "p_BorrowingId", null);
+                        StoredProcedureHelper.AddParameter(command, "p_Amount", amount);
+                        StoredProcedureHelper.AddParameter(command, "p_Reason", reason + (bookTitle != null ? $" - Book: {bookTitle}" : "") + (notes != null ? $" - Notes: {notes}" : ""));
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                int fineId = Convert.ToInt32(reader["FineId"]);
+                                System.Diagnostics.Debug.WriteLine($"Fine created with ID: {fineId}");
+                                return true;
+                            }
+                        }
                     }
-                    if (!string.IsNullOrWhiteSpace(notes))
-                    {
-                        fullReason += string.IsNullOrWhiteSpace(bookTitle) ? $" - {notes}" : $" ({notes})";
-                    }
-
-                    string query = @"
-                        INSERT INTO Fines (BorrowingId, MemberId, Amount, Reason, Status, CreatedDate)
-                        VALUES (NULL, @memberId, @amount, @reason, 'Unpaid', NOW())";
-
-                    using (var command = new MySqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("@memberId", memberId);
-                        command.Parameters.AddWithValue("@amount", amount);
-                        command.Parameters.AddWithValue("@reason", fullReason);
-                        int rowsAffected = command.ExecuteNonQuery();
-
-                        return rowsAffected > 0;
-                    }
+                    return false;
                 }
             }
             catch (Exception ex)

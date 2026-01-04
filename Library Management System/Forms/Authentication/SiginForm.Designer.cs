@@ -3,7 +3,6 @@
     partial class SiginForm
     {
         private System.ComponentModel.IContainer components = null;
-
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
@@ -12,9 +11,7 @@
             }
             base.Dispose(disposing);
         }
-
         #region Windows Form Designer generated code
-
         private void InitializeComponent()
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(SiginForm));
@@ -43,26 +40,21 @@
             this.pnlHeader.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.picLogo)).BeginInit();
             this.SuspendLayout();
-            // 
-            // btnClose
-            // 
             this.btnClose.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnClose.BackColor = System.Drawing.Color.Transparent;
             this.btnClose.FlatAppearance.BorderSize = 0;
             this.btnClose.FlatAppearance.MouseOverBackColor = System.Drawing.Color.Red;
             this.btnClose.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnClose.Font = new System.Drawing.Font("Microsoft Sans Serif", 16F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnClose.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnClose.ForeColor = System.Drawing.Color.Black;
             this.btnClose.Location = new System.Drawing.Point(967, 12);
             this.btnClose.Name = "btnClose";
             this.btnClose.Size = new System.Drawing.Size(50, 50);
             this.btnClose.TabIndex = 2;
             this.btnClose.Text = "×";
+            this.btnClose.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnClose.UseVisualStyleBackColor = false;
             this.btnClose.Click += new System.EventHandler(this.btnClose_Click);
-            // 
-            // pnlMainCard
-            // 
             this.pnlMainCard.Anchor = System.Windows.Forms.AnchorStyles.None;
             this.pnlMainCard.BackColor = System.Drawing.Color.White;
             this.pnlMainCard.Controls.Add(this.btnSignIn);
@@ -79,9 +71,6 @@
             this.pnlMainCard.Name = "pnlMainCard";
             this.pnlMainCard.Size = new System.Drawing.Size(640, 800);
             this.pnlMainCard.TabIndex = 0;
-            // 
-            // btnSignIn
-            // 
             this.btnSignIn.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
             this.btnSignIn.FlatAppearance.BorderSize = 0;
             this.btnSignIn.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -94,9 +83,6 @@
             this.btnSignIn.Text = "Sign In";
             this.btnSignIn.UseVisualStyleBackColor = false;
             this.btnSignIn.Click += new System.EventHandler(this.btnSignIn_Click);
-            // 
-            // pnlComboContainer
-            // 
             this.pnlComboContainer.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
             this.pnlComboContainer.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.pnlComboContainer.Controls.Add(this.cmbLoginAs);
@@ -104,9 +90,6 @@
             this.pnlComboContainer.Name = "pnlComboContainer";
             this.pnlComboContainer.Size = new System.Drawing.Size(500, 50);
             this.pnlComboContainer.TabIndex = 7;
-            // 
-            // cmbLoginAs
-            // 
             this.cmbLoginAs.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
@@ -123,9 +106,6 @@
             this.cmbLoginAs.Name = "cmbLoginAs";
             this.cmbLoginAs.Size = new System.Drawing.Size(470, 40);
             this.cmbLoginAs.TabIndex = 0;
-            // 
-            // lblLoginAs
-            // 
             this.lblLoginAs.AutoSize = true;
             this.lblLoginAs.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblLoginAs.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
@@ -134,9 +114,6 @@
             this.lblLoginAs.Size = new System.Drawing.Size(105, 32);
             this.lblLoginAs.TabIndex = 6;
             this.lblLoginAs.Text = "Login As";
-            // 
-            // pnlPasswordContainer
-            // 
             this.pnlPasswordContainer.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
             this.pnlPasswordContainer.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.pnlPasswordContainer.Controls.Add(this.btnTogglePassword);
@@ -145,35 +122,27 @@
             this.pnlPasswordContainer.Name = "pnlPasswordContainer";
             this.pnlPasswordContainer.Size = new System.Drawing.Size(500, 66);
             this.pnlPasswordContainer.TabIndex = 5;
-            // 
-            // btnTogglePassword
-            // 
             this.btnTogglePassword.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnTogglePassword.BackColor = System.Drawing.Color.Transparent;
             this.btnTogglePassword.FlatAppearance.BorderSize = 0;
             this.btnTogglePassword.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnTogglePassword.Font = new System.Drawing.Font("Segoe UI Emoji", 16F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnTogglePassword.Font = new System.Drawing.Font("Segoe UI Emoji", 18F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnTogglePassword.Location = new System.Drawing.Point(418, 3);
             this.btnTogglePassword.Name = "btnTogglePassword";
             this.btnTogglePassword.Size = new System.Drawing.Size(56, 60);
             this.btnTogglePassword.TabIndex = 1;
             this.btnTogglePassword.Text = "👁";
             this.btnTogglePassword.UseVisualStyleBackColor = false;
+            this.btnTogglePassword.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnTogglePassword.Click += new System.EventHandler(this.btnTogglePassword_Click);
-            // 
-            // txtPassword
-            //
             this.txtPassword.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
             this.txtPassword.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.txtPassword.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.txtPassword.Location = new System.Drawing.Point(15, 18);
             this.txtPassword.Name = "txtPassword";
-            this.txtPassword.PasswordChar = '●';
+            this.txtPassword.PasswordChar = '\0';
             this.txtPassword.Size = new System.Drawing.Size(400, 32);
             this.txtPassword.TabIndex = 0;
-            // 
-            // lblPassword
-            // 
             this.lblPassword.AutoSize = true;
             this.lblPassword.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblPassword.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
@@ -182,9 +151,6 @@
             this.lblPassword.Size = new System.Drawing.Size(111, 32);
             this.lblPassword.TabIndex = 4;
             this.lblPassword.Text = "Password";
-            // 
-            // pnlEmailContainer
-            // 
             this.pnlEmailContainer.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
             this.pnlEmailContainer.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.pnlEmailContainer.Controls.Add(this.txtEmail);
@@ -192,9 +158,6 @@
             this.pnlEmailContainer.Name = "pnlEmailContainer";
             this.pnlEmailContainer.Size = new System.Drawing.Size(500, 55);
             this.pnlEmailContainer.TabIndex = 3;
-            // 
-            // txtEmail
-            //
             this.txtEmail.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
             this.txtEmail.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.txtEmail.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -202,9 +165,6 @@
             this.txtEmail.Name = "txtEmail";
             this.txtEmail.Size = new System.Drawing.Size(470, 32);
             this.txtEmail.TabIndex = 0;
-            // 
-            // lblEmail
-            // 
             this.lblEmail.AutoSize = true;
             this.lblEmail.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblEmail.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
@@ -213,9 +173,6 @@
             this.lblEmail.Size = new System.Drawing.Size(71, 32);
             this.lblEmail.TabIndex = 2;
             this.lblEmail.Text = "Email";
-            // 
-            // lblInstruction
-            // 
             this.lblInstruction.AutoSize = true;
             this.lblInstruction.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblInstruction.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(100)))), ((int)(((byte)(100)))));
@@ -224,9 +181,6 @@
             this.lblInstruction.Size = new System.Drawing.Size(493, 30);
             this.lblInstruction.TabIndex = 1;
             this.lblInstruction.Text = "Enter your credentials to access the library system";
-            // 
-            // lblSignIn
-            // 
             this.lblSignIn.AutoSize = true;
             this.lblSignIn.Font = new System.Drawing.Font("Segoe UI", 32F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblSignIn.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(40)))));
@@ -235,9 +189,6 @@
             this.lblSignIn.Size = new System.Drawing.Size(247, 86);
             this.lblSignIn.TabIndex = 0;
             this.lblSignIn.Text = "Sign In";
-            // 
-            // pnlHeader
-            // 
             this.pnlHeader.BackColor = System.Drawing.Color.Transparent;
             this.pnlHeader.Controls.Add(this.lblLibraryMS);
             this.pnlHeader.Controls.Add(this.picLogo);
@@ -245,9 +196,6 @@
             this.pnlHeader.Name = "pnlHeader";
             this.pnlHeader.Size = new System.Drawing.Size(550, 80);
             this.pnlHeader.TabIndex = 1;
-            // 
-            // lblLibraryMS
-            // 
             this.lblLibraryMS.AutoSize = true;
             this.lblLibraryMS.BackColor = System.Drawing.Color.Transparent;
             this.lblLibraryMS.Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -257,9 +205,6 @@
             this.lblLibraryMS.Size = new System.Drawing.Size(152, 38);
             this.lblLibraryMS.TabIndex = 1;
             this.lblLibraryMS.Text = "LibraryMS";
-            // 
-            // picLogo
-            // 
             this.picLogo.BackColor = System.Drawing.Color.Transparent;
             this.picLogo.ImageLocation = "";
             this.picLogo.Location = new System.Drawing.Point(0, 5);
@@ -268,9 +213,6 @@
             this.picLogo.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.picLogo.TabIndex = 0;
             this.picLogo.TabStop = false;
-            // 
-            // SiginForm
-            // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(245)))), ((int)(((byte)(240)))), ((int)(((byte)(230)))));
@@ -295,11 +237,8 @@
             this.pnlHeader.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.picLogo)).EndInit();
             this.ResumeLayout(false);
-
         }
-
         #endregion
-
         private System.Windows.Forms.Panel pnlMainCard;
         private System.Windows.Forms.Label lblSignIn;
         private System.Windows.Forms.Label lblInstruction;
@@ -320,4 +259,3 @@
         private System.Windows.Forms.Button btnTogglePassword;
     }
 }
-

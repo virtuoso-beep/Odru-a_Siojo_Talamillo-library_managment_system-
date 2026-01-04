@@ -4,7 +4,6 @@ using System.Data;
 using Library_Management_System.Helper;
 using Library_Management_System.Interfaces;
 using MySql.Data.MySqlClient;
-
 namespace Library_Management_System.Service
 {
     public class BookService : IBookService
@@ -15,6 +14,7 @@ namespace Library_Management_System.Service
             public string ISBN { get; set; }
             public string Title { get; set; }
             public string Author { get; set; }
+            public string Location { get; set; }
             public string Publisher { get; set; }
             public int? PublicationYear { get; set; }
             public string Category { get; set; }
@@ -23,45 +23,18 @@ namespace Library_Management_System.Service
             public string Description { get; set; }
             public DateTime CreatedDate { get; set; }
         }
-
         public List<BookInfo> GetBooks(string searchText = "", string categoryFilter = "All Categories")
         {
             var books = new List<BookInfo>();
-
             try
             {
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
-                    string query = @"
-                        SELECT BookId, ISBN, Title, Author, Publisher, PublicationYear,
-                               Category, TotalCopies, AvailableCopies, Description, CreatedDate
-                        FROM Books WHERE 1=1";
-
-                    if (!string.IsNullOrEmpty(searchText))
+                    using (var command = StoredProcedureHelper.CreateCommand("SP_GetAllBooks", connection))
                     {
-                        query += " AND (Title LIKE @search OR Author LIKE @search OR ISBN LIKE @search)";
-                    }
-
-                    if (categoryFilter != "All Categories")
-                    {
-                        query += " AND Category = @category";
-                    }
-
-                    query += " ORDER BY Title";
-
-                    using (var command = new MySqlCommand(query, connection))
-                    {
-                        if (!string.IsNullOrEmpty(searchText))
-                        {
-                            command.Parameters.AddWithValue("@search", $"%{searchText}%");
-                        }
-                        if (categoryFilter != "All Categories")
-                        {
-                            command.Parameters.AddWithValue("@category", categoryFilter);
-                        }
-
+                        StoredProcedureHelper.AddParameter(command, "p_SearchText", string.IsNullOrWhiteSpace(searchText) ? null : searchText);
+                        StoredProcedureHelper.AddParameter(command, "p_CategoryFilter", categoryFilter == "All Categories" ? null : categoryFilter);
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -77,6 +50,7 @@ namespace Library_Management_System.Service
                                     Category = reader["Category"]?.ToString(),
                                     TotalCopies = Convert.ToInt32(reader["TotalCopies"]),
                                     AvailableCopies = Convert.ToInt32(reader["AvailableCopies"]),
+                                    Location = reader["Location"]?.ToString(),
                                     Description = reader["Description"]?.ToString(),
                                     CreatedDate = Convert.ToDateTime(reader["CreatedDate"])
                                 });
@@ -89,23 +63,17 @@ namespace Library_Management_System.Service
             {
                 System.Diagnostics.Debug.WriteLine($"Error getting books: {ex.Message}");
             }
-
             return books;
         }
-
         public List<string> GetCategories()
         {
             var categories = new List<string>();
-
             try
             {
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
-                    string query = "SELECT DISTINCT Category FROM Books WHERE Category IS NOT NULL ORDER BY Category";
-
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = StoredProcedureHelper.CreateCommand("SP_GetBookCategories", connection))
                     {
                         using (var reader = command.ExecuteReader())
                         {
@@ -121,57 +89,11 @@ namespace Library_Management_System.Service
             {
                 System.Diagnostics.Debug.WriteLine($"Error getting categories: {ex.Message}");
             }
-
             return categories;
         }
-
         private void EnsureBooksTableExists(MySqlConnection connection)
         {
-            try
-            {
-                // Check if Books table exists
-                string checkTableQuery = @"
-                    SELECT COUNT(*)
-                    FROM information_schema.tables
-                    WHERE table_schema = DATABASE()
-                    AND table_name = 'Books'";
-
-                using (var command = new MySqlCommand(checkTableQuery, connection))
-                {
-                    int tableCount = Convert.ToInt32(command.ExecuteScalar());
-
-                    if (tableCount == 0)
-                    {
-                        // Create Books table
-                        string createTableQuery = @"
-                            CREATE TABLE Books (
-                                BookId INT PRIMARY KEY AUTO_INCREMENT,
-                                ISBN VARCHAR(20) UNIQUE,
-                                Title VARCHAR(255) NOT NULL,
-                                Author VARCHAR(255) NOT NULL,
-                                Publisher VARCHAR(255),
-                                PublicationYear INT,
-                                Category VARCHAR(100),
-                                TotalCopies INT DEFAULT 1,
-                                AvailableCopies INT DEFAULT 1,
-                                Description TEXT,
-                                CreatedDate DATETIME DEFAULT CURRENT_TIMESTAMP
-                            )";
-
-                        using (var createCommand = new MySqlCommand(createTableQuery, connection))
-                        {
-                            createCommand.ExecuteNonQuery();
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error ensuring Books table exists: {ex.Message}");
-                // Don't throw - let the calling method handle errors
-            }
         }
-
         public bool AddBook(string isbn, string title, string author, string publisher,
                            int? publicationYear, string category, int totalCopies, string description)
         {
@@ -180,26 +102,25 @@ namespace Library_Management_System.Service
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-                    
-                    // Ensure Books table exists before using it
-                    EnsureBooksTableExists(connection);
-
-                    string query = @"
-                        INSERT INTO Books (ISBN, Title, Author, Publisher, PublicationYear, Category, TotalCopies, AvailableCopies, Description)
-                        VALUES (@isbn, @title, @author, @publisher, @publicationYear, @category, @totalCopies, @totalCopies, @description)";
-
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = StoredProcedureHelper.CreateCommand("SP_AddBook", connection))
                     {
-                        command.Parameters.AddWithValue("@isbn", string.IsNullOrWhiteSpace(isbn) ? (object)DBNull.Value : isbn.Trim());
-                        command.Parameters.AddWithValue("@title", title.Trim());
-                        command.Parameters.AddWithValue("@author", author.Trim());
-                        command.Parameters.AddWithValue("@publisher", string.IsNullOrWhiteSpace(publisher) ? (object)DBNull.Value : publisher.Trim());
-                        command.Parameters.AddWithValue("@publicationYear", publicationYear ?? (object)DBNull.Value);
-                        command.Parameters.AddWithValue("@category", string.IsNullOrWhiteSpace(category) ? (object)DBNull.Value : category.Trim());
-                        command.Parameters.AddWithValue("@totalCopies", totalCopies);
-                        command.Parameters.AddWithValue("@description", string.IsNullOrWhiteSpace(description) ? (object)DBNull.Value : description.Trim());
-
-                        command.ExecuteNonQuery();
+                        StoredProcedureHelper.AddParameter(command, "p_Title", title?.Trim());
+                        StoredProcedureHelper.AddParameter(command, "p_Author", author?.Trim());
+                        StoredProcedureHelper.AddParameter(command, "p_ISBN", string.IsNullOrWhiteSpace(isbn) ? null : isbn.Trim());
+                        StoredProcedureHelper.AddParameter(command, "p_Publisher", string.IsNullOrWhiteSpace(publisher) ? null : publisher.Trim());
+                        StoredProcedureHelper.AddParameter(command, "p_PublicationYear", publicationYear);
+                        StoredProcedureHelper.AddParameter(command, "p_Category", string.IsNullOrWhiteSpace(category) ? null : category.Trim());
+                        StoredProcedureHelper.AddParameter(command, "p_TotalCopies", totalCopies);
+                        StoredProcedureHelper.AddParameter(command, "p_Location", "");
+                        StoredProcedureHelper.AddParameter(command, "p_Description", string.IsNullOrWhiteSpace(description) ? null : description.Trim());
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                int bookId = Convert.ToInt32(reader["BookId"]);
+                                System.Diagnostics.Debug.WriteLine($"Book added with ID: {bookId}");
+                            }
+                        }
                         return true;
                     }
                 }
@@ -210,7 +131,6 @@ namespace Library_Management_System.Service
                 throw;
             }
         }
-
         public bool UpdateBook(string bookId, string isbn, string title, string author, string publisher,
                               int? publicationYear, string category, int totalCopies, string description)
         {
@@ -219,47 +139,27 @@ namespace Library_Management_System.Service
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
-                    // First get current available copies
-                    string getCurrentQuery = "SELECT AvailableCopies FROM Books WHERE BookId = @bookId";
-                    int currentAvailable = 0;
-
-                    using (var getCommand = new MySqlCommand(getCurrentQuery, connection))
+                    using (var command = StoredProcedureHelper.CreateCommand("SP_UpdateBook", connection))
                     {
-                        getCommand.Parameters.AddWithValue("@bookId", bookId);
-                        var result = getCommand.ExecuteScalar();
-                        if (result != null)
+                        StoredProcedureHelper.AddParameter(command, "p_BookId", int.Parse(bookId));
+                        StoredProcedureHelper.AddParameter(command, "p_Title", title?.Trim());
+                        StoredProcedureHelper.AddParameter(command, "p_Author", author?.Trim());
+                        StoredProcedureHelper.AddParameter(command, "p_ISBN", string.IsNullOrWhiteSpace(isbn) ? null : isbn.Trim());
+                        StoredProcedureHelper.AddParameter(command, "p_Publisher", string.IsNullOrWhiteSpace(publisher) ? null : publisher.Trim());
+                        StoredProcedureHelper.AddParameter(command, "p_PublicationYear", publicationYear);
+                        StoredProcedureHelper.AddParameter(command, "p_Category", string.IsNullOrWhiteSpace(category) ? null : category.Trim());
+                        StoredProcedureHelper.AddParameter(command, "p_TotalCopies", totalCopies);
+                        StoredProcedureHelper.AddParameter(command, "p_Location", "");
+                        StoredProcedureHelper.AddParameter(command, "p_Description", string.IsNullOrWhiteSpace(description) ? null : description.Trim());
+                        using (var reader = command.ExecuteReader())
                         {
-                            currentAvailable = Convert.ToInt32(result);
+                            if (reader.Read())
+                            {
+                                int rowsAffected = Convert.ToInt32(reader["RowsAffected"]);
+                                return rowsAffected > 0;
+                            }
                         }
-                    }
-
-                    // Calculate new available copies (don't let it go below 0 or above total)
-                    int newAvailable = System.Math.Min(System.Math.Max(0, currentAvailable), totalCopies);
-
-                    string query = @"
-                        UPDATE Books
-                        SET ISBN = @isbn, Title = @title, Author = @author, Publisher = @publisher,
-                            PublicationYear = @publicationYear, Category = @category,
-                            TotalCopies = @totalCopies, AvailableCopies = @availableCopies,
-                            Description = @description
-                        WHERE BookId = @bookId";
-
-                    using (var command = new MySqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("@bookId", bookId);
-                        command.Parameters.AddWithValue("@isbn", string.IsNullOrWhiteSpace(isbn) ? (object)DBNull.Value : isbn.Trim());
-                        command.Parameters.AddWithValue("@title", title.Trim());
-                        command.Parameters.AddWithValue("@author", author.Trim());
-                        command.Parameters.AddWithValue("@publisher", string.IsNullOrWhiteSpace(publisher) ? (object)DBNull.Value : publisher.Trim());
-                        command.Parameters.AddWithValue("@publicationYear", publicationYear ?? (object)DBNull.Value);
-                        command.Parameters.AddWithValue("@category", string.IsNullOrWhiteSpace(category) ? (object)DBNull.Value : category.Trim());
-                        command.Parameters.AddWithValue("@totalCopies", totalCopies);
-                        command.Parameters.AddWithValue("@availableCopies", newAvailable);
-                        command.Parameters.AddWithValue("@description", string.IsNullOrWhiteSpace(description) ? (object)DBNull.Value : description.Trim());
-
-                        command.ExecuteNonQuery();
-                        return true;
+                        return false;
                     }
                 }
             }
@@ -269,7 +169,6 @@ namespace Library_Management_System.Service
                 throw;
             }
         }
-
         public bool DeleteBook(string bookId)
         {
             try
@@ -277,26 +176,18 @@ namespace Library_Management_System.Service
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
-                    // Check if book has active borrowings
-                    string checkBorrowingsQuery = "SELECT COUNT(*) FROM Borrowings WHERE BookId = @bookId AND ReturnDate IS NULL";
-                    using (var checkCommand = new MySqlCommand(checkBorrowingsQuery, connection))
+                    using (var command = StoredProcedureHelper.CreateCommand("SP_DeleteBook", connection))
                     {
-                        checkCommand.Parameters.AddWithValue("@bookId", bookId);
-                        int activeBorrowings = Convert.ToInt32(checkCommand.ExecuteScalar());
-
-                        if (activeBorrowings > 0)
+                        StoredProcedureHelper.AddParameter(command, "p_BookId", int.Parse(bookId));
+                        using (var reader = command.ExecuteReader())
                         {
-                            throw new Exception("Cannot delete book with active borrowings.");
+                            if (reader.Read())
+                            {
+                                int rowsAffected = Convert.ToInt32(reader["RowsAffected"]);
+                                return rowsAffected > 0;
+                            }
                         }
-                    }
-
-                    string query = "DELETE FROM Books WHERE BookId = @bookId";
-                    using (var command = new MySqlCommand(query, connection))
-                    {
-                        command.Parameters.AddWithValue("@bookId", bookId);
-                        command.ExecuteNonQuery();
-                        return true;
+                        return false;
                     }
                 }
             }
@@ -306,7 +197,6 @@ namespace Library_Management_System.Service
                 throw;
             }
         }
-
         public BookInfo GetBookById(string bookId)
         {
             try
@@ -314,16 +204,9 @@ namespace Library_Management_System.Service
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
-                    string query = @"
-                        SELECT BookId, ISBN, Title, Author, Publisher, PublicationYear,
-                               Category, TotalCopies, AvailableCopies, Description, CreatedDate
-                        FROM Books WHERE BookId = @bookId";
-
-                    using (var command = new MySqlCommand(query, connection))
+                    using (var command = StoredProcedureHelper.CreateCommand("SP_GetBookById", connection))
                     {
-                        command.Parameters.AddWithValue("@bookId", bookId);
-
+                        StoredProcedureHelper.AddParameter(command, "p_BookId", int.Parse(bookId));
                         using (var reader = command.ExecuteReader())
                         {
                             if (reader.Read())
@@ -339,6 +222,7 @@ namespace Library_Management_System.Service
                                     Category = reader["Category"]?.ToString(),
                                     TotalCopies = Convert.ToInt32(reader["TotalCopies"]),
                                     AvailableCopies = Convert.ToInt32(reader["AvailableCopies"]),
+                                    Location = reader["Location"]?.ToString(),
                                     Description = reader["Description"]?.ToString(),
                                     CreatedDate = Convert.ToDateTime(reader["CreatedDate"])
                                 };
@@ -351,7 +235,6 @@ namespace Library_Management_System.Service
             {
                 System.Diagnostics.Debug.WriteLine($"Error getting book: {ex.Message}");
             }
-
             return null;
         }
     }

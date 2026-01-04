@@ -7,4 +7,3 @@ namespace Library_Management_System.Models
         Member = 3
     }
 }
-

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Data;
 using Library_Management_System.Helper;
 using MySql.Data.MySqlClient;
-
 namespace Library_Management_System.Service
 {
     public class ReservationService
@@ -22,17 +21,14 @@ namespace Library_Management_System.Service
             public bool IsNotified { get; set; }
             public DateTime? FulfilledDate { get; set; }
         }
-
         public List<ReservationInfo> GetReservations(string searchText = "", string statusFilter = "All")
         {
             var reservations = new List<ReservationInfo>();
-
             try
             {
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
                     string query = @"
                         SELECT r.ReservationId, r.MemberId, r.BookId, r.ReservedDate, r.ExpiryDate, 
                                r.Status, r.IsNotified, r.FulfilledDate,
@@ -43,12 +39,10 @@ namespace Library_Management_System.Service
                         INNER JOIN Users u ON m.UserId = u.UserId
                         INNER JOIN Books bk ON r.BookId = bk.BookId
                         WHERE 1=1";
-
                     if (!string.IsNullOrEmpty(searchText))
                     {
                         query += " AND (bk.Title LIKE @search OR CONCAT(u.FirstName, ' ', u.LastName) LIKE @search OR r.ReservationId LIKE @search)";
                     }
-
                     if (statusFilter != "All")
                     {
                         if (statusFilter == "Pending")
@@ -64,16 +58,13 @@ namespace Library_Management_System.Service
                             query += " AND r.Status = 'Fulfilled'";
                         }
                     }
-
                     query += " ORDER BY r.ReservedDate DESC";
-
                     using (var command = new MySqlCommand(query, connection))
                     {
                         if (!string.IsNullOrEmpty(searchText))
                         {
                             command.Parameters.AddWithValue("@search", $"%{searchText}%");
                         }
-
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -101,10 +92,8 @@ namespace Library_Management_System.Service
             {
                 System.Diagnostics.Debug.WriteLine($"Error getting reservations: {ex.Message}");
             }
-
             return reservations;
         }
-
         public bool CreateReservation(string memberId, string bookId, int reservationDays = 7)
         {
             try
@@ -112,8 +101,6 @@ namespace Library_Management_System.Service
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
-                    // Check if member exists and is active
                     string memberQuery = "SELECT UserId FROM Members WHERE MemberId = @memberId AND Status = 1";
                     using (var memberCmd = new MySqlCommand(memberQuery, connection))
                     {
@@ -124,8 +111,6 @@ namespace Library_Management_System.Service
                             throw new Exception("Member not found or inactive.");
                         }
                     }
-
-                    // Check if book exists
                     string bookQuery = "SELECT BookId FROM Books WHERE BookId = @bookId";
                     using (var bookCmd = new MySqlCommand(bookQuery, connection))
                     {
@@ -136,8 +121,6 @@ namespace Library_Management_System.Service
                             throw new Exception("Book not found.");
                         }
                     }
-
-                    // Check if member already has a pending/ready reservation for this book
                     string existingQuery = @"
                         SELECT COUNT(*) FROM Reservations
                         WHERE MemberId = @memberId AND BookId = @bookId 
@@ -152,8 +135,6 @@ namespace Library_Management_System.Service
                             throw new Exception("Member already has an active reservation for this book.");
                         }
                     }
-
-                    // Determine initial status - if book is available, set to Ready, otherwise Pending
                     string availabilityQuery = "SELECT AvailableCopies FROM Books WHERE BookId = @bookId";
                     int availableCopies = 0;
                     using (var availCmd = new MySqlCommand(availabilityQuery, connection))
@@ -165,16 +146,12 @@ namespace Library_Management_System.Service
                             availableCopies = Convert.ToInt32(result);
                         }
                     }
-
                     string initialStatus = availableCopies > 0 ? "Ready" : "Pending";
                     DateTime reservedDate = DateTime.Now;
                     DateTime expiryDate = reservedDate.AddDays(reservationDays);
-
-                    // Insert reservation
                     string insertQuery = @"
                         INSERT INTO Reservations (MemberId, BookId, ReservedDate, ExpiryDate, Status, IsNotified)
                         VALUES (@memberId, @bookId, @reservedDate, @expiryDate, @status, 0)";
-
                     using (var insertCmd = new MySqlCommand(insertQuery, connection))
                     {
                         insertCmd.Parameters.AddWithValue("@memberId", memberId);
@@ -184,7 +161,6 @@ namespace Library_Management_System.Service
                         insertCmd.Parameters.AddWithValue("@status", initialStatus);
                         insertCmd.ExecuteNonQuery();
                     }
-
                     return true;
                 }
             }
@@ -194,7 +170,6 @@ namespace Library_Management_System.Service
                 throw;
             }
         }
-
         public bool CancelReservation(string reservationId)
         {
             try
@@ -202,8 +177,6 @@ namespace Library_Management_System.Service
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
-                    // Check if reservation exists and is cancellable
                     string checkQuery = "SELECT Status FROM Reservations WHERE ReservationId = @reservationId";
                     string currentStatus = "";
                     using (var checkCmd = new MySqlCommand(checkQuery, connection))
@@ -216,20 +189,16 @@ namespace Library_Management_System.Service
                         }
                         currentStatus = result.ToString();
                     }
-
                     if (currentStatus == "Fulfilled" || currentStatus == "Cancelled")
                     {
                         throw new Exception($"Cannot cancel a reservation with status '{currentStatus}'.");
                     }
-
-                    // Update status to Cancelled
                     string updateQuery = "UPDATE Reservations SET Status = 'Cancelled' WHERE ReservationId = @reservationId";
                     using (var updateCmd = new MySqlCommand(updateQuery, connection))
                     {
                         updateCmd.Parameters.AddWithValue("@reservationId", reservationId);
                         updateCmd.ExecuteNonQuery();
                     }
-
                     return true;
                 }
             }
@@ -239,7 +208,6 @@ namespace Library_Management_System.Service
                 throw;
             }
         }
-
         public ReservationInfo GetReservationById(string reservationId)
         {
             try
@@ -247,7 +215,6 @@ namespace Library_Management_System.Service
                 using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
                 {
                     connection.Open();
-
                     string query = @"
                         SELECT r.ReservationId, r.MemberId, r.BookId, r.ReservedDate, r.ExpiryDate, 
                                r.Status, r.IsNotified, r.FulfilledDate,
@@ -258,11 +225,9 @@ namespace Library_Management_System.Service
                         INNER JOIN Users u ON m.UserId = u.UserId
                         INNER JOIN Books bk ON r.BookId = bk.BookId
                         WHERE r.ReservationId = @reservationId";
-
                     using (var command = new MySqlCommand(query, connection))
                     {
                         command.Parameters.AddWithValue("@reservationId", reservationId);
-
                         using (var reader = command.ExecuteReader())
                         {
                             if (reader.Read())
@@ -290,9 +255,7 @@ namespace Library_Management_System.Service
             {
                 System.Diagnostics.Debug.WriteLine($"Error getting reservation: {ex.Message}");
             }
-
             return null;
         }
     }
 }
-
