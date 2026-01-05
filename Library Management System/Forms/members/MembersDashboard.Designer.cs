@@ -575,7 +575,7 @@ namespace Library_Management_System.Forms.members
             this.lblExpiredMembers.AutoSize = true;
             this.lblExpiredMembers.Font = new System.Drawing.Font("Segoe UI", 36F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblExpiredMembers.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(40)))));
-            this.lblExpiredMembers.Location = new System.Drawing.Point(120, 20);
+            this.lblExpiredMembers.Location = new System.Drawing.Point(120, 10);
             this.lblExpiredMembers.Name = "lblExpiredMembers";
             this.lblExpiredMembers.Size = new System.Drawing.Size(81, 96);
             this.lblExpiredMembers.TabIndex = 0;
@@ -583,7 +583,7 @@ namespace Library_Management_System.Forms.members
             this.lblExpiredMembersLabel.AutoSize = true;
             this.lblExpiredMembersLabel.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblExpiredMembersLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(100)))), ((int)(((byte)(100)))));
-            this.lblExpiredMembersLabel.Location = new System.Drawing.Point(65, 120);
+            this.lblExpiredMembersLabel.Location = new System.Drawing.Point(65, 125);
             this.lblExpiredMembersLabel.Name = "lblExpiredMembersLabel";
             this.lblExpiredMembersLabel.Size = new System.Drawing.Size(85, 30);
             this.lblExpiredMembersLabel.TabIndex = 1;
@@ -607,7 +607,7 @@ namespace Library_Management_System.Forms.members
             this.lblSuspendedMembers.AutoSize = true;
             this.lblSuspendedMembers.Font = new System.Drawing.Font("Segoe UI", 36F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblSuspendedMembers.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(40)))));
-            this.lblSuspendedMembers.Location = new System.Drawing.Point(120, 20);
+            this.lblSuspendedMembers.Location = new System.Drawing.Point(120, 10);
             this.lblSuspendedMembers.Name = "lblSuspendedMembers";
             this.lblSuspendedMembers.Size = new System.Drawing.Size(81, 96);
             this.lblSuspendedMembers.TabIndex = 0;
@@ -615,7 +615,7 @@ namespace Library_Management_System.Forms.members
             this.lblSuspendedMembersLabel.AutoSize = true;
             this.lblSuspendedMembersLabel.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblSuspendedMembersLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(100)))), ((int)(((byte)(100)))));
-            this.lblSuspendedMembersLabel.Location = new System.Drawing.Point(65, 120);
+            this.lblSuspendedMembersLabel.Location = new System.Drawing.Point(65, 125);
             this.lblSuspendedMembersLabel.Name = "lblSuspendedMembersLabel";
             this.lblSuspendedMembersLabel.Size = new System.Drawing.Size(121, 30);
             this.lblSuspendedMembersLabel.TabIndex = 1;
@@ -639,7 +639,7 @@ namespace Library_Management_System.Forms.members
             this.lblActiveMembersStat.AutoSize = true;
             this.lblActiveMembersStat.Font = new System.Drawing.Font("Segoe UI", 36F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblActiveMembersStat.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(40)))), ((int)(((byte)(40)))));
-            this.lblActiveMembersStat.Location = new System.Drawing.Point(120, 20);
+            this.lblActiveMembersStat.Location = new System.Drawing.Point(120, 10);
             this.lblActiveMembersStat.Name = "lblActiveMembersStat";
             this.lblActiveMembersStat.Size = new System.Drawing.Size(81, 96);
             this.lblActiveMembersStat.TabIndex = 0;
@@ -647,7 +647,7 @@ namespace Library_Management_System.Forms.members
             this.lblActiveMembersStatLabel.AutoSize = true;
             this.lblActiveMembersStatLabel.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblActiveMembersStatLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(100)))), ((int)(((byte)(100)))));
-            this.lblActiveMembersStatLabel.Location = new System.Drawing.Point(65, 120);
+            this.lblActiveMembersStatLabel.Location = new System.Drawing.Point(65, 125);
             this.lblActiveMembersStatLabel.Name = "lblActiveMembersStatLabel";
             this.lblActiveMembersStatLabel.Size = new System.Drawing.Size(72, 30);
             this.lblActiveMembersStatLabel.TabIndex = 1;
@@ -671,7 +671,7 @@ namespace Library_Management_System.Forms.members
             this.lblTotalMembers.AutoSize = true;
             this.lblTotalMembers.Font = new System.Drawing.Font("Segoe UI", 36F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblTotalMembers.ForeColor = System.Drawing.Color.White;
-            this.lblTotalMembers.Location = new System.Drawing.Point(120, 20);
+            this.lblTotalMembers.Location = new System.Drawing.Point(120, 10);
             this.lblTotalMembers.Name = "lblTotalMembers";
             this.lblTotalMembers.Size = new System.Drawing.Size(81, 96);
             this.lblTotalMembers.TabIndex = 0;
@@ -679,7 +679,7 @@ namespace Library_Management_System.Forms.members
             this.lblTotalMembersLabel.AutoSize = true;
             this.lblTotalMembersLabel.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblTotalMembersLabel.ForeColor = System.Drawing.Color.White;
-            this.lblTotalMembersLabel.Location = new System.Drawing.Point(65, 120);
+            this.lblTotalMembersLabel.Location = new System.Drawing.Point(65, 125);
             this.lblTotalMembersLabel.Name = "lblTotalMembersLabel";
             this.lblTotalMembersLabel.Size = new System.Drawing.Size(158, 30);
             this.lblTotalMembersLabel.TabIndex = 1;
