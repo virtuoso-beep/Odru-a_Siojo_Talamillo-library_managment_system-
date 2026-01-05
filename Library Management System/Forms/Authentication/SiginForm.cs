@@ -47,7 +47,7 @@ namespace Library_Management_System
                 (screenWidth - this.Width) / 2,
                 50
             );
-            this.Height = 700;
+            this.Height = 900;
             txtEmail.Text = "";
             txtPassword.Text = "";
             cmbLoginAs.SelectedIndex = -1;

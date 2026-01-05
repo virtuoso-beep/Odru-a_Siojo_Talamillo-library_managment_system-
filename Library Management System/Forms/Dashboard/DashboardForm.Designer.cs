@@ -84,19 +84,35 @@ namespace Library_Management_System
             this.pnlAdministrator = new System.Windows.Forms.Panel();
             this.btnSignOut = new System.Windows.Forms.Button();
             this.lblAdminName = new System.Windows.Forms.Label();
-            this.btnSettings = new System.Windows.Forms.Button();
-            this.btnSearch = new System.Windows.Forms.Button();
-            this.btnReports = new System.Windows.Forms.Button();
-            this.btnInventory = new System.Windows.Forms.Button();
-            this.btnFines = new System.Windows.Forms.Button();
-            this.btnReservations = new System.Windows.Forms.Button();
-            this.btnCirculation = new System.Windows.Forms.Button();
-            this.btnCatalog = new System.Windows.Forms.Button();
-            this.btnMembers = new System.Windows.Forms.Button();
-            this.btnDashboard = new System.Windows.Forms.Button();
-            this.lblManagementSystem = new System.Windows.Forms.Label();
-            this.lblLibraryMS = new System.Windows.Forms.Label();
-            this.picLogo = new System.Windows.Forms.PictureBox();
+            this.btnDashboard.Location = new System.Drawing.Point(0, 90);
+            this.btnDashboard.Size = new System.Drawing.Size(280, 42);
+
+            this.btnMembers.Location = new System.Drawing.Point(0, 132);
+            this.btnMembers.Size = new System.Drawing.Size(280, 42);
+
+            this.btnCatalog.Location = new System.Drawing.Point(0, 174);
+            this.btnCatalog.Size = new System.Drawing.Size(280, 42);
+
+            this.btnCirculation.Location = new System.Drawing.Point(0, 216);
+            this.btnCirculation.Size = new System.Drawing.Size(280, 42);
+
+            this.btnReservations.Location = new System.Drawing.Point(0, 258);
+            this.btnReservations.Size = new System.Drawing.Size(280, 42);
+
+            this.btnFines.Location = new System.Drawing.Point(0, 300);
+            this.btnFines.Size = new System.Drawing.Size(280, 42);
+
+            this.btnInventory.Location = new System.Drawing.Point(0, 342);
+            this.btnInventory.Size = new System.Drawing.Size(280, 42);
+
+            this.btnReports.Location = new System.Drawing.Point(0, 384);
+            this.btnReports.Size = new System.Drawing.Size(280, 42);
+
+            this.btnSearch.Location = new System.Drawing.Point(0, 426);
+            this.btnSearch.Size = new System.Drawing.Size(280, 42);
+
+            this.btnSettings.Location = new System.Drawing.Point(0, 468);
+            this.btnSettings.Size = new System.Drawing.Size(280, 42);
             this.pnlMainContent = new System.Windows.Forms.Panel();
             this.pnlCollectionCategory = new System.Windows.Forms.Panel();
             this.lblCollectionCategory = new System.Windows.Forms.Label();
@@ -193,11 +209,11 @@ namespace Library_Management_System
             this.pnlAdministrator.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
             this.pnlAdministrator.Controls.Add(this.btnSignOut);
             this.pnlAdministrator.Controls.Add(this.lblAdminName);
-            this.pnlAdministrator.Location = new System.Drawing.Point(0, 560);
+            this.pnlAdministrator.Location = new System.Drawing.Point(0, 550);
             this.pnlAdministrator.Margin = new System.Windows.Forms.Padding(0);
             this.pnlAdministrator.Name = "pnlAdministrator";
             this.pnlAdministrator.Padding = new System.Windows.Forms.Padding(0, 15, 0, 15);
-            this.pnlAdministrator.Size = new System.Drawing.Size(280, 90);
+            this.pnlAdministrator.Size = new System.Drawing.Size(280, 100);
             this.pnlAdministrator.TabIndex = 12;
             this.btnSignOut.BackColor = System.Drawing.Color.Transparent;
             this.btnSignOut.Cursor = System.Windows.Forms.Cursors.Hand;
@@ -233,7 +249,7 @@ namespace Library_Management_System
             this.btnSettings.Margin = new System.Windows.Forms.Padding(0);
             this.btnSettings.Name = "btnSettings";
             this.btnSettings.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnSettings.Size = new System.Drawing.Size(280, 50);
+            this.btnSettings.Size = new System.Drawing.Size(280, 42);
             this.btnSettings.TabIndex = 11;
             this.btnSettings.Tag = "Settings";
             this.btnSettings.Text = "  ⚙ Settings";
@@ -249,7 +265,7 @@ namespace Library_Management_System
             this.btnSearch.Margin = new System.Windows.Forms.Padding(0);
             this.btnSearch.Name = "btnSearch";
             this.btnSearch.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnSearch.Size = new System.Drawing.Size(280, 50);
+            this.btnSearch.Size = new System.Drawing.Size(280, 42);
             this.btnSearch.TabIndex = 10;
             this.btnSearch.Tag = "Search";
             this.btnSearch.Text = "  🔍 Search";
@@ -265,7 +281,7 @@ namespace Library_Management_System
             this.btnReports.Margin = new System.Windows.Forms.Padding(0);
             this.btnReports.Name = "btnReports";
             this.btnReports.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnReports.Size = new System.Drawing.Size(280, 50);
+            this.btnReports.Size = new System.Drawing.Size(280, 42);
             this.btnReports.TabIndex = 9;
             this.btnReports.Tag = "Reports";
             this.btnReports.Text = "  📊 Reports";
@@ -281,7 +297,7 @@ namespace Library_Management_System
             this.btnInventory.Margin = new System.Windows.Forms.Padding(0);
             this.btnInventory.Name = "btnInventory";
             this.btnInventory.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnInventory.Size = new System.Drawing.Size(280, 50);
+            this.btnInventory.Size = new System.Drawing.Size(280, 42);
             this.btnInventory.TabIndex = 8;
             this.btnInventory.Tag = "Inventory";
             this.btnInventory.Text = "  📦 Inventory";
@@ -297,7 +313,7 @@ namespace Library_Management_System
             this.btnFines.Margin = new System.Windows.Forms.Padding(0);
             this.btnFines.Name = "btnFines";
             this.btnFines.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnFines.Size = new System.Drawing.Size(280, 50);
+            this.btnFines.Size = new System.Drawing.Size(280, 42);
             this.btnFines.TabIndex = 7;
             this.btnFines.Tag = "Fines";
             this.btnFines.Text = "  💰 Fines";
@@ -313,7 +329,7 @@ namespace Library_Management_System
             this.btnReservations.Margin = new System.Windows.Forms.Padding(0);
             this.btnReservations.Name = "btnReservations";
             this.btnReservations.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnReservations.Size = new System.Drawing.Size(280, 50);
+            this.btnReservations.Size = new System.Drawing.Size(280, 42);
             this.btnReservations.TabIndex = 6;
             this.btnReservations.Tag = "Reservations";
             this.btnReservations.Text = "  📅 Reservations";
@@ -329,7 +345,7 @@ namespace Library_Management_System
             this.btnCirculation.Margin = new System.Windows.Forms.Padding(0);
             this.btnCirculation.Name = "btnCirculation";
             this.btnCirculation.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnCirculation.Size = new System.Drawing.Size(280, 50);
+            this.btnCirculation.Size = new System.Drawing.Size(280, 42);
             this.btnCirculation.TabIndex = 5;
             this.btnCirculation.Tag = "Circulation";
             this.btnCirculation.Text = "  🔄 Circulation";
@@ -345,7 +361,7 @@ namespace Library_Management_System
             this.btnCatalog.Margin = new System.Windows.Forms.Padding(0);
             this.btnCatalog.Name = "btnCatalog";
             this.btnCatalog.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnCatalog.Size = new System.Drawing.Size(280, 50);
+            this.btnCatalog.Size = new System.Drawing.Size(280, 42);
             this.btnCatalog.TabIndex = 4;
             this.btnCatalog.Tag = "Catalog";
             this.btnCatalog.Text = "  📖 Catalog";
@@ -361,7 +377,7 @@ namespace Library_Management_System
             this.btnMembers.Margin = new System.Windows.Forms.Padding(0);
             this.btnMembers.Name = "btnMembers";
             this.btnMembers.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnMembers.Size = new System.Drawing.Size(280, 50);
+            this.btnMembers.Size = new System.Drawing.Size(280, 42);
             this.btnMembers.TabIndex = 3;
             this.btnMembers.Tag = "Members";
             this.btnMembers.Text = "  👥 Members";
@@ -377,7 +393,7 @@ namespace Library_Management_System
             this.btnDashboard.Margin = new System.Windows.Forms.Padding(0);
             this.btnDashboard.Name = "btnDashboard";
             this.btnDashboard.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnDashboard.Size = new System.Drawing.Size(280, 50);
+            this.btnDashboard.Size = new System.Drawing.Size(280, 42);
             this.btnDashboard.TabIndex = 2;
             this.btnDashboard.Tag = "Dashboard";
             this.btnDashboard.Text = "  ▦ Dashboard";
