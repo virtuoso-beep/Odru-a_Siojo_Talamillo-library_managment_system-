@@ -191,6 +191,42 @@ namespace Library_Management_System.Forms.staff
             pnlSearchFilter.BackColor = Color.Transparent;
             pnlSearchFilter.Padding = new Padding(15, 10, 15, 10);
             pnlSearchFilter.Paint += PnlSearchFilter_Paint;
+
+            // Add Header Panel for White Background
+            Panel staffMembersHeaderPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 140, 
+                BackColor = Color.White
+            };
+            pnlMembersView.Controls.Add(staffMembersHeaderPanel);
+
+            // Move Title and Subtitle to Header Panel
+            if (pnlMembersView.Controls.Contains(lblMembersTitle))
+            {
+                pnlMembersView.Controls.Remove(lblMembersTitle);
+                staffMembersHeaderPanel.Controls.Add(lblMembersTitle);
+                lblMembersTitle.Location = new Point(30, 20);
+            }
+            if (pnlMembersView.Controls.Contains(lblMembersSubtitle))
+            {
+                pnlMembersView.Controls.Remove(lblMembersSubtitle);
+                staffMembersHeaderPanel.Controls.Add(lblMembersSubtitle);
+                lblMembersSubtitle.Location = new Point(30, 95);
+            }
+
+            // Adjust layouts of other controls to prevent overlap (Shift down to typically 150)
+            pnlCardTotalMembers.Top = 150;
+            pnlCardActiveMembersStat.Top = 150;
+            pnlCardSuspendedMembers.Top = 150;
+            pnlCardExpiredMembers.Top = 150;
+            pnlCardOverdueBooks.Top = 150;
+
+            pnlSearchFilter.Top = 320;
+            
+            dgvMembers.Top = 390;
+            dgvMembers.Height -= 50; 
+
             SetupMemberCardIcons();
         }
         private void PnlSearchFilter_Paint(object sender, PaintEventArgs e)
@@ -430,6 +466,10 @@ namespace Library_Management_System.Forms.staff
                 lblAdminName.Text = "Admin";
             }
             lblDate.Text = DateTime.Now.ToString("MMM d, yyyy");
+
+            // Fix: Ensure dashboard labels have transparent background to match other sections
+            lblWelcome.BackColor = Color.Transparent;
+            lblDate.BackColor = Color.Transparent;
         }
         private void LoadDashboardData()
         {
@@ -912,7 +952,7 @@ namespace Library_Management_System.Forms.staff
                 Padding = new Padding(15)
             };
             Label lblChartTitle = new Label { Text = "Daily Circulation", Font = new Font("Segoe UI", 14F, FontStyle.Bold), AutoSize = true, Location = new Point(15, 15) };
-            Label lblChartSub = new Label { Text = "Borrowings and returns over time", Font = new Font("Segoe UI", 9F), ForeColor = Color.Gray, AutoSize = true, Location = new Point(15, 45) };
+            Label lblChartSub = new Label { Text = "Borrowings and returns over time", Font = new Font("Segoe UI", 9F), ForeColor = Color.Gray, AutoSize = true, Location = new Point(15, 55) };
             Chart chart = new Chart { Dock = DockStyle.Bottom, Height = 220 };
             ChartArea ca = new ChartArea("MainArea");
             ca.AxisX.MajorGrid.LineColor = Color.LightGray;
@@ -939,7 +979,7 @@ namespace Library_Management_System.Forms.staff
                 Padding = new Padding(15)
             };
             Label lblTopBooks = new Label { Text = "Most Borrowed Books", Font = new Font("Segoe UI", 14F, FontStyle.Bold), AutoSize = true, Location = new Point(15, 15) };
-            Label lblTopBooksSub = new Label { Text = "Top 10 most popular books", Font = new Font("Segoe UI", 9F), ForeColor = Color.Gray, AutoSize = true, Location = new Point(15, 45) };
+            Label lblTopBooksSub = new Label { Text = "Top 10 most popular books", Font = new Font("Segoe UI", 9F), ForeColor = Color.Gray, AutoSize = true, Location = new Point(15, 55) };
             Label lblNoData = new Label { Text = "No data for selected period", Font = new Font("Segoe UI", 10F), ForeColor = Color.Gray, AutoSize = true, Location = new Point(100, 100) };
             pnlTopBooks.Controls.AddRange(new Control[] { lblTopBooks, lblTopBooksSub, lblNoData });
             pnlTopBooks.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -952,7 +992,7 @@ namespace Library_Management_System.Forms.staff
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
             Label lblOverdue = new Label { Text = "Overdue Books", Font = new Font("Segoe UI", 14F, FontStyle.Bold), AutoSize = true, Location = new Point(15, 15) };
-            Label lblOverdueSub = new Label { Text = "Books that are past their due date", Font = new Font("Segoe UI", 9F), ForeColor = Color.Gray, AutoSize = true, Location = new Point(15, 45) };
+            Label lblOverdueSub = new Label { Text = "Books that are past their due date", Font = new Font("Segoe UI", 9F), ForeColor = Color.Gray, AutoSize = true, Location = new Point(15, 55) };
             Label lblHeader = new Label { 
                 Text = String.Format("{0,-40} {1,-30} {2,-20} {3,-20} {4,-15}", "Book", "Member", "Borrow Date", "Due Date", "Days Overdue"),
                 Font = new Font("Consolas", 9F, FontStyle.Bold),
@@ -1389,7 +1429,7 @@ namespace Library_Management_System.Forms.staff
                 Text = member.Name,
                 Font = new Font("Segoe UI", 24F, FontStyle.Bold),
                 Location = new Point(30, 30),
-                Size = new Size(600, 35),
+                Size = new Size(600, 65),
                 ForeColor = Color.FromArgb(33, 37, 41),
                 AutoSize = false,
                 TextAlign = ContentAlignment.MiddleLeft
@@ -1398,7 +1438,7 @@ namespace Library_Management_System.Forms.staff
             {
                 Text = $"Member ID: {member.MemberId}",
                 Font = new Font("Segoe UI", 12F, FontStyle.Regular),
-                Location = new Point(30, 65),
+                Location = new Point(30, 100),
                 Size = new Size(600, 30),
                 ForeColor = Color.FromArgb(108, 117, 125),
                 AutoSize = false,
@@ -1411,7 +1451,7 @@ namespace Library_Management_System.Forms.staff
                 Padding = new Padding(40, 30, 40, 40),
                 BackColor = Color.FromArgb(250, 251, 252)
             };
-            int yPos = 100;
+            int yPos = 135;
             Panel userInfoPanel = new Panel
             {
                 Location = new Point(0, yPos),
@@ -1854,7 +1894,7 @@ namespace Library_Management_System.Forms.staff
             Form editForm = new Form
             {
                 Text = "Edit Member",
-                Size = new Size(520, 650),
+                Size = new Size(520, 680),
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 MaximizeBox = false,
@@ -1867,49 +1907,49 @@ namespace Library_Management_System.Forms.staff
                 Text = "Edit Member",
                 Font = new Font("Segoe UI", 18F, FontStyle.Bold),
                 Location = new Point(20, 20),
-                Size = new Size(440, 40),
+                Size = new Size(440, 65),
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
             Label subtitleLabel = new Label
             {
                 Text = "Update member information",
                 Font = new Font("Segoe UI", 10F),
-                Location = new Point(20, 60),
+                Location = new Point(20, 100),
                 Size = new Size(440, 25),
                 ForeColor = Color.FromArgb(100, 100, 100)
             };
-            Label lblFirstName = new Label { Text = "First Name", Location = new Point(20, 110), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
-            TextBox txtFirstName = new TextBox { Location = new Point(20, 135), Size = new Size(440, 30), Font = new Font("Segoe UI", 10F), Text = firstName };
-            Label lblLastName = new Label { Text = "Last Name", Location = new Point(20, 175), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
-            TextBox txtLastName = new TextBox { Location = new Point(20, 200), Size = new Size(440, 30), Font = new Font("Segoe UI", 10F), Text = lastName };
-            Label lblEmail = new Label { Text = "Email", Location = new Point(20, 240), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
+            Label lblFirstName = new Label { Text = "First Name", Location = new Point(20, 140), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
+            TextBox txtFirstName = new TextBox { Location = new Point(20, 165), Size = new Size(440, 30), Font = new Font("Segoe UI", 10F), Text = firstName };
+            Label lblLastName = new Label { Text = "Last Name", Location = new Point(20, 205), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
+            TextBox txtLastName = new TextBox { Location = new Point(20, 230), Size = new Size(440, 30), Font = new Font("Segoe UI", 10F), Text = lastName };
+            Label lblEmail = new Label { Text = "Email", Location = new Point(20, 270), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
             TextBox txtEmail = new TextBox 
             { 
-                Location = new Point(20, 265), 
+                Location = new Point(20, 295), 
                 Size = new Size(440, 30), 
                 Font = new Font("Segoe UI", 10F), 
                 Text = member.Email
             };
-            Label lblPhone = new Label { Text = "Phone", Location = new Point(20, 305), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
+            Label lblPhone = new Label { Text = "Phone", Location = new Point(20, 335), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
             TextBox txtPhone = new TextBox 
             { 
-                Location = new Point(20, 330), 
+                Location = new Point(20, 360), 
                 Size = new Size(440, 30), 
                 Font = new Font("Segoe UI", 10F), 
                 Text = member.Phone ?? ""
             };
-            Label lblAddress = new Label { Text = "Address", Location = new Point(20, 370), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
+            Label lblAddress = new Label { Text = "Address", Location = new Point(20, 400), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
             TextBox txtAddress = new TextBox 
             { 
-                Location = new Point(20, 395), 
+                Location = new Point(20, 425), 
                 Size = new Size(440, 30), 
                 Font = new Font("Segoe UI", 10F), 
                 Text = member.Address ?? ""
             };
-            Label lblMemberType = new Label { Text = "Member Type", Location = new Point(20, 435), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
+            Label lblMemberType = new Label { Text = "Member Type", Location = new Point(20, 465), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
             ComboBox cmbMemberType = new ComboBox
             {
-                Location = new Point(20, 460),
+                Location = new Point(20, 490),
                 Size = new Size(440, 30),
                 Font = new Font("Segoe UI", 10F),
                 DropDownStyle = ComboBoxStyle.DropDownList
@@ -1923,10 +1963,10 @@ namespace Library_Management_System.Forms.staff
             {
                 cmbMemberType.SelectedIndex = 0;
             }
-            Label lblStatus = new Label { Text = "Status", Location = new Point(20, 500), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
+            Label lblStatus = new Label { Text = "Status", Location = new Point(20, 530), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
             ComboBox cmbStatus = new ComboBox
             {
-                Location = new Point(20, 525),
+                Location = new Point(20, 555),
                 Size = new Size(440, 30),
                 Font = new Font("Segoe UI", 10F),
                 DropDownStyle = ComboBoxStyle.DropDownList
@@ -1943,7 +1983,7 @@ namespace Library_Management_System.Forms.staff
             Button btnCancel = new Button
             {
                 Text = "Cancel",
-                Location = new Point(270, 570),
+                Location = new Point(270, 600),
                 Size = new Size(80, 35),
                 Font = new Font("Segoe UI", 10F),
                 DialogResult = DialogResult.Cancel
@@ -1952,7 +1992,7 @@ namespace Library_Management_System.Forms.staff
             Button btnSave = new Button
             {
                 Text = "Save Changes",
-                Location = new Point(360, 570),
+                Location = new Point(360, 600),
                 Size = new Size(110, 35),
                 Font = new Font("Segoe UI", 9F),
                 BackColor = Color.FromArgb(128, 0, 0),
@@ -2174,7 +2214,7 @@ namespace Library_Management_System.Forms.staff
             Form registerForm = new Form
             {
                 Text = "Register New Member",
-                Size = new Size(900, 760),
+                Size = new Size(900, 800),
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 MaximizeBox = false,
@@ -2188,7 +2228,7 @@ namespace Library_Management_System.Forms.staff
                 Text = "👤 Register New Member",
                 Font = new Font("Segoe UI", 20F, FontStyle.Bold),
                 Location = new Point(30, 20),
-                Size = new Size(740, 45),
+                Size = new Size(740, 65),
                 ForeColor = Color.FromArgb(40, 40, 40),
                 TextAlign = ContentAlignment.MiddleLeft
             };
@@ -2196,13 +2236,13 @@ namespace Library_Management_System.Forms.staff
             {
                 Text = "Complete member information for library system registration",
                 Font = new Font("Segoe UI", 10F),
-                Location = new Point(30, 65),
+                Location = new Point(30, 100),
                 Size = new Size(740, 20),
                 ForeColor = Color.FromArgb(100, 100, 100)
             };
             Panel personalPanel = new Panel
             {
-                Location = new Point(20, 100),
+                Location = new Point(20, 140),
                 Size = new Size(860, 180),
                 BorderStyle = BorderStyle.FixedSingle,
                 BackColor = ThemeConstants.BackgroundLight
@@ -2246,7 +2286,7 @@ namespace Library_Management_System.Forms.staff
             };
             Panel contactPanel = new Panel
             {
-                Location = new Point(20, 300),
+                Location = new Point(20, 340),
                 Size = new Size(860, 170),
                 BorderStyle = BorderStyle.FixedSingle,
                 BackColor = ThemeConstants.BackgroundLight
@@ -2280,7 +2320,7 @@ namespace Library_Management_System.Forms.staff
             };
             Panel academicPanel = new Panel
             {
-                Location = new Point(20, 490),
+                Location = new Point(20, 530),
                 Size = new Size(860, 140),
                 BorderStyle = BorderStyle.FixedSingle,
                 BackColor = ThemeConstants.BackgroundLight
@@ -2356,7 +2396,7 @@ namespace Library_Management_System.Forms.staff
             Button btnCancel = new Button
             {
                 Text = "Cancel",
-                Location = new Point(580, 660),
+                Location = new Point(580, 700),
                 Size = new Size(120, ThemeConstants.ButtonHeight),
                 Font = ThemeConstants.FontButton,
                 BackColor = ThemeConstants.BackgroundMedium,
@@ -2367,7 +2407,7 @@ namespace Library_Management_System.Forms.staff
             Button btnRegister = new Button
             {
                 Text = "Add Member",
-                Location = new Point(720, 660),
+                Location = new Point(720, 700),
                 Size = new Size(130, ThemeConstants.ButtonHeight),
                 Font = ThemeConstants.FontButton,
                 BackColor = Color.Maroon,
@@ -2860,22 +2900,31 @@ namespace Library_Management_System.Forms.staff
             pnlMembersView.Visible = false;
             ShowDashboardControls(false);
             ClearDynamicControls();
+            Panel staffCatalogHeaderPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 140,
+                BackColor = Color.White
+            };
             Label titleLabel = new Label
             {
                 Text = "Catalog",
                 Font = new Font("Segoe UI", 24F, FontStyle.Bold),
                 Location = new Point(30, 20),
-                Size = new Size(200, 40),
-                ForeColor = Color.FromArgb(40, 40, 40)
+                Size = new Size(300, 70),
+                ForeColor = Color.FromArgb(40, 40, 40),
+                BackColor = Color.Transparent
             };
             Label subtitleLabel = new Label
             {
                 Text = "Browse and manage library books and resources",
                 Font = new Font("Segoe UI", 10F, FontStyle.Regular),
-                Location = new Point(30, 60),
-                Size = new Size(400, 25),
-                ForeColor = Color.FromArgb(100, 100, 100)
+                Location = new Point(30, 95),
+                Size = new Size(500, 25),
+                ForeColor = Color.FromArgb(100, 100, 100),
+                BackColor = Color.Transparent
             };
+            staffCatalogHeaderPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel });
             Button btnAddBookHeader = new Button
             {
                 Text = "+ Add Book",
@@ -2908,7 +2957,7 @@ namespace Library_Management_System.Forms.staff
             {
                 statsPanel = new Panel
                 {
-                    Location = new Point(30, 100),
+                    Location = new Point(30, 150),
                     Size = new Size(pnlMainContent.Width - 60, 80),
                     BackColor = Color.Transparent,
                     Tag = "CatalogStatsPanel"
@@ -2921,7 +2970,7 @@ namespace Library_Management_System.Forms.staff
             statsPanel.Controls.AddRange(new Control[] { cardTotalTitles, cardAvailableCopies, cardTotalCopies, cardCategories });
             Panel searchPanel = new Panel
             {
-                Location = new Point(30, 190),
+                Location = new Point(30, 240),
                 Size = new Size(pnlMainContent.Width - 60, 70),
                 BackColor = Color.White,
                 BorderStyle = BorderStyle.None
@@ -3024,8 +3073,8 @@ namespace Library_Management_System.Forms.staff
             };
             DataGridView dgvBooks = new DataGridView
             {
-                Location = new Point(30, 270),
-                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 300),
+                Location = new Point(30, 320),
+                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 350),
                 BackgroundColor = Color.FromArgb(250, 250, 250),
                 BorderStyle = BorderStyle.None,
                 AllowUserToAddRows = false,
@@ -3227,7 +3276,7 @@ namespace Library_Management_System.Forms.staff
                 ShowInTaskbar = false,
                 BackColor = Color.FromArgb(245, 245, 245)
             };
-            Panel headerPanel = new Panel
+            Panel staffAddBookHeaderPanel = new Panel
             {
                 Location = new Point(0, 0),
                 Size = new Size(addForm.Width, 80),
@@ -3239,18 +3288,18 @@ namespace Library_Management_System.Forms.staff
                 Text = "Add New Book",
                 Font = new Font("Segoe UI", 20F, FontStyle.Bold),
                 Location = new Point(30, 20),
-                Size = new Size(300, 30),
+                Size = new Size(300, 65),
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
             Label subtitleLabel = new Label
             {
                 Text = "Enter the book details to add it to the catalog",
                 Font = new Font("Segoe UI", 10F),
-                Location = new Point(30, 50),
+                Location = new Point(30, 100),
                 Size = new Size(500, 20),
                 ForeColor = Color.FromArgb(100, 100, 100)
             };
-            headerPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel });
+            staffAddBookHeaderPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel });
             Panel contentPanel = new Panel
             {
                 BackColor = Color.White,
@@ -3546,7 +3595,7 @@ namespace Library_Management_System.Forms.staff
             addForm.AcceptButton = btnSave;
             addForm.CancelButton = btnCancel;
             btnCancel.Click += (s, e) => addForm.Close();
-            addForm.Controls.Add(headerPanel);
+            addForm.Controls.Add(staffAddBookHeaderPanel);
             addForm.Controls.Add(buttonPanel);
             addForm.Controls.Add(contentPanel);
             addForm.ShowDialog();
@@ -3565,7 +3614,7 @@ namespace Library_Management_System.Forms.staff
                 Form editForm = new Form
                 {
                     Text = "Edit Book",
-                    Size = new Size(520, 650),
+                    Size = new Size(520, 710),
                     StartPosition = FormStartPosition.CenterParent,
                     FormBorderStyle = FormBorderStyle.FixedDialog,
                     MaximizeBox = false,
@@ -3578,10 +3627,10 @@ namespace Library_Management_System.Forms.staff
                     Text = "Edit Book",
                     Font = new Font("Segoe UI", 18F, FontStyle.Bold),
                     Location = new Point(30, 20),
-                    Size = new Size(400, 35),
+                    Size = new Size(400, 65),
                     ForeColor = Color.FromArgb(40, 40, 40)
                 };
-                int startY = 70;
+                int startY = 100;
                 int fieldHeight = 35;
                 int labelWidth = 120;
                 int fieldWidth = 330;
@@ -3764,25 +3813,32 @@ namespace Library_Management_System.Forms.staff
             pnlMembersView.Visible = false;
             ShowDashboardControls(false);
             ClearDynamicControls();
+            Panel headerPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 140,
+                BackColor = Color.White
+            };
             Label titleLabel = new Label
             {
                 Text = "Circulation",
                 Font = new Font("Segoe UI", 24F, FontStyle.Bold),
                 Location = new Point(30, 20),
-                Size = new Size(200, 40),
+                Size = new Size(300, 70),
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
             Label subtitleLabel = new Label
             {
                 Text = "Manage book borrowings, returns, and renewals",
                 Font = new Font("Segoe UI", 10F, FontStyle.Regular),
-                Location = new Point(30, 60),
-                Size = new Size(400, 25),
+                Location = new Point(30, 95),
+                Size = new Size(500, 25),
                 ForeColor = Color.FromArgb(100, 100, 100)
             };
+            headerPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel });
             Panel statsPanel = new Panel
             {
-                Location = new Point(30, 100),
+                Location = new Point(30, 150),
                 Size = new Size(pnlMainContent.Width - 60, 80),
                 BackColor = Color.Transparent,
                 Tag = "CirculationStatsPanel"
@@ -3793,7 +3849,7 @@ namespace Library_Management_System.Forms.staff
             statsPanel.Controls.AddRange(new Control[] { cardCurrentlyBorrowed, cardOverdue, cardReturnedToday });
             Panel searchPanel = new Panel
             {
-                Location = new Point(30, 190),
+                Location = new Point(30, 250),
                 Size = new Size(pnlMainContent.Width - 60, 70),
                 BackColor = Color.White,
                 BorderStyle = BorderStyle.None
@@ -3891,8 +3947,8 @@ namespace Library_Management_System.Forms.staff
             btnReturn.MouseLeave += (s, e) => btnReturn.BackColor = Color.White;
             DataGridView dgvBorrowings = new DataGridView
             {
-                Location = new Point(30, 270),
-                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 300),
+                Location = new Point(30, 340),
+                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 370),
                 BackgroundColor = Color.White,
                 BorderStyle = BorderStyle.FixedSingle,
                 AllowUserToAddRows = false,
@@ -4107,7 +4163,7 @@ namespace Library_Management_System.Forms.staff
             };
             searchContainer.Controls.AddRange(new Control[] { searchIcon, txtSearchBorrowings });
             searchPanel.Controls.AddRange(new Control[] { searchContainer, lblStatusFilter, cmbStatusFilter });
-            pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnCheckout, btnReturn, statsPanel, searchPanel, dgvBorrowings });
+            pnlMainContent.Controls.AddRange(new Control[] { headerPanel, btnCheckout, btnReturn, statsPanel, searchPanel, dgvBorrowings });
             LoadBorrowingsData();
         }
         private void ShowCheckoutDialog()
@@ -4115,7 +4171,7 @@ namespace Library_Management_System.Forms.staff
             Form checkoutForm = new Form
             {
                 Text = "Book Checkout",
-                Size = new Size(500, 400),
+                Size = new Size(500, 430),
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 MaximizeBox = false,
@@ -4128,10 +4184,10 @@ namespace Library_Management_System.Forms.staff
                 Text = "Checkout Book",
                 Font = new Font("Segoe UI", 18F, FontStyle.Bold),
                 Location = new Point(30, 20),
-                Size = new Size(400, 35),
+                Size = new Size(400, 65),
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
-            int startY = 70;
+            int startY = 100;
             Label lblMemberId = new Label { Text = "Member ID:", Location = new Point(30, startY), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
             TextBox txtMemberId = new TextBox { Location = new Point(140, startY), Size = new Size(300, 30), Font = new Font("Segoe UI", 10F) };
             startY += 50;
@@ -4226,7 +4282,7 @@ namespace Library_Management_System.Forms.staff
             Form returnForm = new Form
             {
                 Text = "Book Return",
-                Size = new Size(400, 250),
+                Size = new Size(400, 280),
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 MaximizeBox = false,
@@ -4239,15 +4295,15 @@ namespace Library_Management_System.Forms.staff
                 Text = "Return Book",
                 Font = new Font("Segoe UI", 18F, FontStyle.Bold),
                 Location = new Point(30, 20),
-                Size = new Size(300, 35),
+                Size = new Size(300, 65),
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
-            Label lblBorrowingId = new Label { Text = "Borrowing ID:", Location = new Point(30, 80), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
-            TextBox txtBorrowingId = new TextBox { Location = new Point(140, 75), Size = new Size(200, 30), Font = new Font("Segoe UI", 10F) };
+            Label lblBorrowingId = new Label { Text = "Borrowing ID:", Location = new Point(30, 100), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
+            TextBox txtBorrowingId = new TextBox { Location = new Point(140, 95), Size = new Size(200, 30), Font = new Font("Segoe UI", 10F) };
             Button btnCancel = new Button
             {
                 Text = "Cancel",
-                Location = new Point(150, 150),
+                Location = new Point(150, 180),
                 Size = new Size(80, 35),
                 Font = new Font("Segoe UI", 10F),
                 DialogResult = DialogResult.Cancel
@@ -4255,7 +4311,7 @@ namespace Library_Management_System.Forms.staff
             Button btnReturn = new Button
             {
                 Text = "Return",
-                Location = new Point(240, 150),
+                Location = new Point(240, 180),
                 Size = new Size(80, 35),
                 Font = new Font("Segoe UI", 10F),
                 BackColor = Color.FromArgb(255, 152, 0),
@@ -4300,7 +4356,7 @@ namespace Library_Management_System.Forms.staff
             Form detailsForm = new Form
             {
                 Text = "Borrowing Details",
-                Size = new Size(500, 400),
+                Size = new Size(500, 430),
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 MaximizeBox = false,
@@ -4313,10 +4369,10 @@ namespace Library_Management_System.Forms.staff
                 Text = "Borrowing Details",
                 Font = new Font("Segoe UI", 18F, FontStyle.Bold),
                 Location = new Point(30, 20),
-                Size = new Size(400, 35),
+                Size = new Size(400, 65),
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
-            int startY = 70;
+            int startY = 100;
             int labelWidth = 120;
             int fieldWidth = 300;
             Label lblBorrowingId = new Label { Text = "Borrowing ID:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
@@ -4377,22 +4433,31 @@ namespace Library_Management_System.Forms.staff
             pnlMembersView.Visible = false;
             ShowDashboardControls(false);
             ClearDynamicControls();
+            Panel staffReservationsHeaderPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 140,
+                BackColor = Color.White
+            };
             Label titleLabel = new Label
             {
                 Text = "Reservations",
                 Font = new Font("Segoe UI", 24F, FontStyle.Bold),
                 Location = new Point(30, 20),
-                Size = new Size(200, 40),
-                ForeColor = Color.FromArgb(40, 40, 40)
+                Size = new Size(200, 65),
+                ForeColor = Color.FromArgb(40, 40, 40),
+                BackColor = Color.Transparent
             };
             Label subtitleLabel = new Label
             {
                 Text = "Manage book reservations and pickup notifications",
                 Font = new Font("Segoe UI", 10F, FontStyle.Regular),
-                Location = new Point(30, 60),
+                Location = new Point(30, 100),
                 Size = new Size(400, 25),
-                ForeColor = Color.FromArgb(100, 100, 100)
+                ForeColor = Color.FromArgb(100, 100, 100),
+                BackColor = Color.Transparent
             };
+            staffReservationsHeaderPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel });
             Button btnNewReservation = new Button
             {
                 Text = "New Reservation",
@@ -4722,7 +4787,7 @@ namespace Library_Management_System.Forms.staff
                 }
             };
             searchPanel.Controls.AddRange(new Control[] { searchContainer, btnFilterAll, btnFilterPending, btnFilterReady, btnFilterFulfilled });
-            pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnNewReservation, statsPanel, searchPanel, dgvReservations });
+            pnlMainContent.Controls.AddRange(new Control[] { staffReservationsHeaderPanel, btnNewReservation, statsPanel, searchPanel, dgvReservations });
             LoadReservationsData();
         }
         private void ShowNewReservationDialog()
@@ -4833,22 +4898,31 @@ namespace Library_Management_System.Forms.staff
             pnlMembersView.Visible = false;
             ShowDashboardControls(false);
             ClearDynamicControls();
+            Panel staffFinesHeaderPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 140,
+                BackColor = Color.White
+            };
             Label titleLabel = new Label
             {
                 Text = "Fines & Penalties",
                 Font = new Font("Segoe UI", 24F, FontStyle.Bold),
                 Location = new Point(30, 20),
-                Size = new Size(300, 40),
-                ForeColor = Color.FromArgb(40, 40, 40)
+                Size = new Size(300, 70),
+                ForeColor = Color.FromArgb(40, 40, 40),
+                BackColor = Color.Transparent
             };
             Label subtitleLabel = new Label
             {
                 Text = "Manage member fines, payments, and waivers",
                 Font = new Font("Segoe UI", 10F, FontStyle.Regular),
-                Location = new Point(30, 60),
-                Size = new Size(400, 25),
-                ForeColor = Color.FromArgb(100, 100, 100)
+                Location = new Point(30, 95),
+                Size = new Size(500, 25),
+                ForeColor = Color.FromArgb(100, 100, 100),
+                BackColor = Color.Transparent
             };
+            staffFinesHeaderPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel });
             Button btnAddFine = new Button
             {
                 Text = "Add Fine",
@@ -4866,7 +4940,7 @@ namespace Library_Management_System.Forms.staff
             btnAddFine.MouseLeave += (s, e) => btnAddFine.BackColor = Color.FromArgb(128, 0, 0);
             Panel statsPanel = new Panel
             {
-                Location = new Point(30, 100),
+                Location = new Point(30, 150),
                 Size = new Size(pnlMainContent.Width - 60, 80),
                 BackColor = Color.Transparent,
                 Tag = "FinesStatsPanel"
@@ -4878,7 +4952,7 @@ namespace Library_Management_System.Forms.staff
             statsPanel.Controls.AddRange(new Control[] { cardPendingFines, cardCollected, cardWaived, cardPendingCases });
             Panel searchPanel = new Panel
             {
-                Location = new Point(30, 190),
+                Location = new Point(30, 250),
                 Size = new Size(pnlMainContent.Width - 60, 70),
                 BackColor = Color.White,
                 BorderStyle = BorderStyle.None
@@ -5000,8 +5074,8 @@ namespace Library_Management_System.Forms.staff
             };
             DataGridView dgvFines = new DataGridView
             {
-                Location = new Point(30, 270),
-                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 300),
+                Location = new Point(30, 340),
+                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 370),
                 BackgroundColor = Color.White,
                 BorderStyle = BorderStyle.FixedSingle,
                 AllowUserToAddRows = false,
@@ -5287,7 +5361,7 @@ namespace Library_Management_System.Forms.staff
                 }
             };
             searchPanel.Controls.AddRange(new Control[] { searchContainer, btnFilterAll, btnFilterPending, btnFilterPaid, btnFilterWaived });
-            pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnAddFine, statsPanel, searchPanel, dgvFines });
+            pnlMainContent.Controls.AddRange(new Control[] { staffFinesHeaderPanel, btnAddFine, statsPanel, searchPanel, dgvFines });
             LoadFinesData();
         }
         private void ShowAddFineDialog()
@@ -5304,7 +5378,7 @@ namespace Library_Management_System.Forms.staff
                 ShowInTaskbar = false,
                 BackColor = Color.FromArgb(245, 245, 245)
             };
-            Panel headerPanel = new Panel
+            Panel staffAddFineHeaderPanel = new Panel
             {
                 Location = new Point(0, 0),
                 Size = new Size(addFineForm.ClientSize.Width, 80),
@@ -5316,14 +5390,14 @@ namespace Library_Management_System.Forms.staff
                 Text = "Add New Fine",
                 Font = new Font("Segoe UI", 18F, FontStyle.Bold),
                 Location = new Point(30, 20),
-                Size = new Size(300, 30),
+                Size = new Size(300, 65),
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
             Label subtitleLabel = new Label
             {
                 Text = "Create a new fine for a member.",
                 Font = new Font("Segoe UI", 10F),
-                Location = new Point(30, 50),
+                Location = new Point(30, 100),
                 Size = new Size(400, 20),
                 ForeColor = Color.FromArgb(100, 100, 100)
             };
@@ -5331,7 +5405,7 @@ namespace Library_Management_System.Forms.staff
             {
                 Text = "✕",
                 Font = new Font("Segoe UI", 14F, FontStyle.Bold),
-                Location = new Point(headerPanel.Width - 40, 10),
+                Location = new Point(staffAddFineHeaderPanel.Width - 40, 10),
                 Size = new Size(30, 30),
                 BackColor = Color.Transparent,
                 ForeColor = Color.FromArgb(100, 100, 100),
@@ -5341,7 +5415,7 @@ namespace Library_Management_System.Forms.staff
             };
             btnClose.FlatAppearance.BorderSize = 0;
             btnClose.Click += (s, e) => addFineForm.Close();
-            headerPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnClose });
+            staffAddFineHeaderPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnClose });
             Panel contentPanel = new Panel
             {
                 BackColor = Color.White,
@@ -5592,7 +5666,7 @@ namespace Library_Management_System.Forms.staff
                     MessageBox.Show($"Error adding fine: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             };
-            addFineForm.Controls.AddRange(new Control[] { headerPanel, contentPanel, buttonPanel });
+            addFineForm.Controls.AddRange(new Control[] { staffAddFineHeaderPanel, contentPanel, buttonPanel });
             addFineForm.ShowDialog();
         }
         private void ShowWaiveFineDialog(string fineId, string memberName, decimal amount)
@@ -5600,7 +5674,7 @@ namespace Library_Management_System.Forms.staff
             Form waiveForm = new Form
             {
                 Text = "Waive Fine",
-                Size = new Size(450, 250),
+                Size = new Size(450, 300),
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 MaximizeBox = false,
@@ -5611,26 +5685,26 @@ namespace Library_Management_System.Forms.staff
                 Text = $"Waive Fine for {memberName}",
                 Font = new Font("Segoe UI", 14F, FontStyle.Bold),
                 Location = new Point(20, 20),
-                Size = new Size(400, 30),
+                Size = new Size(400, 65),
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
             Label amountLabel = new Label
             {
                 Text = $"Amount: ₱{amount:F2}",
                 Font = new Font("Segoe UI", 12F),
-                Location = new Point(20, 60),
+                Location = new Point(20, 100),
                 Size = new Size(400, 25)
             };
             Label reasonLabel = new Label
             {
                 Text = "Reason for waiving:",
                 Font = new Font("Segoe UI", 10F),
-                Location = new Point(20, 100),
+                Location = new Point(20, 140),
                 Size = new Size(200, 25)
             };
             TextBox txtReason = new TextBox
             {
-                Location = new Point(20, 125),
+                Location = new Point(20, 165),
                 Size = new Size(390, 30),
                 Font = new Font("Segoe UI", 10F),
                 Multiline = true,
@@ -5639,14 +5713,14 @@ namespace Library_Management_System.Forms.staff
             Button btnCancel = new Button
             {
                 Text = "Cancel",
-                Location = new Point(260, 195),
+                Location = new Point(260, 235),
                 Size = new Size(70, 30),
                 DialogResult = DialogResult.Cancel
             };
             Button btnWaive = new Button
             {
                 Text = "Waive Fine",
-                Location = new Point(340, 195),
+                Location = new Point(340, 235),
                 Size = new Size(70, 30),
                 BackColor = Color.FromArgb(128, 0, 0),
                 ForeColor = Color.White,
@@ -5689,7 +5763,7 @@ namespace Library_Management_System.Forms.staff
             Form paymentForm = new Form
             {
                 Text = "Process Fine Payment",
-                Size = new Size(400, 250),
+                Size = new Size(400, 280),
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 MaximizeBox = false,
@@ -5702,15 +5776,15 @@ namespace Library_Management_System.Forms.staff
                 Text = "Process Payment",
                 Font = new Font("Segoe UI", 18F, FontStyle.Bold),
                 Location = new Point(30, 20),
-                Size = new Size(300, 35),
+                Size = new Size(300, 65),
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
-            Label lblFineId = new Label { Text = "Fine ID:", Location = new Point(30, 80), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
-            TextBox txtFineId = new TextBox { Location = new Point(140, 75), Size = new Size(200, 30), Font = new Font("Segoe UI", 10F) };
+            Label lblFineId = new Label { Text = "Fine ID:", Location = new Point(30, 100), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
+            TextBox txtFineId = new TextBox { Location = new Point(140, 95), Size = new Size(200, 30), Font = new Font("Segoe UI", 10F) };
             Button btnCancel = new Button
             {
                 Text = "Cancel",
-                Location = new Point(150, 150),
+                Location = new Point(150, 180),
                 Size = new Size(80, 35),
                 Font = new Font("Segoe UI", 10F),
                 DialogResult = DialogResult.Cancel
@@ -5718,7 +5792,7 @@ namespace Library_Management_System.Forms.staff
             Button btnProcess = new Button
             {
                 Text = "Process",
-                Location = new Point(240, 150),
+                Location = new Point(240, 180),
                 Size = new Size(80, 35),
                 Font = new Font("Segoe UI", 10F),
                 BackColor = Color.FromArgb(76, 175, 80),
@@ -5768,7 +5842,7 @@ namespace Library_Management_System.Forms.staff
             Form waiveForm = new Form
             {
                 Text = "Waive Fine",
-                Size = new Size(450, 300),
+                Size = new Size(450, 330),
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 MaximizeBox = false,
@@ -5781,15 +5855,15 @@ namespace Library_Management_System.Forms.staff
                 Text = "Waive Fine",
                 Font = new Font("Segoe UI", 18F, FontStyle.Bold),
                 Location = new Point(30, 20),
-                Size = new Size(300, 35),
+                Size = new Size(300, 65),
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
-            Label lblFineId = new Label { Text = "Fine ID:", Location = new Point(30, 70), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
-            TextBox txtFineId = new TextBox { Location = new Point(140, 65), Size = new Size(250, 30), Font = new Font("Segoe UI", 10F) };
-            Label lblReason = new Label { Text = "Reason:", Location = new Point(30, 110), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
+            Label lblFineId = new Label { Text = "Fine ID:", Location = new Point(30, 100), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
+            TextBox txtFineId = new TextBox { Location = new Point(140, 95), Size = new Size(250, 30), Font = new Font("Segoe UI", 10F) };
+            Label lblReason = new Label { Text = "Reason:", Location = new Point(30, 140), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
             TextBox txtReason = new TextBox
             {
-                Location = new Point(140, 105),
+                Location = new Point(140, 135),
                 Size = new Size(250, 60),
                 Font = new Font("Segoe UI", 10F),
                 Multiline = true,
@@ -5798,7 +5872,7 @@ namespace Library_Management_System.Forms.staff
             Button btnCancel = new Button
             {
                 Text = "Cancel",
-                Location = new Point(250, 200),
+                Location = new Point(250, 230),
                 Size = new Size(80, 35),
                 Font = new Font("Segoe UI", 10F),
                 DialogResult = DialogResult.Cancel
@@ -5806,7 +5880,7 @@ namespace Library_Management_System.Forms.staff
             Button btnWaive = new Button
             {
                 Text = "Waive",
-                Location = new Point(340, 200),
+                Location = new Point(340, 230),
                 Size = new Size(80, 35),
                 Font = new Font("Segoe UI", 10F),
                 BackColor = Color.FromArgb(255, 152, 0),
@@ -5863,7 +5937,7 @@ namespace Library_Management_System.Forms.staff
             Form detailsForm = new Form
             {
                 Text = "Fine Details",
-                Size = new Size(500, 400),
+                Size = new Size(500, 430),
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 MaximizeBox = false,
@@ -5876,10 +5950,10 @@ namespace Library_Management_System.Forms.staff
                 Text = "Fine Details",
                 Font = new Font("Segoe UI", 18F, FontStyle.Bold),
                 Location = new Point(30, 20),
-                Size = new Size(400, 35),
+                Size = new Size(400, 65),
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
-            int startY = 70;
+            int startY = 100;
             int labelWidth = 120;
             int fieldWidth = 300;
             Label lblFineId = new Label { Text = "Fine ID:", Location = new Point(30, startY), Size = new Size(labelWidth, 25), Font = new Font("Segoe UI", 10F) };
@@ -5942,22 +6016,31 @@ namespace Library_Management_System.Forms.staff
             pnlMembersView.Visible = false;
             ShowDashboardControls(false);
             ClearDynamicControls();
+            Panel staffInventoryHeaderPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 140,
+                BackColor = Color.White
+            };
             Label titleLabel = new Label
             {
                 Text = "Inventory Management",
                 Font = new Font("Segoe UI", 24F, FontStyle.Bold),
                 Location = new Point(30, 20),
-                Size = new Size(300, 40),
-                ForeColor = Color.FromArgb(40, 40, 40)
+                Size = new Size(300, 70),
+                ForeColor = Color.FromArgb(40, 40, 40),
+                BackColor = Color.Transparent
             };
             Label subtitleLabel = new Label
             {
                 Text = "Track and manage book copies, locations, and conditions",
                 Font = new Font("Segoe UI", 10F, FontStyle.Regular),
-                Location = new Point(30, 60),
+                Location = new Point(30, 95),
                 Size = new Size(400, 25),
-                ForeColor = Color.FromArgb(100, 100, 100)
+                ForeColor = Color.FromArgb(100, 100, 100),
+                BackColor = Color.Transparent
             };
+            staffInventoryHeaderPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel });
             Button btnExportInventory = new Button
             {
                 Text = "Export Inventory",
@@ -5975,7 +6058,7 @@ namespace Library_Management_System.Forms.staff
             btnExportInventory.MouseLeave += (s, e) => btnExportInventory.BackColor = Color.FromArgb(128, 0, 0);
             Panel statsPanel = new Panel
             {
-                Location = new Point(30, 100),
+                Location = new Point(30, 150),
                 Size = new Size(pnlMainContent.Width - 60, 160), 
                 BackColor = Color.Transparent,
                 Tag = "InventoryStatsPanel"
@@ -5989,7 +6072,7 @@ namespace Library_Management_System.Forms.staff
             statsPanel.Controls.AddRange(new Control[] { cardTotalTitles, cardTotalCopies, cardAvailable, cardBorrowed, cardDamaged, cardLost });
             Panel categoryPanel = new Panel
             {
-                Location = new Point(30, 270), 
+                Location = new Point(30, 330), 
                 Size = new Size(pnlMainContent.Width - 60, 120),
                 BackColor = Color.White,
                 BorderStyle = BorderStyle.None,
@@ -6035,7 +6118,7 @@ namespace Library_Management_System.Forms.staff
             categoryPanel.Controls.AddRange(new Control[] { categoryTitle, categorySubtitle, categoryContentPanel });
             Panel searchPanel = new Panel
             {
-                Location = new Point(30, 400), 
+                Location = new Point(30, 470), 
                 Size = new Size(pnlMainContent.Width - 60, 70),
                 BackColor = Color.White,
                 BorderStyle = BorderStyle.None
@@ -6102,8 +6185,8 @@ namespace Library_Management_System.Forms.staff
             cmbStatusFilter.SelectedIndex = 0;
             DataGridView dgvInventory = new DataGridView
             {
-                Location = new Point(30, 480), 
-                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 510), 
+                Location = new Point(30, 550), 
+                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 580), 
                 BackgroundColor = Color.White,
                 BorderStyle = BorderStyle.FixedSingle,
                 AllowUserToAddRows = false,
@@ -6323,10 +6406,10 @@ namespace Library_Management_System.Forms.staff
                         ControlBox = false,
                         BackColor = Color.FromArgb(245, 245, 245)
                     };
-                    Panel headerPanel = new Panel
+                    Panel staffExportHeaderPanel = new Panel
                     {
                         Location = new Point(0, 0),
-                        Size = new Size(exportDialog.ClientSize.Width, 70),
+                        Size = new Size(exportDialog.ClientSize.Width, 100),
                         BackColor = Color.White
                     };
                     Label dialogTitleLabel = new Label
@@ -6334,14 +6417,14 @@ namespace Library_Management_System.Forms.staff
                         Text = "Choose Export Format",
                         Font = new Font("Segoe UI", 16F, FontStyle.Bold),
                         Location = new Point(30, 15),
-                        Size = new Size(300, 25),
+                        Size = new Size(300, 50),
                         ForeColor = Color.FromArgb(40, 40, 40)
                     };
                     Label dialogSubtitleLabel = new Label
                     {
                         Text = "Select your preferred format for the inventory data",
                         Font = new Font("Segoe UI", 9F),
-                        Location = new Point(30, 42),
+                        Location = new Point(30, 70),
                         Size = new Size(350, 20),
                         ForeColor = Color.FromArgb(100, 100, 100)
                     };
@@ -6358,11 +6441,11 @@ namespace Library_Management_System.Forms.staff
                     };
                     btnCloseDialog.FlatAppearance.BorderSize = 0;
                     btnCloseDialog.Click += (sd, ed) => exportDialog.Close();
-                    headerPanel.Controls.AddRange(new Control[] { dialogTitleLabel, dialogSubtitleLabel, btnCloseDialog });
+                    staffExportHeaderPanel.Controls.AddRange(new Control[] { dialogTitleLabel, dialogSubtitleLabel, btnCloseDialog });
                     Panel contentPanel = new Panel
                     {
-                        Location = new Point(0, 70),
-                        Size = new Size(exportDialog.ClientSize.Width, exportDialog.ClientSize.Height - 70),
+                        Location = new Point(0, 100),
+                        Size = new Size(exportDialog.ClientSize.Width, exportDialog.ClientSize.Height - 100),
                         BackColor = Color.FromArgb(250, 250, 250)
                     };
                     Label lblFormat = new Label
@@ -6418,7 +6501,7 @@ namespace Library_Management_System.Forms.staff
                         exportDialog.Close();
                     };
                     contentPanel.Controls.AddRange(new Control[] { lblFormat, cmbFormat, btnCancel, btnExport });
-                    exportDialog.Controls.AddRange(new Control[] { headerPanel, contentPanel });
+                    exportDialog.Controls.AddRange(new Control[] { staffExportHeaderPanel, contentPanel });
                     exportDialog.ShowDialog();
                 }
                 catch (Exception ex)
@@ -6441,7 +6524,7 @@ namespace Library_Management_System.Forms.staff
             };
             searchPanel.Controls.AddRange(new Control[] { searchContainer, lblStatusFilter, cmbStatusFilter });
             pnlMainContent.Controls.AddRange(new Control[] { 
-                titleLabel, subtitleLabel, btnExportInventory, 
+                staffInventoryHeaderPanel, btnExportInventory, 
                 statsPanel, categoryPanel, searchPanel, dgvInventory 
             });
             LoadInventoryData();
@@ -6668,7 +6751,7 @@ namespace Library_Management_System.Forms.staff
             Form updateForm = new Form
             {
                 Text = "Update Stock Level",
-                Size = new Size(450, 300),
+                Size = new Size(450, 330),
                 StartPosition = FormStartPosition.CenterParent,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 MaximizeBox = false,
@@ -6681,15 +6764,15 @@ namespace Library_Management_System.Forms.staff
                 Text = "Update Stock Level",
                 Font = new Font("Segoe UI", 18F, FontStyle.Bold),
                 Location = new Point(30, 20),
-                Size = new Size(300, 35),
+                Size = new Size(300, 65),
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
-            Label lblBookId = new Label { Text = "Book ID:", Location = new Point(30, 70), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
-            TextBox txtBookId = new TextBox { Location = new Point(140, 65), Size = new Size(200, 30), Font = new Font("Segoe UI", 10F) };
+            Label lblBookId = new Label { Text = "Book ID:", Location = new Point(30, 100), Size = new Size(100, 25), Font = new Font("Segoe UI", 10F) };
+            TextBox txtBookId = new TextBox { Location = new Point(140, 95), Size = new Size(200, 30), Font = new Font("Segoe UI", 10F) };
             Label lblCurrentInfo = new Label
             {
                 Text = "Current: Total - 0, Available - 0",
-                Location = new Point(30, 110),
+                Location = new Point(30, 140),
                 Size = new Size(350, 25),
                 Font = new Font("Segoe UI", 10F),
                 ForeColor = Color.FromArgb(100, 100, 100)

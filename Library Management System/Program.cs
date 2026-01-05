@@ -12,7 +12,7 @@ namespace Library_Management_System
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            // CHANGE THIS TO FALSE TO SHOW LOGIN SCREEN
+            // Set to false to show login screen first, true for direct dashboard access (debug mode)
             bool debugMode = false;
 
             if (debugMode)

@@ -380,6 +380,10 @@ namespace Library_Management_System.Forms.members
                 lblAdminName.Text = "Admin";
             }
             lblDate.Text = DateTime.Now.ToString("MMM d, yyyy");
+
+            // Fix: Ensure dashboard labels have transparent background to match other sections
+            lblWelcome.BackColor = Color.Transparent;
+            lblDate.BackColor = Color.Transparent;
         }
         private void LoadDashboardData()
         {
@@ -948,13 +952,20 @@ namespace Library_Management_System.Forms.members
             pnlMembersView.Visible = false;
             ShowDashboardControls(false);
             ClearDynamicControls();
+            Panel catalogHeaderPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 140,
+                BackColor = Color.White
+            };
             Label titleLabel = new Label
             {
                 Text = "Catalog",
                 Font = new Font("Segoe UI", 24F, FontStyle.Bold),
                 Location = new Point(30, 20),
                 Size = new Size(200, 40),
-                ForeColor = Color.FromArgb(40, 40, 40)
+                ForeColor = Color.FromArgb(40, 40, 40),
+                BackColor = Color.Transparent
             };
             Label subtitleLabel = new Label
             {
@@ -962,8 +973,10 @@ namespace Library_Management_System.Forms.members
                 Font = new Font("Segoe UI", 10F, FontStyle.Regular),
                 Location = new Point(30, 60),
                 Size = new Size(400, 25),
-                ForeColor = Color.FromArgb(100, 100, 100)
+                ForeColor = Color.FromArgb(100, 100, 100),
+                BackColor = Color.Transparent
             };
+            catalogHeaderPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel });
             Button btnAddBookHeader = new Button
             {
                 Text = "+ Add Book",
@@ -1288,8 +1301,7 @@ namespace Library_Management_System.Forms.members
             searchContainer.Controls.AddRange(new Control[] { lblSearchIcon, txtSearchBooks });
             searchPanel.Controls.AddRange(new Control[] { searchContainer, lblCategoryFilter, cmbCategoryFilter, btnGridView, btnListView });
             List<Control> controlsToAdd = new List<Control>();
-            if (!pnlMainContent.Controls.Contains(titleLabel)) controlsToAdd.Add(titleLabel);
-            if (!pnlMainContent.Controls.Contains(subtitleLabel)) controlsToAdd.Add(subtitleLabel);
+            if (!pnlMainContent.Controls.Contains(catalogHeaderPanel)) controlsToAdd.Add(catalogHeaderPanel);
             if (!pnlMainContent.Controls.Contains(btnAddBookHeader)) controlsToAdd.Add(btnAddBookHeader);
             if (!pnlMainContent.Controls.Contains(statsPanel)) controlsToAdd.Add(statsPanel);
             if (!pnlMainContent.Controls.Contains(searchPanel)) controlsToAdd.Add(searchPanel);
@@ -1315,7 +1327,7 @@ namespace Library_Management_System.Forms.members
                 ShowInTaskbar = false,
                 BackColor = Color.FromArgb(245, 245, 245)
             };
-            Panel headerPanel = new Panel
+            Panel addBookHeaderPanel = new Panel
             {
                 Location = new Point(0, 0),
                 Size = new Size(addForm.Width, 80),
@@ -1338,7 +1350,7 @@ namespace Library_Management_System.Forms.members
                 Size = new Size(500, 20),
                 ForeColor = Color.FromArgb(100, 100, 100)
             };
-            headerPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel });
+            addBookHeaderPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel });
             Panel contentPanel = new Panel
             {
                 BackColor = Color.White,
@@ -1634,7 +1646,7 @@ namespace Library_Management_System.Forms.members
             addForm.AcceptButton = btnSave;
             addForm.CancelButton = btnCancel;
             btnCancel.Click += (s, e) => addForm.Close();
-            addForm.Controls.Add(headerPanel);
+            addForm.Controls.Add(addBookHeaderPanel);
             addForm.Controls.Add(buttonPanel);
             addForm.Controls.Add(contentPanel);
             addForm.ShowDialog();
@@ -1852,13 +1864,20 @@ namespace Library_Management_System.Forms.members
             pnlMembersView.Visible = false;
             ShowDashboardControls(false);
             ClearDynamicControls();
+            Panel reservationsHeaderPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 140,
+                BackColor = Color.White
+            };
             Label titleLabel = new Label
             {
                 Text = "Reservations",
                 Font = new Font("Segoe UI", 24F, FontStyle.Bold),
                 Location = new Point(30, 20),
                 Size = new Size(200, 40),
-                ForeColor = Color.FromArgb(40, 40, 40)
+                ForeColor = Color.FromArgb(40, 40, 40),
+                BackColor = Color.Transparent
             };
             Label subtitleLabel = new Label
             {
@@ -1866,8 +1885,10 @@ namespace Library_Management_System.Forms.members
                 Font = new Font("Segoe UI", 10F, FontStyle.Regular),
                 Location = new Point(30, 60),
                 Size = new Size(400, 25),
-                ForeColor = Color.FromArgb(100, 100, 100)
+                ForeColor = Color.FromArgb(100, 100, 100),
+                BackColor = Color.Transparent
             };
+            reservationsHeaderPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel });
             Button btnNewReservation = new Button
             {
                 Text = "New Reservation",
@@ -2197,7 +2218,7 @@ namespace Library_Management_System.Forms.members
                 }
             };
             searchPanel.Controls.AddRange(new Control[] { searchContainer, btnFilterAll, btnFilterPending, btnFilterReady, btnFilterFulfilled });
-            pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnNewReservation, statsPanel, searchPanel, dgvReservations });
+            pnlMainContent.Controls.AddRange(new Control[] { reservationsHeaderPanel, btnNewReservation, statsPanel, searchPanel, dgvReservations });
             LoadReservationsData();
         }
         private void ShowNewReservationDialog()
