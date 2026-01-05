@@ -84,6 +84,19 @@ namespace Library_Management_System
             this.pnlAdministrator = new System.Windows.Forms.Panel();
             this.btnSignOut = new System.Windows.Forms.Button();
             this.lblAdminName = new System.Windows.Forms.Label();
+            this.picLogo = new System.Windows.Forms.PictureBox();
+            this.lblLibraryMS = new System.Windows.Forms.Label();
+            this.lblManagementSystem = new System.Windows.Forms.Label();
+            this.btnDashboard = new System.Windows.Forms.Button();
+            this.btnMembers = new System.Windows.Forms.Button();
+            this.btnCatalog = new System.Windows.Forms.Button();
+            this.btnCirculation = new System.Windows.Forms.Button();
+            this.btnReservations = new System.Windows.Forms.Button();
+            this.btnFines = new System.Windows.Forms.Button();
+            this.btnInventory = new System.Windows.Forms.Button();
+            this.btnReports = new System.Windows.Forms.Button();
+            this.btnSearch = new System.Windows.Forms.Button();
+            this.btnSettings = new System.Windows.Forms.Button();
             this.btnDashboard.Location = new System.Drawing.Point(0, 90);
             this.btnDashboard.Size = new System.Drawing.Size(280, 42);
 
