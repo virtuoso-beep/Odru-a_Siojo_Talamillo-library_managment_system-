@@ -12,7 +12,17 @@ namespace Library_Management_System
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new SiginForm());
+            // CHANGE THIS TO FALSE TO SHOW LOGIN SCREEN
+            bool debugMode = false;
+
+            if (debugMode)
+            {
+                Application.Run(new DashboardForm());
+            }
+            else
+            {
+                Application.Run(new SiginForm());
+            }
         }
     }
 }

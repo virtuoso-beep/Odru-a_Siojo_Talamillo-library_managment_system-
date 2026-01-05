@@ -3023,8 +3023,8 @@ namespace Library_Management_System
             {
                 Text = value,
                 Font = new Font("Segoe UI", 20F, FontStyle.Bold),
-                Location = new Point(65, 12),
-                Size = new Size(125, 28),
+                Location = new Point(65, 5),
+                Size = new Size(125, 35),
                 ForeColor = Color.FromArgb(40, 40, 40),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Tag = "Value",
@@ -3034,7 +3034,7 @@ namespace Library_Management_System
             {
                 Text = label,
                 Font = new Font("Segoe UI", 9F),
-                Location = new Point(65, 40),
+                Location = new Point(65, 42),
                 Size = new Size(125, 20),
                 ForeColor = Color.FromArgb(100, 100, 100),
                 TextAlign = ContentAlignment.MiddleLeft,
