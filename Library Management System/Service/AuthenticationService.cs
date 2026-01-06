@@ -422,5 +422,160 @@ namespace Library_Management_System.Service
                 return builder.ToString();
             }
         }
+
+        // Password Reset Methods
+        public string RequestPasswordReset(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                throw new ArgumentException("Email cannot be empty");
+            }
+
+            try
+            {
+                using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
+                {
+                    connection.Open();
+                    
+                    // Get user by email
+                    using (var command = StoredProcedureHelper.CreateCommand("SP_GetUserByEmail", connection))
+                    {
+                        StoredProcedureHelper.AddParameter(command, "p_Email", email.Trim().ToLower());
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (!reader.Read())
+                            {
+                                // Don't reveal if user exists for security
+                                return null;
+                            }
+                            
+                            int userId = Convert.ToInt32(reader["UserId"]);
+                            
+                            // Generate reset token
+                            string token = GenerateResetToken();
+                            DateTime expiryDate = DateTime.Now.AddHours(24);
+                            
+                            // Create token in database
+                            using (var tokenCommand = StoredProcedureHelper.CreateCommand("SP_CreatePasswordResetToken", connection))
+                            {
+                                StoredProcedureHelper.AddParameter(tokenCommand, "p_UserId", userId);
+                                StoredProcedureHelper.AddParameter(tokenCommand, "p_Token", token);
+                                StoredProcedureHelper.AddParameter(tokenCommand, "p_ExpiryDate", expiryDate);
+                                tokenCommand.ExecuteNonQuery();
+                            }
+                            
+                            return token;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ErrorHandler.LogError(ex, "AuthenticationService.RequestPasswordReset");
+                return null;
+            }
+        }
+
+        public (bool IsValid, int? UserId, string Email) ValidateResetToken(string token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return (false, null, null);
+            }
+
+            try
+            {
+                using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
+                {
+                    connection.Open();
+                    using (var command = StoredProcedureHelper.CreateCommand("SP_ValidatePasswordResetToken", connection))
+                    {
+                        StoredProcedureHelper.AddParameter(command, "p_Token", token);
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                int userId = Convert.ToInt32(reader["UserId"]);
+                                string email = reader["Email"].ToString();
+                                return (true, userId, email);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ErrorHandler.LogError(ex, "AuthenticationService.ValidateResetToken");
+            }
+            
+            return (false, null, null);
+        }
+
+        public bool ResetPassword(string token, string newPassword)
+        {
+            if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(newPassword))
+            {
+                return false;
+            }
+
+            // Validate password
+            var validation = PasswordValidator.ValidatePassword(newPassword);
+            if (!validation.IsValid)
+            {
+                throw new ArgumentException(validation.ErrorMessage);
+            }
+
+            try
+            {
+                var (isValid, userId, email) = ValidateResetToken(token);
+                if (!isValid || !userId.HasValue)
+                {
+                    return false;
+                }
+
+                string passwordHash = HashPassword(newPassword);
+
+                using (var connection = new MySqlConnection(MYSqlHelper.GetConnectionString()))
+                {
+                    connection.Open();
+                    
+                    // Update password
+                    using (var command = StoredProcedureHelper.CreateCommand("SP_UpdateUserPassword", connection))
+                    {
+                        StoredProcedureHelper.AddParameter(command, "p_UserId", userId.Value);
+                        StoredProcedureHelper.AddParameter(command, "p_NewPasswordHash", passwordHash);
+                        command.ExecuteNonQuery();
+                    }
+                    
+                    // Mark token as used
+                    using (var tokenCommand = StoredProcedureHelper.CreateCommand("SP_UsePasswordResetToken", connection))
+                    {
+                        StoredProcedureHelper.AddParameter(tokenCommand, "p_Token", token);
+                        tokenCommand.ExecuteNonQuery();
+                    }
+                }
+                
+                return true;
+            }
+            catch (Exception ex)
+            {
+                ErrorHandler.LogError(ex, "AuthenticationService.ResetPassword");
+                return false;
+            }
+        }
+
+        private string GenerateResetToken()
+        {
+            using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
+            {
+                byte[] tokenBytes = new byte[32];
+                rng.GetBytes(tokenBytes);
+                return Convert.ToBase64String(tokenBytes)
+                    .Replace("+", "-")
+                    .Replace("/", "_")
+                    .Replace("=", "")
+                    .Substring(0, 32);
+            }
+        }
     }
 }

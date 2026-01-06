@@ -24,6 +24,7 @@ namespace Library_Management_System.Forms.members
         private Button btnTriggerSearch;
         private Button btnSearchFilters;
         private List<Control> _originalMainContentControls = new List<Control>();
+        private SearchService _searchService;
         public MembersDashboard()
         {
             try
@@ -74,6 +75,7 @@ namespace Library_Management_System.Forms.members
             SetupCardStyling();
             SetupMenuButtonHoverEffects();
             SetupSidebarStyling();
+            _searchService = new SearchService();
             SetupSearchView();
             this.Load += (s, e) => {
                 if (pnlMainContent.Controls.Contains(pnlCardTotalBooks))
@@ -761,6 +763,8 @@ namespace Library_Management_System.Forms.members
                 Cursor = Cursors.Hand
             };
             btnTriggerSearch.FlatAppearance.BorderSize = 0;
+            btnTriggerSearch.Click += (s, e) => PerformSearch();
+            txtSearchInput.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) PerformSearch(); };
             btnSearchFilters = new Button
             {
                 Text = "Reference  ▼",
@@ -872,6 +876,130 @@ namespace Library_Management_System.Forms.members
             pnlSearchView.Controls.Add(pnlSearchBar);
             pnlSearchView.Controls.Add(pnlSearchContent);
         }
+        
+        private void PerformSearch()
+        {
+            string searchText = txtSearchInput.Text;
+            if (searchText == "Search by title, author, ISBN, subject..." || string.IsNullOrWhiteSpace(searchText))
+            {
+                return;
+            }
+            
+            try
+            {
+                var filters = new SearchService.SearchFilters
+                {
+                    Category = btnSearchFilters.Text.Replace("  ▼", "").Replace("All Categories", "All Categories")
+                };
+                
+                var results = _searchService.SearchBooks(searchText, filters);
+                DisplaySearchResults(results);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error performing search: {ex.Message}", "Search Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        
+        private void DisplaySearchResults(List<SearchService.SearchResult> results)
+        {
+            pnlSearchContent.Controls.Clear();
+            
+            if (results.Count == 0)
+            {
+                Label lblNoResults = new Label
+                {
+                    Text = "No results found",
+                    Font = new Font("Segoe UI", 12F),
+                    ForeColor = Color.Gray,
+                    AutoSize = true,
+                    Location = new Point(20, 20),
+                    BackColor = Color.Transparent
+                };
+                pnlSearchContent.Controls.Add(lblNoResults);
+                return;
+            }
+            
+            Label lblResultsCount = new Label
+            {
+                Text = $"Found {results.Count} result(s)",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                Location = new Point(15, 15),
+                AutoSize = true,
+                BackColor = Color.Transparent
+            };
+            pnlSearchContent.Controls.Add(lblResultsCount);
+            
+            Panel resultsPanel = new Panel
+            {
+                Location = new Point(15, 45),
+                Size = new Size(pnlSearchContent.Width - 30, pnlSearchContent.Height - 60),
+                AutoScroll = true,
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
+            };
+            
+            int yPos = 0;
+            foreach (var result in results)
+            {
+                Panel resultCard = new Panel
+                {
+                    Size = new Size(resultsPanel.Width - 20, 120),
+                    Location = new Point(0, yPos),
+                    BackColor = Color.White,
+                    Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+                };
+                resultCard.Paint += (s, e) => {
+                    using (Pen p = new Pen(Color.LightGray))
+                        e.Graphics.DrawRectangle(p, 0, 0, resultCard.Width - 1, resultCard.Height - 1);
+                };
+                
+                Label lblTitle = new Label
+                {
+                    Text = result.Title,
+                    Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                    Location = new Point(15, 10),
+                    AutoSize = true,
+                    BackColor = Color.Transparent
+                };
+                
+                Label lblAuthor = new Label
+                {
+                    Text = $"By {result.Author}",
+                    Font = new Font("Segoe UI", 10F),
+                    ForeColor = Color.Gray,
+                    Location = new Point(15, 35),
+                    AutoSize = true,
+                    BackColor = Color.Transparent
+                };
+                
+                Label lblDetails = new Label
+                {
+                    Text = $"ISBN: {result.ISBN ?? "N/A"} | Category: {result.Category} | Year: {result.PublicationYear?.ToString() ?? "N/A"}",
+                    Font = new Font("Segoe UI", 9F),
+                    ForeColor = Color.DarkGray,
+                    Location = new Point(15, 55),
+                    AutoSize = true,
+                    BackColor = Color.Transparent
+                };
+                
+                Label lblAvailability = new Label
+                {
+                    Text = result.IsAvailable ? $"✓ Available ({result.AvailableCopies} copies)" : "✗ Unavailable",
+                    Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                    ForeColor = result.IsAvailable ? Color.Green : Color.Red,
+                    Location = new Point(15, 80),
+                    AutoSize = true,
+                    BackColor = Color.Transparent
+                };
+                
+                resultCard.Controls.AddRange(new Control[] { lblTitle, lblAuthor, lblDetails, lblAvailability });
+                resultsPanel.Controls.Add(resultCard);
+                yPos += 130;
+            }
+            
+            pnlSearchContent.Controls.Add(resultsPanel);
+        }
+        
         private Panel CreateCatalogStatCard(string icon, string value, string label, Color accentColor, Point location)
         {
             Panel card = new Panel

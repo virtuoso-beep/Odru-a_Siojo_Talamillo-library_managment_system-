@@ -4,6 +4,7 @@ using System.Text;
 namespace Library_Management_System.Helper
 {
     public static class AuditLogger
+
     {
         private static readonly string LogFilePath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),

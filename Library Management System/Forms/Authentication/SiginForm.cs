@@ -18,6 +18,7 @@ using Library_Management_System.Models;
 using Library_Management_System.Service;
 namespace Library_Management_System
 {
+    
     public partial class SiginForm : Form
     {
         private static User _currentUser;
@@ -64,6 +65,30 @@ namespace Library_Management_System
             {
                 picLogo.Image = Image.FromFile(logoPath);
             }
+            AddForgotPasswordLink();
+        }
+        
+        private void AddForgotPasswordLink()
+        {
+            LinkLabel lnkForgotPassword = new LinkLabel
+            {
+                Text = "Forgot Password?",
+                Location = new Point(70, 740),
+                AutoSize = true,
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.FromArgb(128, 0, 0),
+                Cursor = Cursors.Hand
+            };
+            lnkForgotPassword.LinkClicked += (s, e) =>
+            {
+                var forgotPasswordForm = new Forms.Authentication.ForgotPasswordForm();
+                if (forgotPasswordForm.ShowDialog() == DialogResult.OK)
+                {
+                    // Optionally show reset password form if token was provided
+                    // For now, user will need to use the token manually
+                }
+            };
+            pnlMainCard.Controls.Add(lnkForgotPassword);
         }
         private void ApplyFormRoundedCorners()
         {
