@@ -1188,7 +1188,7 @@ namespace Library_Management_System.Forms.staff
                 Text = value,
                 Font = new Font("Segoe UI", 28F, FontStyle.Bold),
                 Location = new Point(20, 35),
-                Size = new Size(size.Width - 50, 60), 
+                Size = new Size(size.Width - 90, 60), 
                 ForeColor = backColor == ThemeConstants.PrimaryMaroon ? Color.White : ThemeConstants.PrimaryMaroon,
                 BackColor = Color.Transparent,
                 TextAlign = ContentAlignment.MiddleLeft
@@ -1269,6 +1269,17 @@ namespace Library_Management_System.Forms.staff
                 AutoSize = true,
                 Location = new Point(2, 35)
             };
+            txtSearchInput = new TextBox
+            {
+                BorderStyle = BorderStyle.None,
+                Font = new Font("Segoe UI", 12F),
+                ForeColor = Color.Gray,
+                Text = "Search by title, author, ISBN, subject...",
+                Location = new Point(40, 18),
+                Width = 500,
+                Anchor = AnchorStyles.Left | AnchorStyles.Right
+            };
+
             Panel pnlSearchBar = new Panel
             {
                 Size = new Size(pnlSearchView.Width - 60, 60),
@@ -1296,6 +1307,7 @@ namespace Library_Management_System.Forms.staff
             btnTriggerSearch.FlatAppearance.BorderSize = 0;
             btnTriggerSearch.Click += (s, e) => PerformSearch();
             txtSearchInput.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) PerformSearch(); };
+
             btnSearchFilters = new Button
             {
                 Text = "Reference  ▼",
@@ -1308,16 +1320,6 @@ namespace Library_Management_System.Forms.staff
                  Cursor = Cursors.Hand
             };
              btnSearchFilters.FlatAppearance.BorderSize = 0;
-            txtSearchInput = new TextBox
-            {
-                BorderStyle = BorderStyle.None,
-                Font = new Font("Segoe UI", 12F),
-                ForeColor = Color.Gray,
-                Text = "Search by title, author, ISBN, subject...",
-                Location = new Point(40, 18),
-                Width = 500,
-                Anchor = AnchorStyles.Left | AnchorStyles.Right
-            };
             Label lblSearchIcon = new Label { Text = "🔍", Font = new Font("Segoe UI", 12F), Location = new Point(10, 15), AutoSize = true, ForeColor = Color.Gray };
             pnlSearchBar.Resize += (s, e) => {
                 txtSearchInput.Width = pnlSearchBar.Width - 260;
@@ -4132,19 +4134,14 @@ namespace Library_Management_System.Forms.staff
             pnlMembersView.Visible = false;
             ShowDashboardControls(false);
             ClearDynamicControls();
-            Panel headerPanel = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 140,
-                BackColor = Color.White
-            };
             Label titleLabel = new Label
             {
                 Text = "Circulation",
                 Font = new Font("Segoe UI", 24F, FontStyle.Bold),
                 Location = new Point(30, 20),
                 Size = new Size(300, 70),
-                ForeColor = Color.FromArgb(40, 40, 40)
+                ForeColor = Color.FromArgb(40, 40, 40),
+                BackColor = Color.Transparent
             };
             Label subtitleLabel = new Label
             {
@@ -4152,12 +4149,12 @@ namespace Library_Management_System.Forms.staff
                 Font = new Font("Segoe UI", 10F, FontStyle.Regular),
                 Location = new Point(30, 95),
                 Size = new Size(500, 25),
-                ForeColor = Color.FromArgb(100, 100, 100)
+                ForeColor = Color.FromArgb(100, 100, 100),
+                BackColor = Color.Transparent
             };
-            headerPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel });
             Panel statsPanel = new Panel
             {
-                Location = new Point(30, 150),
+                Location = new Point(30, 170),
                 Size = new Size(pnlMainContent.Width - 60, 80),
                 BackColor = Color.Transparent,
                 Tag = "CirculationStatsPanel"
@@ -4168,7 +4165,7 @@ namespace Library_Management_System.Forms.staff
             statsPanel.Controls.AddRange(new Control[] { cardCurrentlyBorrowed, cardOverdue, cardReturnedToday });
             Panel searchPanel = new Panel
             {
-                Location = new Point(30, 250),
+                Location = new Point(30, 270),
                 Size = new Size(pnlMainContent.Width - 60, 70),
                 BackColor = Color.White,
                 BorderStyle = BorderStyle.None
@@ -4266,8 +4263,8 @@ namespace Library_Management_System.Forms.staff
             btnReturn.MouseLeave += (s, e) => btnReturn.BackColor = Color.White;
             DataGridView dgvBorrowings = new DataGridView
             {
-                Location = new Point(30, 340),
-                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 370),
+                Location = new Point(30, 360),
+                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 390),
                 BackgroundColor = Color.White,
                 BorderStyle = BorderStyle.FixedSingle,
                 AllowUserToAddRows = false,
@@ -4482,7 +4479,7 @@ namespace Library_Management_System.Forms.staff
             };
             searchContainer.Controls.AddRange(new Control[] { searchIcon, txtSearchBorrowings });
             searchPanel.Controls.AddRange(new Control[] { searchContainer, lblStatusFilter, cmbStatusFilter });
-            pnlMainContent.Controls.AddRange(new Control[] { headerPanel, btnCheckout, btnReturn, statsPanel, searchPanel, dgvBorrowings });
+            pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnCheckout, btnReturn, statsPanel, searchPanel, dgvBorrowings });
             LoadBorrowingsData();
         }
         private void ShowCheckoutDialog()
@@ -4752,18 +4749,12 @@ namespace Library_Management_System.Forms.staff
             pnlMembersView.Visible = false;
             ShowDashboardControls(false);
             ClearDynamicControls();
-            Panel staffReservationsHeaderPanel = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 140,
-                BackColor = Color.White
-            };
             Label titleLabel = new Label
             {
                 Text = "Reservations",
                 Font = new Font("Segoe UI", 24F, FontStyle.Bold),
                 Location = new Point(30, 20),
-                Size = new Size(200, 65),
+                Size = new Size(300, 70),
                 ForeColor = Color.FromArgb(40, 40, 40),
                 BackColor = Color.Transparent
             };
@@ -4771,12 +4762,11 @@ namespace Library_Management_System.Forms.staff
             {
                 Text = "Manage book reservations and pickup notifications",
                 Font = new Font("Segoe UI", 10F, FontStyle.Regular),
-                Location = new Point(30, 100),
-                Size = new Size(400, 25),
+                Location = new Point(30, 95),
+                Size = new Size(500, 25),
                 ForeColor = Color.FromArgb(100, 100, 100),
                 BackColor = Color.Transparent
             };
-            staffReservationsHeaderPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel });
             Button btnNewReservation = new Button
             {
                 Text = "New Reservation",
@@ -4794,7 +4784,7 @@ namespace Library_Management_System.Forms.staff
             btnNewReservation.MouseLeave += (s, e) => btnNewReservation.BackColor = Color.FromArgb(128, 0, 0);
             Panel statsPanel = new Panel
             {
-                Location = new Point(30, 100),
+                Location = new Point(30, 170),
                 Size = new Size(pnlMainContent.Width - 60, 80),
                 BackColor = Color.Transparent,
                 Tag = "ReservationsStatsPanel"
@@ -4806,7 +4796,7 @@ namespace Library_Management_System.Forms.staff
             statsPanel.Controls.AddRange(new Control[] { cardPending, cardReady, cardFulfilled, cardExpired });
             Panel searchPanel = new Panel
             {
-                Location = new Point(30, 190),
+                Location = new Point(30, 270),
                 Size = new Size(pnlMainContent.Width - 60, 70),
                 BackColor = Color.White,
                 BorderStyle = BorderStyle.None
@@ -4910,8 +4900,8 @@ namespace Library_Management_System.Forms.staff
             btnFilterFulfilled.FlatAppearance.BorderSize = 0;
             DataGridView dgvReservations = new DataGridView
             {
-                Location = new Point(30, 270),
-                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 300),
+                Location = new Point(30, 360),
+                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 390),
                 BackgroundColor = Color.White,
                 BorderStyle = BorderStyle.FixedSingle,
                 AllowUserToAddRows = false,
@@ -5106,7 +5096,7 @@ namespace Library_Management_System.Forms.staff
                 }
             };
             searchPanel.Controls.AddRange(new Control[] { searchContainer, btnFilterAll, btnFilterPending, btnFilterReady, btnFilterFulfilled });
-            pnlMainContent.Controls.AddRange(new Control[] { staffReservationsHeaderPanel, btnNewReservation, statsPanel, searchPanel, dgvReservations });
+            pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnNewReservation, statsPanel, searchPanel, dgvReservations });
             LoadReservationsData();
         }
         private void ShowNewReservationDialog()
@@ -5217,12 +5207,6 @@ namespace Library_Management_System.Forms.staff
             pnlMembersView.Visible = false;
             ShowDashboardControls(false);
             ClearDynamicControls();
-            Panel staffFinesHeaderPanel = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 140,
-                BackColor = Color.White
-            };
             Label titleLabel = new Label
             {
                 Text = "Fines & Penalties",
@@ -5241,7 +5225,6 @@ namespace Library_Management_System.Forms.staff
                 ForeColor = Color.FromArgb(100, 100, 100),
                 BackColor = Color.Transparent
             };
-            staffFinesHeaderPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel });
             Button btnAddFine = new Button
             {
                 Text = "Add Fine",
@@ -5259,7 +5242,7 @@ namespace Library_Management_System.Forms.staff
             btnAddFine.MouseLeave += (s, e) => btnAddFine.BackColor = Color.FromArgb(128, 0, 0);
             Panel statsPanel = new Panel
             {
-                Location = new Point(30, 150),
+                Location = new Point(30, 170),
                 Size = new Size(pnlMainContent.Width - 60, 80),
                 BackColor = Color.Transparent,
                 Tag = "FinesStatsPanel"
@@ -5271,7 +5254,7 @@ namespace Library_Management_System.Forms.staff
             statsPanel.Controls.AddRange(new Control[] { cardPendingFines, cardCollected, cardWaived, cardPendingCases });
             Panel searchPanel = new Panel
             {
-                Location = new Point(30, 250),
+                Location = new Point(30, 270),
                 Size = new Size(pnlMainContent.Width - 60, 70),
                 BackColor = Color.White,
                 BorderStyle = BorderStyle.None
@@ -5393,8 +5376,8 @@ namespace Library_Management_System.Forms.staff
             };
             DataGridView dgvFines = new DataGridView
             {
-                Location = new Point(30, 340),
-                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 370),
+                Location = new Point(30, 360),
+                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 390),
                 BackgroundColor = Color.White,
                 BorderStyle = BorderStyle.FixedSingle,
                 AllowUserToAddRows = false,
@@ -5680,7 +5663,7 @@ namespace Library_Management_System.Forms.staff
                 }
             };
             searchPanel.Controls.AddRange(new Control[] { searchContainer, btnFilterAll, btnFilterPending, btnFilterPaid, btnFilterWaived });
-            pnlMainContent.Controls.AddRange(new Control[] { staffFinesHeaderPanel, btnAddFine, statsPanel, searchPanel, dgvFines });
+            pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnAddFine, statsPanel, searchPanel, dgvFines });
             LoadFinesData();
         }
         private void ShowAddFineDialog()
@@ -5697,34 +5680,39 @@ namespace Library_Management_System.Forms.staff
                 ShowInTaskbar = false,
                 BackColor = Color.FromArgb(245, 245, 245)
             };
+
+            // Restoring Header Panel for clean UI
             Panel staffAddFineHeaderPanel = new Panel
             {
-                Location = new Point(0, 0),
-                Size = new Size(addFineForm.ClientSize.Width, 80),
+                Height = 100,
                 BackColor = Color.White,
-                Dock = DockStyle.Top
+                Dock = DockStyle.Top,
+                Padding = new Padding(30, 0, 30, 0)
             };
+
             Label titleLabel = new Label
             {
                 Text = "Add New Fine",
                 Font = new Font("Segoe UI", 18F, FontStyle.Bold),
                 Location = new Point(30, 20),
-                Size = new Size(300, 65),
+                Size = new Size(300, 45),
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
+
             Label subtitleLabel = new Label
             {
                 Text = "Create a new fine for a member.",
                 Font = new Font("Segoe UI", 10F),
-                Location = new Point(30, 100),
+                Location = new Point(30, 65),
                 Size = new Size(400, 20),
                 ForeColor = Color.FromArgb(100, 100, 100)
             };
+
             Button btnClose = new Button
             {
                 Text = "✕",
                 Font = new Font("Segoe UI", 14F, FontStyle.Bold),
-                Location = new Point(staffAddFineHeaderPanel.Width - 40, 10),
+                Location = new Point(addFineForm.Width - 60, 20),
                 Size = new Size(30, 30),
                 BackColor = Color.Transparent,
                 ForeColor = Color.FromArgb(100, 100, 100),
@@ -5734,29 +5722,79 @@ namespace Library_Management_System.Forms.staff
             };
             btnClose.FlatAppearance.BorderSize = 0;
             btnClose.Click += (s, e) => addFineForm.Close();
+
             staffAddFineHeaderPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnClose });
+
+            // Button Panel (Footer)
+            Panel buttonPanel = new Panel
+            {
+                Height = 80,
+                BackColor = Color.White,
+                Dock = DockStyle.Bottom
+            };
+
+            Button btnCancel = new Button
+            {
+                Text = "Cancel",
+                Size = new Size(100, 40),
+                Font = new Font("Segoe UI", 10F),
+                BackColor = Color.FromArgb(245, 245, 245),
+                ForeColor = Color.FromArgb(40, 40, 40),
+                FlatStyle = FlatStyle.Flat,
+                DialogResult = DialogResult.Cancel,
+                Cursor = Cursors.Hand,
+                Location = new Point(350, 20) 
+            };
+            btnCancel.FlatAppearance.BorderSize = 0;
+            btnCancel.Click += (s, e) => addFineForm.Close();
+
+            Button btnAddFine = new Button
+            {
+                Text = "Add Fine",
+                Size = new Size(110, 40),
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                BackColor = Color.FromArgb(128, 0, 0),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand,
+                Location = new Point(460, 20)
+            };
+            btnAddFine.FlatAppearance.BorderSize = 0;
+            btnAddFine.MouseEnter += (s, e) => btnAddFine.BackColor = Color.FromArgb(150, 0, 0);
+            btnAddFine.MouseLeave += (s, e) => btnAddFine.BackColor = Color.FromArgb(128, 0, 0);
+
+            // Manual positioning for buttons since we know the width
+            // Or use Anchor if buttonPanel resizes. For fixed dialog, absolute is fine.
+            buttonPanel.Controls.AddRange(new Control[] { btnCancel, btnAddFine });
+
+
+            // Content Panel
             Panel contentPanel = new Panel
             {
                 BackColor = Color.White,
-                Dock = DockStyle.Fill,
-                Padding = new Padding(35, 25, 35, 25)
+                Dock = DockStyle.Fill, // Fill remaining space
+                Padding = new Padding(35, 20, 35, 20),
+                AutoScroll = true // Crucial for accessibility if resized
             };
-            int startY = 0;
+
+            // ... (Fields setup same as before) ...
+            int startY = 20; // Start with some padding
             int fieldSpacing = 60; 
             int fieldHeight = 35;
             int labelHeight = 20;
             int fieldWidth = 510; 
+
             Label lblMember = new Label 
             { 
                 Text = "Select Member *", 
-                Location = new Point(0, startY), 
+                Location = new Point(35, startY), 
                 Size = new Size(200, labelHeight), 
                 Font = new Font("Segoe UI", 10F), 
                 ForeColor = Color.FromArgb(40, 40, 40) 
             };
             ComboBox cmbMember = new ComboBox
             {
-                Location = new Point(0, startY + labelHeight + 5),
+                Location = new Point(35, startY + labelHeight + 5),
                 Size = new Size(fieldWidth, fieldHeight),
                 Font = new Font("Segoe UI", 10F),
                 DropDownStyle = ComboBoxStyle.DropDownList,
@@ -5767,40 +5805,31 @@ namespace Library_Management_System.Forms.staff
             cmbMember.SelectedIndex = 0;
             cmbMember.SelectedIndexChanged += (s, e) =>
             {
-                if (cmbMember.SelectedIndex > 0)
-                {
-                    cmbMember.ForeColor = Color.Black;
-                }
-                else
-                {
-                    cmbMember.ForeColor = Color.Gray;
-                }
+                if (cmbMember.SelectedIndex > 0) cmbMember.ForeColor = Color.Black;
+                else cmbMember.ForeColor = Color.Gray;
             };
+            // Load members logic...
             try
             {
                 var membersService = new Library_Management_System.Service.MembersService();
                 var members = membersService.GetMembers("", "All Status", "All Types");
-                foreach (var member in members)
-                {
-                    cmbMember.Items.Add($"{member.Name} ({member.MemberId})");
-                }
+                foreach (var member in members) cmbMember.Items.Add($"{member.Name} ({member.MemberId})");
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error loading members: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            catch (Exception ex) { MessageBox.Show($"Error loading members: {ex.Message}", "Error"); }
+
             startY += fieldSpacing + labelHeight + 5;
+
             Label lblFineType = new Label 
             { 
                 Text = "Fine Type *", 
-                Location = new Point(0, startY), 
+                Location = new Point(35, startY), 
                 Size = new Size(200, labelHeight), 
                 Font = new Font("Segoe UI", 10F), 
                 ForeColor = Color.FromArgb(40, 40, 40) 
             };
             ComboBox cmbFineType = new ComboBox
             {
-                Location = new Point(0, startY + labelHeight + 5),
+                Location = new Point(35, startY + labelHeight + 5),
                 Size = new Size(fieldWidth, fieldHeight),
                 Font = new Font("Segoe UI", 10F),
                 DropDownStyle = ComboBoxStyle.DropDownList,
@@ -5808,18 +5837,20 @@ namespace Library_Management_System.Forms.staff
             };
             cmbFineType.Items.AddRange(new[] { "Overdue", "Lost Book", "Damaged Book", "Other" });
             cmbFineType.SelectedIndex = 3; 
+
             startY += fieldSpacing + labelHeight + 5;
+
             Label lblAmount = new Label 
             { 
                 Text = "Amount *", 
-                Location = new Point(0, startY), 
+                Location = new Point(35, startY), 
                 Size = new Size(200, labelHeight), 
                 Font = new Font("Segoe UI", 10F), 
                 ForeColor = Color.FromArgb(40, 40, 40) 
             };
             Panel amountPanel = new Panel
             {
-                Location = new Point(0, startY + labelHeight + 5),
+                Location = new Point(35, startY + labelHeight + 5),
                 Size = new Size(fieldWidth, fieldHeight),
                 BackColor = Color.White
             };
@@ -5843,39 +5874,40 @@ namespace Library_Management_System.Forms.staff
                 BorderStyle = BorderStyle.None
             };
             amountPanel.Controls.AddRange(new Control[] { lblCurrency, numAmount });
-            amountPanel.Paint += (s, e) =>
-            {
-                ControlPaint.DrawBorder(e.Graphics, amountPanel.ClientRectangle, Color.FromArgb(200, 200, 200), ButtonBorderStyle.Solid);
-            };
+            amountPanel.Paint += (s, e) => ControlPaint.DrawBorder(e.Graphics, amountPanel.ClientRectangle, Color.FromArgb(200, 200, 200), ButtonBorderStyle.Solid);
+
             startY += fieldSpacing + labelHeight + 5;
+
             Label lblBookTitle = new Label 
             { 
                 Text = "Book Title (optional)", 
-                Location = new Point(0, startY), 
+                Location = new Point(35, startY), 
                 Size = new Size(200, labelHeight), 
                 Font = new Font("Segoe UI", 10F), 
                 ForeColor = Color.FromArgb(40, 40, 40) 
             };
             TextBox txtBookTitle = new TextBox
             {
-                Location = new Point(0, startY + labelHeight + 5),
+                Location = new Point(35, startY + labelHeight + 5),
                 Size = new Size(fieldWidth, fieldHeight),
                 Font = new Font("Segoe UI", 10F),
                 BackColor = Color.White
             };
             txtBookTitle.SetPlaceholder("Related book title...");
+
             startY += fieldSpacing + labelHeight + 5;
+
             Label lblNotes = new Label
             {
                 Text = "Notes",
-                Location = new Point(0, startY),
+                Location = new Point(35, startY), 
                 Size = new Size(200, labelHeight),
                 Font = new Font("Segoe UI", 10F),
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
             TextBox txtNotes = new TextBox
             {
-                Location = new Point(0, startY + labelHeight + 5),
+                Location = new Point(35, startY + labelHeight + 5),
                 Size = new Size(fieldWidth, 100),
                 Font = new Font("Segoe UI", 10F),
                 Multiline = true,
@@ -5883,109 +5915,46 @@ namespace Library_Management_System.Forms.staff
                 BackColor = Color.White
             };
             txtNotes.SetPlaceholder("Additional notes...");
-            startY += labelHeight + 5 + 100 + 20; 
+
+            // Just padding at bottom of scrollable area
+            Label lblSpacer = new Label { Location = new Point(0, startY + 150), Size = new Size(10, 20) };
+            
             contentPanel.Controls.AddRange(new Control[] {
                 lblMember, cmbMember, lblFineType, cmbFineType, lblAmount, amountPanel,
-                lblBookTitle, txtBookTitle, lblNotes, txtNotes
+                lblBookTitle, txtBookTitle, lblNotes, txtNotes, lblSpacer
             });
-            Panel buttonPanel = new Panel
-            {
-                Height = 80,
-                BackColor = Color.White,
-                Dock = DockStyle.Bottom
-            };
-            Button btnCancel = new Button
-            {
-                Text = "Cancel",
-                Size = new Size(100, 40),
-                Font = new Font("Segoe UI", 10F),
-                BackColor = Color.FromArgb(245, 245, 245),
-                ForeColor = Color.FromArgb(40, 40, 40),
-                FlatStyle = FlatStyle.Flat,
-                DialogResult = DialogResult.Cancel,
-                Anchor = AnchorStyles.None,
-                Cursor = Cursors.Hand
-            };
-            btnCancel.FlatAppearance.BorderSize = 0;
-            btnCancel.Click += (s, e) => addFineForm.Close();
-            Button btnAddFine = new Button
-            {
-                Text = "Add Fine",
-                Size = new Size(110, 40),
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                BackColor = Color.FromArgb(128, 0, 0),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Anchor = AnchorStyles.None,
-                Cursor = Cursors.Hand
-            };
-            btnAddFine.FlatAppearance.BorderSize = 0;
-            btnAddFine.MouseEnter += (s, e) => btnAddFine.BackColor = Color.FromArgb(150, 0, 0);
-            btnAddFine.MouseLeave += (s, e) => btnAddFine.BackColor = Color.FromArgb(128, 0, 0);
-            buttonPanel.Controls.AddRange(new Control[] { btnCancel, btnAddFine });
-            void PositionButtons()
-            {
-                if (buttonPanel.Width > 0)
-                {
-                    btnCancel.Location = new Point(buttonPanel.Width - 230, 20);
-                    btnAddFine.Location = new Point(buttonPanel.Width - 120, 20);
-                }
-            }
-            buttonPanel.Layout += (s, e) => PositionButtons();
-            addFineForm.Shown += (s, e) => PositionButtons();
+
+            // LOGIC FOR SAVING
             btnAddFine.Click += (s, args) =>
             {
-                if (cmbMember.SelectedIndex <= 0)
-                {
-                    MessageBox.Show("Please select a member.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    cmbMember.Focus();
-                    return;
-                }
-                if (numAmount.Value <= 0)
-                {
-                    MessageBox.Show("Please enter a valid amount greater than zero.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    numAmount.Focus();
-                    return;
-                }
+                if (cmbMember.SelectedIndex <= 0) { MessageBox.Show("Please select a member.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+                if (numAmount.Value <= 0) { MessageBox.Show("Please enter a valid amount.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
                 try
                 {
                     string selectedMember = cmbMember.SelectedItem.ToString();
                     string memberId = selectedMember.Substring(selectedMember.LastIndexOf('(') + 1).TrimEnd(')');
-                    string fineType = cmbFineType.SelectedItem.ToString();
-                    decimal amount = numAmount.Value;
-                    string bookTitle = txtBookTitle.GetActualText().Trim();
-                    string notes = txtNotes.GetActualText().Trim();
                     var finesService = new Library_Management_System.Service.FinesService();
-                    bool success = finesService.AddFine(memberId, amount, fineType, 
-                        string.IsNullOrWhiteSpace(bookTitle) ? null : bookTitle,
-                        string.IsNullOrWhiteSpace(notes) ? null : notes);
-                    if (success)
+                    if (finesService.AddFine(memberId, numAmount.Value, cmbFineType.SelectedItem.ToString(), 
+                        string.IsNullOrWhiteSpace(txtBookTitle.GetActualText()) ? null : txtBookTitle.GetActualText().Trim(),
+                        string.IsNullOrWhiteSpace(txtNotes.GetActualText()) ? null : txtNotes.GetActualText().Trim()))
                     {
                         MessageBox.Show("Fine added successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         addFineForm.DialogResult = DialogResult.OK;
                         addFineForm.Close();
-                        if (pnlMainContent.Controls.Count > 0)
-                        {
-                            var finesViewControls = pnlMainContent.Controls.Cast<Control>()
-                                .Where(c => c.Tag?.ToString() == "FinesStatsPanel" || c is DataGridView)
-                                .ToList();
-                            if (finesViewControls.Count > 0)
-                            {
-                                ShowFinesView();
-                            }
-                        }
+                         if (pnlMainContent.Controls.Count > 0) ShowFinesView(); // Refresh if active
                     }
-                    else
-                    {
-                        MessageBox.Show("Failed to add fine. Please try again.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
+                    else MessageBox.Show("Failed to add fine.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Error adding fine: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
+                catch (Exception ex) { MessageBox.Show($"Error: {ex.Message}", "Error"); }
             };
-            addFineForm.Controls.AddRange(new Control[] { staffAddFineHeaderPanel, contentPanel, buttonPanel });
+
+            // Order matters for Docking: Add Dock=Fill LAST, or use BringToFront
+            addFineForm.Controls.Add(staffAddFineHeaderPanel);
+            addFineForm.Controls.Add(buttonPanel);
+            addFineForm.Controls.Add(contentPanel); // Added last, so top of Z-order? No, add adds to 0. 
+            // Actually, safe way:
+            contentPanel.BringToFront(); 
+
             addFineForm.ShowDialog();
         }
         private void ShowWaiveFineDialog(string fineId, string memberName, decimal amount)
@@ -6335,12 +6304,6 @@ namespace Library_Management_System.Forms.staff
             pnlMembersView.Visible = false;
             ShowDashboardControls(false);
             ClearDynamicControls();
-            Panel staffInventoryHeaderPanel = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 140,
-                BackColor = Color.White
-            };
             Label titleLabel = new Label
             {
                 Text = "Inventory Management",
@@ -6359,7 +6322,6 @@ namespace Library_Management_System.Forms.staff
                 ForeColor = Color.FromArgb(100, 100, 100),
                 BackColor = Color.Transparent
             };
-            staffInventoryHeaderPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel });
             Button btnExportInventory = new Button
             {
                 Text = "Export Inventory",
@@ -6377,7 +6339,7 @@ namespace Library_Management_System.Forms.staff
             btnExportInventory.MouseLeave += (s, e) => btnExportInventory.BackColor = Color.FromArgb(128, 0, 0);
             Panel statsPanel = new Panel
             {
-                Location = new Point(30, 150),
+                Location = new Point(30, 170),
                 Size = new Size(pnlMainContent.Width - 60, 160), 
                 BackColor = Color.Transparent,
                 Tag = "InventoryStatsPanel"
@@ -6391,7 +6353,7 @@ namespace Library_Management_System.Forms.staff
             statsPanel.Controls.AddRange(new Control[] { cardTotalTitles, cardTotalCopies, cardAvailable, cardBorrowed, cardDamaged, cardLost });
             Panel categoryPanel = new Panel
             {
-                Location = new Point(30, 330), 
+                Location = new Point(30, 350), 
                 Size = new Size(pnlMainContent.Width - 60, 120),
                 BackColor = Color.White,
                 BorderStyle = BorderStyle.None,
@@ -6437,7 +6399,7 @@ namespace Library_Management_System.Forms.staff
             categoryPanel.Controls.AddRange(new Control[] { categoryTitle, categorySubtitle, categoryContentPanel });
             Panel searchPanel = new Panel
             {
-                Location = new Point(30, 470), 
+                Location = new Point(30, 490), 
                 Size = new Size(pnlMainContent.Width - 60, 70),
                 BackColor = Color.White,
                 BorderStyle = BorderStyle.None
@@ -6504,8 +6466,8 @@ namespace Library_Management_System.Forms.staff
             cmbStatusFilter.SelectedIndex = 0;
             DataGridView dgvInventory = new DataGridView
             {
-                Location = new Point(30, 550), 
-                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 580), 
+                Location = new Point(30, 580), 
+                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 610), 
                 BackgroundColor = Color.White,
                 BorderStyle = BorderStyle.FixedSingle,
                 AllowUserToAddRows = false,
@@ -6725,12 +6687,15 @@ namespace Library_Management_System.Forms.staff
                         ControlBox = false,
                         BackColor = Color.FromArgb(245, 245, 245)
                     };
+                    // Header
                     Panel staffExportHeaderPanel = new Panel
                     {
-                        Location = new Point(0, 0),
-                        Size = new Size(exportDialog.ClientSize.Width, 100),
-                        BackColor = Color.White
+                        Height = 100,
+                        BackColor = Color.White,
+                        Dock = DockStyle.Top,
+                        Padding = new Padding(30, 0, 30, 0)
                     };
+
                     Label dialogTitleLabel = new Label
                     {
                         Text = "Choose Export Format",
@@ -6739,6 +6704,7 @@ namespace Library_Management_System.Forms.staff
                         Size = new Size(300, 50),
                         ForeColor = Color.FromArgb(40, 40, 40)
                     };
+
                     Label dialogSubtitleLabel = new Label
                     {
                         Text = "Select your preferred format for the inventory data",
@@ -6747,26 +6713,72 @@ namespace Library_Management_System.Forms.staff
                         Size = new Size(350, 20),
                         ForeColor = Color.FromArgb(100, 100, 100)
                     };
+
                     Button btnCloseDialog = new Button
                     {
                         Text = "✕",
                         Font = new Font("Segoe UI", 14F, FontStyle.Bold),
-                        Location = new Point(exportDialog.Width - 45, 15),
+                        Location = new Point(exportDialog.Width - 60, 15),
                         Size = new Size(30, 30),
                         BackColor = Color.Transparent,
                         ForeColor = Color.FromArgb(100, 100, 100),
                         FlatStyle = FlatStyle.Flat,
-                        Cursor = Cursors.Hand
+                        Cursor = Cursors.Hand,
+                        Anchor = AnchorStyles.Top | AnchorStyles.Right
                     };
                     btnCloseDialog.FlatAppearance.BorderSize = 0;
                     btnCloseDialog.Click += (sd, ed) => exportDialog.Close();
+
                     staffExportHeaderPanel.Controls.AddRange(new Control[] { dialogTitleLabel, dialogSubtitleLabel, btnCloseDialog });
+
+                    // Footer
+                    Panel buttonPanel = new Panel
+                    {
+                        Height = 80,
+                        BackColor = Color.White,
+                        Dock = DockStyle.Bottom
+                    };
+
+                    Button btnCancel = new Button
+                    {
+                        Text = "Cancel",
+                        Size = new Size(100, 40),
+                        Location = new Point(220, 20),
+                        Font = new Font("Segoe UI", 11F),
+                        BackColor = Color.FromArgb(240, 240, 240),
+                        ForeColor = Color.FromArgb(40, 40, 40),
+                        FlatStyle = FlatStyle.Flat,
+                        Cursor = Cursors.Hand,
+                        DialogResult = DialogResult.Cancel
+                    };
+                    btnCancel.FlatAppearance.BorderSize = 0;
+                    btnCancel.Click += (sd, ed) => exportDialog.Close();
+
+                    Button btnExport = new Button
+                    {
+                        Text = "Export",
+                        Size = new Size(100, 40),
+                        Location = new Point(330, 20),
+                        Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                        BackColor = Color.FromArgb(128, 0, 0),
+                        ForeColor = Color.White,
+                        FlatStyle = FlatStyle.Flat,
+                        Cursor = Cursors.Hand
+                    };
+                    btnExport.FlatAppearance.BorderSize = 0;
+                    btnExport.MouseEnter += (sd, ed) => btnExport.BackColor = Color.FromArgb(150, 0, 0);
+                    btnExport.MouseLeave += (sd, ed) => btnExport.BackColor = Color.FromArgb(128, 0, 0);
+
+                    buttonPanel.Controls.AddRange(new Control[] { btnCancel, btnExport });
+
+                    // Content
                     Panel contentPanel = new Panel
                     {
-                        Location = new Point(0, 100),
-                        Size = new Size(exportDialog.ClientSize.Width, exportDialog.ClientSize.Height - 100),
-                        BackColor = Color.FromArgb(250, 250, 250)
+                        BackColor = Color.FromArgb(250, 250, 250),
+                        Dock = DockStyle.Fill,
+                        Padding = new Padding(30, 20, 30, 20)
                     };
+
                     Label lblFormat = new Label
                     {
                         Text = "Select export format:",
@@ -6775,6 +6787,7 @@ namespace Library_Management_System.Forms.staff
                         Font = new Font("Segoe UI", 11F, FontStyle.Bold),
                         ForeColor = Color.FromArgb(40, 40, 40)
                     };
+
                     ComboBox cmbFormat = new ComboBox
                     {
                         Location = new Point(30, 50),
@@ -6785,42 +6798,20 @@ namespace Library_Management_System.Forms.staff
                     };
                     cmbFormat.Items.AddRange(new[] { "CSV (Comma Separated Values)", "Excel (XLSX)", "Word (DOCX)", "PDF (Portable Document Format)" });
                     cmbFormat.SelectedIndex = 0;
-                    Button btnCancel = new Button
-                    {
-                        Text = "Cancel",
-                        Size = new Size(100, 40),
-                        Location = new Point(120, 130),
-                        Font = new Font("Segoe UI", 11F),
-                        BackColor = Color.FromArgb(240, 240, 240),
-                        ForeColor = Color.FromArgb(40, 40, 40),
-                        FlatStyle = FlatStyle.Flat,
-                        Cursor = Cursors.Hand,
-                        DialogResult = DialogResult.Cancel
-                    };
-                    btnCancel.FlatAppearance.BorderSize = 0;
-                    btnCancel.Click += (sd, ed) => exportDialog.Close();
-                    Button btnExport = new Button
-                    {
-                        Text = "Export",
-                        Size = new Size(100, 40),
-                        Location = new Point(240, 130),
-                        Font = new Font("Segoe UI", 11F, FontStyle.Bold),
-                        BackColor = Color.FromArgb(128, 0, 0),
-                        ForeColor = Color.White,
-                        FlatStyle = FlatStyle.Flat,
-                        Cursor = Cursors.Hand
-                    };
-                    btnExport.FlatAppearance.BorderSize = 0;
-                    btnExport.MouseEnter += (sd, ed) => btnExport.BackColor = Color.FromArgb(150, 0, 0);
-                    btnExport.MouseLeave += (sd, ed) => btnExport.BackColor = Color.FromArgb(128, 0, 0);
+
                     btnExport.Click += (sd, ed) =>
                     {
                         string format = cmbFormat.SelectedItem.ToString().Split(' ')[0];
                         ExportInventoryData(format);
                         exportDialog.Close();
                     };
-                    contentPanel.Controls.AddRange(new Control[] { lblFormat, cmbFormat, btnCancel, btnExport });
-                    exportDialog.Controls.AddRange(new Control[] { staffExportHeaderPanel, contentPanel });
+
+                    contentPanel.Controls.AddRange(new Control[] { lblFormat, cmbFormat });
+                    
+                    exportDialog.Controls.Add(staffExportHeaderPanel);
+                    exportDialog.Controls.Add(buttonPanel);
+                    exportDialog.Controls.Add(contentPanel);
+                    contentPanel.BringToFront();
                     exportDialog.ShowDialog();
                 }
                 catch (Exception ex)
@@ -6843,7 +6834,7 @@ namespace Library_Management_System.Forms.staff
             };
             searchPanel.Controls.AddRange(new Control[] { searchContainer, lblStatusFilter, cmbStatusFilter });
             pnlMainContent.Controls.AddRange(new Control[] { 
-                staffInventoryHeaderPanel, btnExportInventory, 
+                titleLabel, subtitleLabel, btnExportInventory, 
                 statsPanel, categoryPanel, searchPanel, dgvInventory 
             });
             LoadInventoryData();
