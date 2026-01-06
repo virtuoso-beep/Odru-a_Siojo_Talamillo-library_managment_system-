@@ -989,11 +989,11 @@ namespace Library_Management_System
             
             int chartHeight = 300;
             int gap = 20;
-            int topOffset = 50;
+            int topOffset = 70; // Increased to avoid overlap with Export button
             Panel pnlChart = new Panel
             {
                 Size = new Size((pnlReportsContent.Width - gap) / 2, chartHeight),
-                Location = new Point(0, 0),
+                Location = new Point(0, topOffset),
                 BackColor = Color.White,
                 Padding = new Padding(15)
             };
@@ -6102,13 +6102,15 @@ namespace Library_Management_System
                 ShowInTaskbar = false,
                 BackColor = Color.FromArgb(245, 245, 245)
             };
+
+            // Header Panel (Dock Top)
             Panel addFineHeaderPanel = new Panel
             {
-                Location = new Point(0, 0),
-                Size = new Size(addFineForm.ClientSize.Width, 80),
+                Height = 80,
                 BackColor = Color.White,
                 Dock = DockStyle.Top
             };
+
             Label titleLabel = new Label
             {
                 Text = "Add New Fine",
@@ -6117,6 +6119,7 @@ namespace Library_Management_System
                 Size = new Size(300, 30),
                 ForeColor = Color.FromArgb(40, 40, 40)
             };
+
             Label subtitleLabel = new Label
             {
                 Text = "Create a new fine for a member.",
@@ -6125,11 +6128,12 @@ namespace Library_Management_System
                 Size = new Size(400, 20),
                 ForeColor = Color.FromArgb(100, 100, 100)
             };
+
             Button btnClose = new Button
             {
                 Text = "✕",
                 Font = new Font("Segoe UI", 14F, FontStyle.Bold),
-                Location = new Point(addFineHeaderPanel.Width - 40, 10),
+                Location = new Point(addFineForm.Width - 60, 20),
                 Size = new Size(30, 30),
                 BackColor = Color.Transparent,
                 ForeColor = Color.FromArgb(100, 100, 100),
@@ -6139,166 +6143,17 @@ namespace Library_Management_System
             };
             btnClose.FlatAppearance.BorderSize = 0;
             btnClose.Click += (s, e) => addFineForm.Close();
+
             addFineHeaderPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnClose });
-            Panel contentPanel = new Panel
-            {
-                BackColor = Color.White,
-                Dock = DockStyle.Fill,
-                Padding = new Padding(35, 25, 35, 25)
-            };
-            int startY = 0;
-            int fieldSpacing = 60; 
-            int fieldHeight = 35;
-            int labelHeight = 20;
-            int fieldWidth = 510; 
-            Label lblMember = new Label 
-            { 
-                Text = "Select Member *", 
-                Location = new Point(0, startY), 
-                Size = new Size(200, labelHeight), 
-                Font = new Font("Segoe UI", 10F), 
-                ForeColor = Color.FromArgb(40, 40, 40) 
-            };
-            ComboBox cmbMember = new ComboBox
-            {
-                Location = new Point(0, startY + labelHeight + 5),
-                Size = new Size(fieldWidth, fieldHeight),
-                Font = new Font("Segoe UI", 10F),
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                BackColor = Color.White,
-                ForeColor = Color.Gray
-            };
-            cmbMember.Items.Add("Choose a member...");
-            cmbMember.SelectedIndex = 0;
-            cmbMember.SelectedIndexChanged += (s, e) =>
-            {
-                if (cmbMember.SelectedIndex > 0)
-                {
-                    cmbMember.ForeColor = Color.Black;
-                }
-                else
-                {
-                    cmbMember.ForeColor = Color.Gray;
-                }
-            };
-            try
-            {
-                var membersService = new Library_Management_System.Service.MembersService();
-                var members = membersService.GetMembers("", "All Status", "All Types");
-                foreach (var member in members)
-                {
-                    cmbMember.Items.Add($"{member.Name} ({member.MemberId})");
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error loading members: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            startY += fieldSpacing + labelHeight + 5;
-            Label lblFineType = new Label 
-            { 
-                Text = "Fine Type *", 
-                Location = new Point(0, startY), 
-                Size = new Size(200, labelHeight), 
-                Font = new Font("Segoe UI", 10F), 
-                ForeColor = Color.FromArgb(40, 40, 40) 
-            };
-            ComboBox cmbFineType = new ComboBox
-            {
-                Location = new Point(0, startY + labelHeight + 5),
-                Size = new Size(fieldWidth, fieldHeight),
-                Font = new Font("Segoe UI", 10F),
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                BackColor = Color.White
-            };
-            cmbFineType.Items.AddRange(new[] { "Overdue", "Lost Book", "Damaged Book", "Other" });
-            cmbFineType.SelectedIndex = 3; 
-            startY += fieldSpacing + labelHeight + 5;
-            Label lblAmount = new Label 
-            { 
-                Text = "Amount *", 
-                Location = new Point(0, startY), 
-                Size = new Size(200, labelHeight), 
-                Font = new Font("Segoe UI", 10F), 
-                ForeColor = Color.FromArgb(40, 40, 40) 
-            };
-            Panel amountPanel = new Panel
-            {
-                Location = new Point(0, startY + labelHeight + 5),
-                Size = new Size(fieldWidth, fieldHeight),
-                BackColor = Color.White
-            };
-            Label lblCurrency = new Label
-            {
-                Text = "₱",
-                Location = new Point(10, 8),
-                Size = new Size(20, 20),
-                Font = new Font("Segoe UI", 10F),
-                ForeColor = Color.FromArgb(40, 40, 40)
-            };
-            NumericUpDown numAmount = new NumericUpDown
-            {
-                Location = new Point(30, 0),
-                Size = new Size(fieldWidth - 30, fieldHeight),
-                Font = new Font("Segoe UI", 10F),
-                Minimum = 0,
-                Maximum = 999999.99m,
-                DecimalPlaces = 2,
-                BackColor = Color.White,
-                BorderStyle = BorderStyle.None
-            };
-            amountPanel.Controls.AddRange(new Control[] { lblCurrency, numAmount });
-            amountPanel.Paint += (s, e) =>
-            {
-                ControlPaint.DrawBorder(e.Graphics, amountPanel.ClientRectangle, Color.FromArgb(200, 200, 200), ButtonBorderStyle.Solid);
-            };
-            startY += fieldSpacing + labelHeight + 5;
-            Label lblBookTitle = new Label 
-            { 
-                Text = "Book Title (optional)", 
-                Location = new Point(0, startY), 
-                Size = new Size(200, labelHeight), 
-                Font = new Font("Segoe UI", 10F), 
-                ForeColor = Color.FromArgb(40, 40, 40) 
-            };
-            TextBox txtBookTitle = new TextBox
-            {
-                Location = new Point(0, startY + labelHeight + 5),
-                Size = new Size(fieldWidth, fieldHeight),
-                Font = new Font("Segoe UI", 10F),
-                BackColor = Color.White
-            };
-            txtBookTitle.SetPlaceholder("Related book title...");
-            startY += fieldSpacing + labelHeight + 5;
-            Label lblNotes = new Label
-            {
-                Text = "Notes",
-                Location = new Point(0, startY),
-                Size = new Size(200, labelHeight),
-                Font = new Font("Segoe UI", 10F),
-                ForeColor = Color.FromArgb(40, 40, 40)
-            };
-            TextBox txtNotes = new TextBox
-            {
-                Location = new Point(0, startY + labelHeight + 5),
-                Size = new Size(fieldWidth, 100),
-                Font = new Font("Segoe UI", 10F),
-                Multiline = true,
-                ScrollBars = ScrollBars.Vertical,
-                BackColor = Color.White
-            };
-            txtNotes.SetPlaceholder("Additional notes...");
-            startY += labelHeight + 5 + 100 + 20; 
-            contentPanel.Controls.AddRange(new Control[] {
-                lblMember, cmbMember, lblFineType, cmbFineType, lblAmount, amountPanel,
-                lblBookTitle, txtBookTitle, lblNotes, txtNotes
-            });
+
+            // Button Panel (Dock Bottom)
             Panel buttonPanel = new Panel
             {
                 Height = 80,
                 BackColor = Color.White,
                 Dock = DockStyle.Bottom
             };
+
             Button btnCancel = new Button
             {
                 Text = "Cancel",
@@ -6313,6 +6168,7 @@ namespace Library_Management_System
             };
             btnCancel.FlatAppearance.BorderSize = 0;
             btnCancel.Click += (s, e) => addFineForm.Close();
+
             Button btnAddFine = new Button
             {
                 Text = "Add Fine",
@@ -6327,7 +6183,10 @@ namespace Library_Management_System
             btnAddFine.FlatAppearance.BorderSize = 0;
             btnAddFine.MouseEnter += (s, e) => btnAddFine.BackColor = Color.FromArgb(150, 0, 0);
             btnAddFine.MouseLeave += (s, e) => btnAddFine.BackColor = Color.FromArgb(128, 0, 0);
+
             buttonPanel.Controls.AddRange(new Control[] { btnCancel, btnAddFine });
+
+            // Button Positioning logic
             void PositionButtons()
             {
                 if (buttonPanel.Width > 0)
@@ -6338,6 +6197,160 @@ namespace Library_Management_System
             }
             buttonPanel.Layout += (s, e) => PositionButtons();
             addFineForm.Shown += (s, e) => PositionButtons();
+
+            // Content Panel (Dock Fill)
+            Panel contentPanel = new Panel
+            {
+                BackColor = Color.White,
+                Dock = DockStyle.Fill,
+                Padding = new Padding(35, 25, 35, 25),
+                AutoScroll = true
+            };
+
+            int startY = 20; // Adjusted for padding
+            int fieldSpacing = 60;
+            int fieldHeight = 35;
+            int labelHeight = 20;
+            int fieldWidth = 510;
+
+            Label lblMember = new Label
+            {
+                Text = "Select Member *",
+                Location = new Point(35, startY),
+                Size = new Size(200, labelHeight),
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.FromArgb(40, 40, 40)
+            };
+            ComboBox cmbMember = new ComboBox
+            {
+                Location = new Point(35, startY + labelHeight + 5),
+                Size = new Size(fieldWidth, fieldHeight),
+                Font = new Font("Segoe UI", 10F),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                BackColor = Color.White,
+                ForeColor = Color.Gray
+            };
+            cmbMember.Items.Add("Choose a member...");
+            cmbMember.SelectedIndex = 0;
+            cmbMember.SelectedIndexChanged += (s, e) =>
+            {
+                if (cmbMember.SelectedIndex > 0) cmbMember.ForeColor = Color.Black;
+                else cmbMember.ForeColor = Color.Gray;
+            };
+
+            // Load Members
+            try
+            {
+                var membersService = new Library_Management_System.Service.MembersService();
+                var members = membersService.GetMembers("", "All Status", "All Types");
+                foreach (var member in members)
+                {
+                    cmbMember.Items.Add($"{member.Name} ({member.MemberId})");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading members: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+            startY += fieldSpacing + labelHeight + 5;
+
+            Label lblFineType = new Label
+            {
+                Text = "Fine Type *",
+                Location = new Point(35, startY),
+                Size = new Size(200, labelHeight),
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.FromArgb(40, 40, 40)
+            };
+            ComboBox cmbFineType = new ComboBox
+            {
+                Location = new Point(35, startY + labelHeight + 5),
+                Size = new Size(fieldWidth, fieldHeight),
+                Font = new Font("Segoe UI", 10F),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                BackColor = Color.White
+            };
+            cmbFineType.Items.AddRange(new object[] { "Overdue", "Damaged Book", "Lost Book", "Membership Fee", "Other" });
+            cmbFineType.SelectedIndex = 0;
+
+            startY += fieldSpacing + labelHeight + 5;
+
+            Label lblAmount = new Label
+            {
+                Text = "Amount (PHP) *",
+                Location = new Point(35, startY),
+                Size = new Size(200, labelHeight),
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.FromArgb(40, 40, 40)
+            };
+            Panel amountPanel = new Panel
+            {
+                Location = new Point(35, startY + labelHeight + 5),
+                Size = new Size(fieldWidth, fieldHeight),
+                BackColor = Color.White,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            NumericUpDown numAmount = new NumericUpDown
+            {
+                Location = new Point(5, 5),
+                Size = new Size(fieldWidth - 10, fieldHeight - 10),
+                Font = new Font("Segoe UI", 11F),
+                BorderStyle = BorderStyle.None,
+                Minimum = 0,
+                Maximum = 100000,
+                DecimalPlaces = 2
+            };
+            amountPanel.Controls.Add(numAmount);
+
+            startY += fieldSpacing + labelHeight + 5;
+
+            Label lblBookTitle = new Label
+            {
+                Text = "Book Title (Optional)",
+                Location = new Point(35, startY),
+                Size = new Size(200, labelHeight),
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.FromArgb(40, 40, 40)
+            };
+            TextBox txtBookTitle = new TextBox
+            {
+                Location = new Point(35, startY + labelHeight + 5),
+                Size = new Size(fieldWidth, fieldHeight),
+                Font = new Font("Segoe UI", 10F),
+                BackColor = Color.White
+            };
+            txtBookTitle.SetPlaceholder("Enter book title...");
+
+            startY += fieldSpacing + labelHeight + 5;
+
+            Label lblNotes = new Label
+            {
+                Text = "Notes (Optional)",
+                Location = new Point(35, startY),
+                Size = new Size(200, labelHeight),
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.FromArgb(40, 40, 40)
+            };
+            TextBox txtNotes = new TextBox
+            {
+                Location = new Point(35, startY + labelHeight + 5),
+                Size = new Size(fieldWidth, 100),
+                Font = new Font("Segoe UI", 10F),
+                Multiline = true,
+                ScrollBars = ScrollBars.Vertical,
+                BackColor = Color.White
+            };
+            txtNotes.SetPlaceholder("Additional notes...");
+
+            startY += labelHeight + 5 + 100 + 20;
+
+            contentPanel.Controls.AddRange(new Control[] {
+                lblMember, cmbMember, lblFineType, cmbFineType, lblAmount, amountPanel,
+                lblBookTitle, txtBookTitle, lblNotes, txtNotes
+            });
+
+            // Action
             btnAddFine.Click += (s, args) =>
             {
                 if (cmbMember.SelectedIndex <= 0)
@@ -6352,6 +6365,7 @@ namespace Library_Management_System
                     numAmount.Focus();
                     return;
                 }
+
                 try
                 {
                     string selectedMember = cmbMember.SelectedItem.ToString();
@@ -6360,16 +6374,19 @@ namespace Library_Management_System
                     decimal amount = numAmount.Value;
                     string bookTitle = txtBookTitle.GetActualText().Trim();
                     string notes = txtNotes.GetActualText().Trim();
+
                     var finesService = new Library_Management_System.Service.FinesService();
-                    bool success = finesService.AddFine(memberId, amount, fineType, 
+                    bool success = finesService.AddFine(memberId, amount, fineType,
                         string.IsNullOrWhiteSpace(bookTitle) ? null : bookTitle,
                         string.IsNullOrWhiteSpace(notes) ? null : notes);
+
                     if (success)
                     {
                         MessageBox.Show("Fine added successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         addFineForm.DialogResult = DialogResult.OK;
                         addFineForm.Close();
-                        if (pnlMainContent.Controls.Count > 0)
+                        
+                         if (pnlMainContent.Controls.Count > 0)
                         {
                             var finesViewControls = pnlMainContent.Controls.Cast<Control>()
                                 .Where(c => c.Tag?.ToString() == "FinesStatsPanel" || c is DataGridView)
@@ -6390,7 +6407,13 @@ namespace Library_Management_System
                     MessageBox.Show($"Error adding fine: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             };
-            addFineForm.Controls.AddRange(new Control[] { addFineHeaderPanel, contentPanel, buttonPanel });
+
+            // Add Controls in correct order for Docking + BringToFront
+            addFineForm.Controls.Add(addFineHeaderPanel); // Dock=Top
+            addFineForm.Controls.Add(buttonPanel);        // Dock=Bottom
+            addFineForm.Controls.Add(contentPanel);       // Dock=Fill
+            contentPanel.BringToFront();                  // Fills spacing between Top and Bottom
+
             addFineForm.ShowDialog();
         }
         private void ShowWaiveFineDialog(string fineId, string memberName, decimal amount)
@@ -8291,81 +8314,70 @@ namespace Library_Management_System
                 Form exportDialog = new Form
                 {
                     Text = "Export Report",
-                    Size = new Size(500, 300),
+                    Size = new Size(500, 350),
                     StartPosition = FormStartPosition.CenterParent,
                     FormBorderStyle = FormBorderStyle.FixedDialog,
                     MaximizeBox = false,
-                    MinimizeBox = false
+                    MinimizeBox = false,
+                    BackColor = Color.FromArgb(245, 245, 245)
                 };
-                
+
+                // Header
                 Panel headerPanel = new Panel
                 {
                     Dock = DockStyle.Top,
-                    Height = 70,
+                    Height = 80,
                     BackColor = ThemeConstants.PrimaryMaroon,
                     Padding = new Padding(20, 15, 20, 15)
                 };
-                
+
                 Label titleLabel = new Label
                 {
                     Text = "Export Report",
-                    Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                    Font = new Font("Segoe UI", 16F, FontStyle.Bold),
                     ForeColor = Color.White,
                     AutoSize = true,
-                    Location = new Point(20, 15)
+                    Location = new Point(20, 10)
                 };
-                
+
                 Label subtitleLabel = new Label
                 {
                     Text = "Choose export format",
-                    Font = new Font("Segoe UI", 9F),
+                    Font = new Font("Segoe UI", 10F),
                     ForeColor = Color.White,
                     AutoSize = true,
-                    Location = new Point(20, 40)
+                    Location = new Point(20, 45)
                 };
-                
+
                 headerPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel });
-                
-                Panel contentPanel = new Panel
+
+                // Footer
+                Panel buttonPanel = new Panel
                 {
-                    Dock = DockStyle.Fill,
-                    Padding = new Padding(30)
+                    Height = 80,
+                    BackColor = Color.White,
+                    Dock = DockStyle.Bottom
                 };
-                
-                Label lblFormat = new Label
-                {
-                    Text = "Export Format:",
-                    Font = new Font("Segoe UI", 10F),
-                    Location = new Point(30, 30),
-                    AutoSize = true
-                };
-                
-                ComboBox cmbFormat = new ComboBox
-                {
-                    DropDownStyle = ComboBoxStyle.DropDownList,
-                    Location = new Point(30, 55),
-                    Size = new Size(400, 30),
-                    Font = new Font("Segoe UI", 10F)
-                };
-                cmbFormat.Items.AddRange(new[] { "CSV (Comma Separated Values)", "Excel (XLSX)", "HTML/PDF (HTML)" });
-                cmbFormat.SelectedIndex = 0;
-                
+
                 Button btnCancel = new Button
                 {
                     Text = "Cancel",
-                    Size = new Size(100, 35),
-                    Location = new Point(230, 120),
+                    Size = new Size(100, 40),
+                    Location = new Point(270, 20),
                     FlatStyle = FlatStyle.Flat,
-                    Font = new Font("Segoe UI", 10F)
+                    Font = new Font("Segoe UI", 10F),
+                    BackColor = Color.FromArgb(245, 245, 245),
+                    ForeColor = Color.FromArgb(40, 40, 40),
+                    Cursor = Cursors.Hand
                 };
-                btnCancel.FlatAppearance.BorderSize = 1;
+                btnCancel.FlatAppearance.BorderSize = 0;
                 btnCancel.Click += (s, e) => exportDialog.Close();
-                
+
                 Button btnExport = new Button
                 {
                     Text = "Export",
-                    Size = new Size(100, 35),
-                    Location = new Point(340, 120),
+                    Size = new Size(100, 40),
+                    Location = new Point(380, 20),
                     BackColor = ThemeConstants.PrimaryMaroon,
                     ForeColor = Color.White,
                     FlatStyle = FlatStyle.Flat,
@@ -8373,12 +8385,44 @@ namespace Library_Management_System
                     Cursor = Cursors.Hand
                 };
                 btnExport.FlatAppearance.BorderSize = 0;
-                
+                // btnExport.Click event handler will be defined after cmbFormat is created
+
+                buttonPanel.Controls.AddRange(new Control[] { btnCancel, btnExport });
+
+                // Content
+                Panel contentPanel = new Panel
+                {
+                    Dock = DockStyle.Fill,
+                    Padding = new Padding(30),
+                    BackColor = Color.White
+                };
+
+                Label lblFormat = new Label
+                {
+                    Text = "Export Format:",
+                    Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                    Location = new Point(30, 30),
+                    AutoSize = true,
+                    ForeColor = Color.FromArgb(40, 40, 40)
+                };
+
+                ComboBox cmbFormat = new ComboBox
+                {
+                    DropDownStyle = ComboBoxStyle.DropDownList,
+                    Location = new Point(30, 60),
+                    Size = new Size(400, 35),
+                    Font = new Font("Segoe UI", 11F),
+                    BackColor = Color.White
+                };
+                cmbFormat.Items.AddRange(new[] { "CSV (Comma Separated Values)", "Excel (XLSX)", "HTML/PDF (HTML)" });
+                cmbFormat.SelectedIndex = 0;
+
+                // Wire up Export Logic
                 btnExport.Click += (s, e) =>
                 {
                     string format = cmbFormat.SelectedItem.ToString();
                     string formatKey = format.Contains("CSV") ? "CSV" : format.Contains("Excel") ? "EXCEL" : "HTML";
-                    
+
                     SaveFileDialog saveDialog = new SaveFileDialog
                     {
                         Filter = formatKey == "CSV" ? "CSV files (*.csv)|*.csv" :
@@ -8387,7 +8431,7 @@ namespace Library_Management_System
                         DefaultExt = formatKey == "CSV" ? ".csv" : formatKey == "EXCEL" ? ".xlsx" : ".html",
                         FileName = $"{reportType}_Report_{DateTime.Now:yyyyMMdd_HHmmss}"
                     };
-                    
+
                     if (saveDialog.ShowDialog() == DialogResult.OK)
                     {
                         try
@@ -8407,27 +8451,31 @@ namespace Library_Management_System
                                     Helper.ReportExportHelper.ExportFinesReport(_reportsService, saveDialog.FileName, formatKey);
                                     break;
                             }
-                            
-                            MessageBox.Show($"Report exported successfully to:\n{saveDialog.FileName}", 
+
+                            MessageBox.Show($"Report exported successfully to:\n{saveDialog.FileName}",
                                 "Export Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             exportDialog.Close();
                         }
                         catch (Exception ex)
                         {
-                            MessageBox.Show($"Error exporting report: {ex.Message}", 
-                                "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            MessageBox.Show($"Error exporting report: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         }
                     }
                 };
-                
-                contentPanel.Controls.AddRange(new Control[] { lblFormat, cmbFormat, btnCancel, btnExport });
-                exportDialog.Controls.AddRange(new Control[] { headerPanel, contentPanel });
-                exportDialog.ShowDialog(this);
+
+                contentPanel.Controls.AddRange(new Control[] { lblFormat, cmbFormat });
+
+                // Add to Dialog
+                exportDialog.Controls.Add(headerPanel);
+                exportDialog.Controls.Add(buttonPanel);
+                exportDialog.Controls.Add(contentPanel);
+                contentPanel.BringToFront();
+
+                exportDialog.ShowDialog();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error opening export dialog: {ex.Message}", 
-                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
