@@ -196,7 +196,7 @@ This document provides a complete overview of all database-related files in the 
 
 ## Deployment Scripts
 
-### `deploy_all_procedures.bat` (Windows)
+### `006_Deploy_All_Procedures.sql` (Recommended)
 **Purpose:** Batch script to deploy all stored procedures on Windows.
 
 **Usage:**
@@ -206,13 +206,12 @@ deploy_all_procedures.bat
 
 ---
 
-### `deploy_all_procedures.sh` (Linux/Mac)
+### Alternative: Individual Scripts
 **Purpose:** Shell script to deploy all stored procedures on Linux/Mac.
 
 **Usage:**
 ```bash
-chmod +x deploy_all_procedures.sh
-./deploy_all_procedures.sh
+Run each stored procedure script individually in MySQL Workbench
 ```
 
 ---
@@ -235,7 +234,7 @@ chmod +x deploy_all_procedures.sh
 11. **StoredProcedures/007_Dashboard_Procedures.sql**
 12. **StoredProcedures/008_GetBookCategories.sql**
 
-**Or use:** `deploy_all_procedures.bat` / `deploy_all_procedures.sh` to deploy all procedures at once
+**Or use:** `006_Deploy_All_Procedures.sql` to deploy all new procedures at once
 
 ---
 
@@ -315,7 +314,7 @@ SOURCE 003_Add_Performance_Indexes.sql;
 SOURCE 004_Verify_Foreign_Keys.sql;
 
 -- 5. Deploy stored procedures
--- Use deploy_all_procedures.bat or deploy_all_procedures.sh
+-- Use 006_Deploy_All_Procedures.sql for new procedures
 -- Or run each procedure file individually
 ```
 
