@@ -1044,8 +1044,8 @@ namespace Library_Management_System.Forms.members
             {
                 Text = value,
                 Font = new Font("Segoe UI", 20F, FontStyle.Bold),
-                Location = new Point(65, 12),
-                Size = new Size(125, 28),
+                Location = new Point(65, 5),
+                Size = new Size(125, 35),
                 ForeColor = Color.FromArgb(40, 40, 40),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Tag = "Value",
@@ -1055,7 +1055,7 @@ namespace Library_Management_System.Forms.members
             {
                 Text = label,
                 Font = new Font("Segoe UI", 9F),
-                Location = new Point(65, 40),
+                Location = new Point(65, 48),
                 Size = new Size(125, 20),
                 ForeColor = Color.FromArgb(100, 100, 100),
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -1080,18 +1080,12 @@ namespace Library_Management_System.Forms.members
             pnlMembersView.Visible = false;
             ShowDashboardControls(false);
             ClearDynamicControls();
-            Panel catalogHeaderPanel = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 140,
-                BackColor = Color.White
-            };
             Label titleLabel = new Label
             {
                 Text = "Catalog",
                 Font = new Font("Segoe UI", 24F, FontStyle.Bold),
                 Location = new Point(30, 20),
-                Size = new Size(200, 40),
+                Size = new Size(300, 70),
                 ForeColor = Color.FromArgb(40, 40, 40),
                 BackColor = Color.Transparent
             };
@@ -1099,12 +1093,11 @@ namespace Library_Management_System.Forms.members
             {
                 Text = "Browse and manage library books and resources",
                 Font = new Font("Segoe UI", 10F, FontStyle.Regular),
-                Location = new Point(30, 60),
-                Size = new Size(400, 25),
+                Location = new Point(30, 95),
+                Size = new Size(500, 25),
                 ForeColor = Color.FromArgb(100, 100, 100),
                 BackColor = Color.Transparent
             };
-            catalogHeaderPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel });
             Button btnAddBookHeader = new Button
             {
                 Text = "+ Add Book",
@@ -1119,6 +1112,7 @@ namespace Library_Management_System.Forms.members
             btnAddBookHeader.FlatAppearance.BorderSize = 0;
             btnAddBookHeader.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnAddBookHeader.Click += (s, e) => ShowAddBookDialog();
+            pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnAddBookHeader });
             Panel statsPanel = null;
             foreach (Control ctrl in pnlMainContent.Controls)
             {
@@ -1137,7 +1131,7 @@ namespace Library_Management_System.Forms.members
             {
                 statsPanel = new Panel
                 {
-                    Location = new Point(30, 100),
+                    Location = new Point(30, 170),
                     Size = new Size(pnlMainContent.Width - 60, 80),
                     BackColor = Color.Transparent,
                     Tag = "CatalogStatsPanel"
@@ -1150,7 +1144,7 @@ namespace Library_Management_System.Forms.members
             statsPanel.Controls.AddRange(new Control[] { cardTotalTitles, cardAvailableCopies, cardTotalCopies, cardCategories });
             Panel searchPanel = new Panel
             {
-                Location = new Point(30, 190),
+                Location = new Point(30, 270),
                 Size = new Size(pnlMainContent.Width - 60, 70),
                 BackColor = Color.White,
                 BorderStyle = BorderStyle.None
@@ -1253,8 +1247,8 @@ namespace Library_Management_System.Forms.members
             };
             DataGridView dgvBooks = new DataGridView
             {
-                Location = new Point(30, 270),
-                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 300),
+                Location = new Point(30, 360),
+                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 390),
                 BackgroundColor = Color.FromArgb(250, 250, 250),
                 BorderStyle = BorderStyle.None,
                 AllowUserToAddRows = false,
@@ -1429,7 +1423,6 @@ namespace Library_Management_System.Forms.members
             searchContainer.Controls.AddRange(new Control[] { lblSearchIcon, txtSearchBooks });
             searchPanel.Controls.AddRange(new Control[] { searchContainer, lblCategoryFilter, cmbCategoryFilter, btnGridView, btnListView });
             List<Control> controlsToAdd = new List<Control>();
-            if (!pnlMainContent.Controls.Contains(catalogHeaderPanel)) controlsToAdd.Add(catalogHeaderPanel);
             if (!pnlMainContent.Controls.Contains(btnAddBookHeader)) controlsToAdd.Add(btnAddBookHeader);
             if (!pnlMainContent.Controls.Contains(statsPanel)) controlsToAdd.Add(statsPanel);
             if (!pnlMainContent.Controls.Contains(searchPanel)) controlsToAdd.Add(searchPanel);
@@ -1992,18 +1985,12 @@ namespace Library_Management_System.Forms.members
             pnlMembersView.Visible = false;
             ShowDashboardControls(false);
             ClearDynamicControls();
-            Panel reservationsHeaderPanel = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 140,
-                BackColor = Color.White
-            };
             Label titleLabel = new Label
             {
                 Text = "Reservations",
                 Font = new Font("Segoe UI", 24F, FontStyle.Bold),
                 Location = new Point(30, 20),
-                Size = new Size(200, 40),
+                Size = new Size(300, 70),
                 ForeColor = Color.FromArgb(40, 40, 40),
                 BackColor = Color.Transparent
             };
@@ -2011,12 +1998,11 @@ namespace Library_Management_System.Forms.members
             {
                 Text = "Manage book reservations and pickup notifications",
                 Font = new Font("Segoe UI", 10F, FontStyle.Regular),
-                Location = new Point(30, 60),
-                Size = new Size(400, 25),
+                Location = new Point(30, 95),
+                Size = new Size(500, 25),
                 ForeColor = Color.FromArgb(100, 100, 100),
                 BackColor = Color.Transparent
             };
-            reservationsHeaderPanel.Controls.AddRange(new Control[] { titleLabel, subtitleLabel });
             Button btnNewReservation = new Button
             {
                 Text = "New Reservation",
@@ -2032,9 +2018,10 @@ namespace Library_Management_System.Forms.members
             btnNewReservation.FlatAppearance.BorderSize = 0;
             btnNewReservation.MouseEnter += (s, e) => btnNewReservation.BackColor = Color.FromArgb(150, 0, 0);
             btnNewReservation.MouseLeave += (s, e) => btnNewReservation.BackColor = Color.FromArgb(128, 0, 0);
+            pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnNewReservation });
             Panel statsPanel = new Panel
             {
-                Location = new Point(30, 100),
+                Location = new Point(30, 170),
                 Size = new Size(pnlMainContent.Width - 60, 80),
                 BackColor = Color.Transparent,
                 Tag = "ReservationsStatsPanel"
@@ -2046,7 +2033,7 @@ namespace Library_Management_System.Forms.members
             statsPanel.Controls.AddRange(new Control[] { cardPending, cardReady, cardFulfilled, cardExpired });
             Panel searchPanel = new Panel
             {
-                Location = new Point(30, 190),
+                Location = new Point(30, 270),
                 Size = new Size(pnlMainContent.Width - 60, 70),
                 BackColor = Color.White,
                 BorderStyle = BorderStyle.None
@@ -2150,8 +2137,8 @@ namespace Library_Management_System.Forms.members
             btnFilterFulfilled.FlatAppearance.BorderSize = 0;
             DataGridView dgvReservations = new DataGridView
             {
-                Location = new Point(30, 270),
-                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 300),
+                Location = new Point(30, 360),
+                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 390),
                 BackgroundColor = Color.White,
                 BorderStyle = BorderStyle.FixedSingle,
                 AllowUserToAddRows = false,
@@ -2346,7 +2333,7 @@ namespace Library_Management_System.Forms.members
                 }
             };
             searchPanel.Controls.AddRange(new Control[] { searchContainer, btnFilterAll, btnFilterPending, btnFilterReady, btnFilterFulfilled });
-            pnlMainContent.Controls.AddRange(new Control[] { reservationsHeaderPanel, btnNewReservation, statsPanel, searchPanel, dgvReservations });
+            pnlMainContent.Controls.AddRange(new Control[] { btnNewReservation, statsPanel, searchPanel, dgvReservations });
             LoadReservationsData();
         }
         private void ShowNewReservationDialog()

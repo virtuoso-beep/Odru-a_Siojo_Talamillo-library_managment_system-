@@ -17,7 +17,7 @@ namespace Library_Management_System
 
             if (debugMode)
             {
-                Application.Run(new DashboardForm());
+                Application.Run(new Library_Management_System.Forms.members.MembersDashboard());
             }
             else
             {

@@ -528,7 +528,8 @@ namespace Library_Management_System.Forms.staff
                 Location = new Point(cardPanel.Width - 70, 20),
                 Size = new Size(50, 50),
                 TextAlign = ContentAlignment.MiddleCenter,
-                Tag = "CardIcon"
+                Tag = "CardIcon",
+                BackColor = Color.Transparent
             };
             cardPanel.Controls.Add(lblIcon);
         }
@@ -1020,9 +1021,199 @@ namespace Library_Management_System.Forms.staff
                  pnlOverdue.Width = w;
             };
         }
-        private void ShowReportsMembers() { SetActiveReportNavButton(btnReportMembers); pnlReportsContent.Controls.Clear(); }
-        private void ShowReportsCollection() { SetActiveReportNavButton(btnReportCollection); pnlReportsContent.Controls.Clear(); }
-        private void ShowReportsFines() { SetActiveReportNavButton(btnReportFines); pnlReportsContent.Controls.Clear(); }
+        private void ShowReportsMembers()
+        {
+            SetActiveReportNavButton(btnReportMembers);
+            pnlReportsContent.Controls.Clear();
+
+            try
+            {
+                var membersService = new Library_Management_System.Service.MembersService();
+                var stats = membersService.GetMemberStatistics();
+
+                Panel pnlCardsContainer = new Panel
+                {
+                    Dock = DockStyle.Top,
+                    Height = 220,
+                    Padding = new Padding(0, 0, 0, 20),
+                    BackColor = Color.Transparent
+                };
+
+                int cardWidth = 250;
+                int cardHeight = 180;
+                int gap = 17;
+                int startX = 38;
+
+                // Card 1: Total Members (Maroon)
+                Panel cardTotal = CreateReportDashboardCard("Total Members", stats.TotalMembers.ToString(), "👥", ThemeConstants.PrimaryMaroon, new Point(startX, 10), new Size(cardWidth, cardHeight));
+                startX += cardWidth + gap;
+
+                // Card 2: Active (White)
+                Panel cardActive = CreateReportDashboardCard("Active", stats.ActiveMembers.ToString(), "✓", Color.White, new Point(startX, 10), new Size(cardWidth, cardHeight));
+                startX += cardWidth + gap;
+
+                // Card 3: Suspended (White)
+                Panel cardSuspended = CreateReportDashboardCard("Suspended", stats.SuspendedMembers.ToString(), "⛔", Color.White, new Point(startX, 10), new Size(cardWidth, cardHeight));
+                startX += cardWidth + gap;
+
+                // Card 4: Expired (White)
+                Panel cardExpired = CreateReportDashboardCard("Expired", stats.ExpiredMembers.ToString(), "⚠️", Color.White, new Point(startX, 10), new Size(cardWidth, cardHeight));
+
+                pnlCardsContainer.Controls.AddRange(new Control[] { cardTotal, cardActive, cardSuspended, cardExpired });
+                pnlReportsContent.Controls.Add(pnlCardsContainer);
+
+                // Add a placeholder chart or grid below if needed, for now just the cards as requested
+                Label lblPlaceholder = new Label
+                {
+                    Text = "Member Statistics Overview",
+                    Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                    Location = new Point(38, 240),
+                    AutoSize = true,
+                    ForeColor = Color.DimGray
+                };
+                pnlReportsContent.Controls.Add(lblPlaceholder);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading member reports: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ShowReportsCollection()
+        {
+            SetActiveReportNavButton(btnReportCollection);
+            pnlReportsContent.Controls.Clear();
+
+            try
+            {
+                var dashboardService = new Library_Management_System.Service.DashboardService();
+                var stats = dashboardService.GetDashboardStatistics();
+
+                Panel pnlCardsContainer = new Panel
+                {
+                    Dock = DockStyle.Top,
+                    Height = 220,
+                    Padding = new Padding(0, 0, 0, 20),
+                    BackColor = Color.Transparent
+                };
+
+                int cardWidth = 250;
+                int cardHeight = 180;
+                int gap = 17;
+                int startX = 38;
+
+                // Card 1: Total Books (Maroon)
+                Panel cardTotal = CreateReportDashboardCard("Total Books", stats.TotalBooks.ToString(), "📚", ThemeConstants.PrimaryMaroon, new Point(startX, 10), new Size(cardWidth, cardHeight));
+                startX += cardWidth + gap;
+
+                // Card 2: Borrowed (White)
+                Panel cardBorrowed = CreateReportDashboardCard("Borrowed", stats.BooksBorrowed.ToString(), "🔄", Color.White, new Point(startX, 10), new Size(cardWidth, cardHeight));
+                startX += cardWidth + gap;
+
+                // Card 3: Overdue (White)
+                Panel cardOverdue = CreateReportDashboardCard("Overdue", stats.OverdueBooks.ToString(), "⚠️", Color.White, new Point(startX, 10), new Size(cardWidth, cardHeight));
+                
+                // Calculate Available if not provided directly
+                int available = stats.TotalBooks - stats.BooksBorrowed; // Simple approximation
+                 startX += cardWidth + gap;
+                Panel cardAvailable = CreateReportDashboardCard("Available", available.ToString(), "✓", Color.White, new Point(startX, 10), new Size(cardWidth, cardHeight));
+
+                pnlCardsContainer.Controls.AddRange(new Control[] { cardTotal, cardBorrowed, cardOverdue, cardAvailable });
+                pnlReportsContent.Controls.Add(pnlCardsContainer);
+            }
+            catch (Exception ex)
+            {
+                 MessageBox.Show($"Error loading collection reports: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ShowReportsFines()
+        {
+            SetActiveReportNavButton(btnReportFines);
+            pnlReportsContent.Controls.Clear();
+
+            try
+            {
+                 var dashboardService = new Library_Management_System.Service.DashboardService();
+                 var stats = dashboardService.GetDashboardStatistics();
+                 
+                 // Note: Detailed fine stats (paid vs unpaid count) might require FinesService, 
+                 // but for now using PendingFines from DashboardService and simple text.
+                 
+                 Panel pnlCardsContainer = new Panel
+                {
+                    Dock = DockStyle.Top,
+                    Height = 220,
+                    Padding = new Padding(0, 0, 0, 20),
+                    BackColor = Color.Transparent
+                };
+
+                int cardWidth = 250;
+                int cardHeight = 180;
+                int gap = 17;
+                int startX = 38;
+
+                // Card 1: Pending Fines Amount (Maroon)
+                Panel cardPending = CreateReportDashboardCard("Pending Fines", $"₱{stats.PendingFines:F2}", "💰", ThemeConstants.PrimaryMaroon, new Point(startX, 10), new Size(cardWidth, cardHeight));
+                startX += cardWidth + gap;
+
+                 // Logic for collected fines would go here if available in service
+                 // For now showing placeholders or we can add more specific fine stats later
+                 
+                pnlCardsContainer.Controls.AddRange(new Control[] { cardPending });
+                pnlReportsContent.Controls.Add(pnlCardsContainer);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading fine reports: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+
+// ... existing code ...
+        private Panel CreateReportDashboardCard(string title, string value, string icon, Color backColor, Point location, Size size)
+        {
+            Panel card = new Panel
+            {
+                Location = location,
+                Size = size,
+                BackColor = backColor,
+                Tag = "ReportCard"
+            };
+            card.Paint += Card_Paint; // Use existing Card_Paint logic
+
+            // Value (Big Number) at the Top
+            Label lblValue = new Label
+            {
+                Text = value,
+                Font = new Font("Segoe UI", 28F, FontStyle.Bold),
+                Location = new Point(20, 35),
+                Size = new Size(size.Width - 50, 60), 
+                ForeColor = backColor == ThemeConstants.PrimaryMaroon ? Color.White : ThemeConstants.PrimaryMaroon,
+                BackColor = Color.Transparent,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            // Title (Description) at the Bottom
+            Label lblTitle = new Label
+            {
+                Text = title,
+                Font = new Font("Segoe UI", 11F, FontStyle.Regular),
+                Location = new Point(20, 120),
+                Size = new Size(size.Width - 90, 30), 
+                ForeColor = backColor == ThemeConstants.PrimaryMaroon ? Color.FromArgb(200, 255, 255, 255) : Color.Gray,
+                BackColor = Color.Transparent,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            card.Controls.Add(lblValue);
+            card.Controls.Add(lblTitle);
+
+            // Use AddCardIcon helper to add the icon at top-right
+            AddCardIcon(card, icon);
+
+            return card;
+        }
         private void ShowDashboardControls(bool show)
         {
             lblWelcome.Visible = show;
@@ -2992,8 +3183,8 @@ namespace Library_Management_System.Forms.staff
             {
                 Text = value,
                 Font = new Font("Segoe UI", 20F, FontStyle.Bold),
-                Location = new Point(65, 12),
-                Size = new Size(125, 28),
+                Location = new Point(65, 8),
+                Size = new Size(125, 37),
                 ForeColor = Color.FromArgb(40, 40, 40),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Tag = "Value",
@@ -3003,7 +3194,7 @@ namespace Library_Management_System.Forms.staff
             {
                 Text = label,
                 Font = new Font("Segoe UI", 9F),
-                Location = new Point(65, 40),
+                Location = new Point(65, 45),
                 Size = new Size(125, 20),
                 ForeColor = Color.FromArgb(100, 100, 100),
                 TextAlign = ContentAlignment.MiddleLeft,
