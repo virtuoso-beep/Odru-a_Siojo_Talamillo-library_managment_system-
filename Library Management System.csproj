@@ -104,9 +104,6 @@
     <Compile Include="Forms\staff\StaffDashboard.Designer.cs">
       <DependentUpon>StaffDashboard.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\TestForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
     <EmbeddedResource Include="Forms\staff\StaffDashboard.resx">
       <DependentUpon>StaffDashboard.cs</DependentUpon>
     </EmbeddedResource>
@@ -150,14 +147,13 @@
     <Compile Include="Service\InventoryService.cs" />
     <Compile Include="Service\MembersService.cs" />
     <Compile Include="Service\ReservationService.cs" />
-    <Compile Include="Service\CatalogService.cs" />
     <Compile Include="Service\ReportsService.cs" />
     <Compile Include="Service\SearchService.cs" />
     <Compile Include="Service\SettingsService.cs" />
     <Compile Include="Service\EmailService.cs" />
-    <Compile Include="Service\ServiceTests.cs" />
-    <Compile Include="Service\AutomatedTests.cs" />
+    <Compile Include="Service\NotificationScheduler.cs" />
     <Compile Include="Helper\ErrorHandler.cs" />
+    <Compile Include="Helper\ReceiptGenerator.cs" />
     <Compile Include="Helper\ReportExportHelper.cs" />
     <EmbeddedResource Include="Forms\Dashboard\DashboardForm.resx">
       <DependentUpon>DashboardForm.cs</DependentUpon>
