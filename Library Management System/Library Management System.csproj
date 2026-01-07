@@ -110,6 +110,7 @@
     <EmbeddedResource Include="Forms\staff\StaffDashboard.resx">
       <DependentUpon>StaffDashboard.cs</DependentUpon>
     </EmbeddedResource>
+    <Compile Include="DBContext\DatabaseContext.cs" />
     <Compile Include="Helper\MYSqlHelper.cs" />
     <Compile Include="Helper\AuditLogger.cs" />
     <Compile Include="Helper\ThemeConstants.cs" />
