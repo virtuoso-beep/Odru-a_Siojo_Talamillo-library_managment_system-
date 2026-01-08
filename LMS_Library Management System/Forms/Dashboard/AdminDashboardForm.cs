@@ -44,6 +44,14 @@ namespace LMS_Library_Management_System.Forms.Dashboard
         private Button btnSettingNotifications;
         private Button btnSettingBorrowing;
         private Button btnSettingFines;
+        private Panel pnlUserManagementView;
+        private Panel pnlUserManagementTabs;
+        private Panel pnlUserManagementContent;
+        private Button btnUserTabLibrarians;
+        private Button btnUserTabStaff;
+        private DataGridView dgvUserManagement;
+        private TextBox txtSearchUsers;
+        private Button btnAddUser;
         private List<Control> _originalMainContentControls = new List<Control>();
         private bool _isLoadingMembersData = false;
         private bool _isProcessingAction = false;
@@ -143,6 +151,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             if (pnlSearchView != null && !pnlSearchView.IsDisposed) pnlSearchView.Visible = false;
             if (pnlSettingsView != null && !pnlSettingsView.IsDisposed) pnlSettingsView.Visible = false;
             if (pnlMembersView != null && !pnlMembersView.IsDisposed) pnlMembersView.Visible = false;
+            if (pnlUserManagementView != null && !pnlUserManagementView.IsDisposed) pnlUserManagementView.Visible = false;
         }
 
         private void WireUpMenuButtons()
@@ -153,7 +162,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
         private void SetupMenuButtonHoverEffects()
         {
             Button[] menuButtons = { btnDashboard, btnMembers, btnCatalog, btnCirculation, 
-                btnReservations, btnFines, btnInventory, btnReports, btnSearch, btnSettings };
+                btnReservations, btnFines, btnInventory, btnReports, btnUserManagement, btnSearch, btnSettings };
 
             foreach (var button in menuButtons)
             {
@@ -395,6 +404,10 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
                 case "Reports":
                     ShowReportsView();
+                    break;
+
+                case "UserManagement":
+                    ShowUserManagementView();
                     break;
 
                 case "Search":
@@ -3652,6 +3665,608 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             
             pnlSettingsContent.Resize += (s, e) => resizeAction();
             resizeAction();
+        }
+
+        private void ShowUserManagementView()
+        {
+            RestoreOriginalControls();
+            ShowDashboardControls(false);
+            
+            if (pnlUserManagementView == null || pnlUserManagementView.IsDisposed)
+            {
+                SetupUserManagementView();
+            }
+            
+            if (!pnlMainContent.Controls.Contains(pnlUserManagementView))
+            {
+                pnlMainContent.Controls.Add(pnlUserManagementView);
+            }
+            
+            pnlUserManagementView.Visible = true;
+            pnlUserManagementView.BringToFront();
+            pnlUserManagementView.Dock = DockStyle.Fill;
+            
+            // Show Librarians tab by default
+            SwitchUserManagementTab("Librarians", btnUserTabLibrarians);
+        }
+
+        private void SetupUserManagementView()
+        {
+            if (pnlUserManagementView != null && !pnlUserManagementView.IsDisposed) return;
+            
+            // Main panel
+            pnlUserManagementView = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = ThemeConstants.BackgroundLight,
+                Visible = false
+            };
+            
+            // Header panel
+            Panel headerPanel = new Panel 
+            { 
+                Dock = DockStyle.Top, 
+                Height = 100, 
+                BackColor = Color.White,
+                Padding = new Padding(30, 20, 30, 10)
+            };
+            
+            Label lblTitle = new Label
+            {
+                Text = "User Management",
+                Font = new Font("Segoe UI", 24F, FontStyle.Bold),
+                ForeColor = ThemeConstants.PrimaryMaroon,
+                Location = new Point(30, 20),
+                AutoSize = true
+            };
+            
+            Label lblSubtitle = new Label
+            {
+                Text = "Manage librarian and staff accounts.",
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.Gray,
+                Location = new Point(30, 60),
+                AutoSize = true
+            };
+            
+            headerPanel.Controls.Add(lblTitle);
+            headerPanel.Controls.Add(lblSubtitle);
+            
+            // Search and Add User panel
+            Panel pnlSearchAdd = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 80,
+                BackColor = Color.White,
+                Padding = new Padding(30, 15, 30, 15)
+            };
+            
+            // Search textbox with icon
+            Panel pnlSearchContainer = new Panel
+            {
+                Location = new Point(30, 15),
+                Size = new Size(600, 40),
+                BackColor = Color.FromArgb(248, 249, 250),
+                Padding = new Padding(15, 0, 15, 0)
+            };
+            
+            Label lblSearchIcon = new Label
+            {
+                Text = "🔍",
+                Font = new Font("Segoe UI", 14F),
+                Location = new Point(15, 8),
+                AutoSize = true,
+                BackColor = Color.Transparent
+            };
+            
+            txtSearchUsers = new TextBox
+            {
+                Location = new Point(50, 5),
+                Size = new Size(535, 30),
+                Font = new Font("Segoe UI", 10F),
+                BorderStyle = BorderStyle.None,
+                BackColor = Color.FromArgb(248, 249, 250),
+                Text = "Search users..."
+            };
+            
+            txtSearchUsers.Enter += (s, e) => {
+                if (txtSearchUsers.Text == "Search users...")
+                {
+                    txtSearchUsers.Text = "";
+                    txtSearchUsers.ForeColor = Color.Black;
+                }
+            };
+            
+            txtSearchUsers.Leave += (s, e) => {
+                if (string.IsNullOrWhiteSpace(txtSearchUsers.Text))
+                {
+                    txtSearchUsers.Text = "Search users...";
+                    txtSearchUsers.ForeColor = Color.Gray;
+                }
+            };
+            
+            txtSearchUsers.ForeColor = Color.Gray;
+            
+            pnlSearchContainer.Controls.Add(lblSearchIcon);
+            pnlSearchContainer.Controls.Add(txtSearchUsers);
+            pnlSearchContainer.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlSearchContainer.Width - 1, pnlSearchContainer.Height - 1), 6))
+                using (Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+            
+            // Add User button
+            btnAddUser = new Button
+            {
+                Text = "+ Add User",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = ThemeConstants.PrimaryMaroon, // Deep maroon color matching theme
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 0 },
+                Size = new Size(140, 40),
+                Location = new Point(pnlSearchAdd.Width - 170, 15),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Cursor = Cursors.Hand
+            };
+            
+            // Create rounded button effect
+            btnAddUser.Paint += (s, e) =>
+            {
+                Button btn = s as Button;
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                
+                // Draw rounded background
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btn.Width - 1, btn.Height - 1), 6))
+                {
+                    e.Graphics.FillPath(new SolidBrush(btn.BackColor), path);
+                }
+                
+                // Draw text
+                StringFormat sf = new StringFormat
+                {
+                    Alignment = StringAlignment.Center,
+                    LineAlignment = StringAlignment.Center
+                };
+                e.Graphics.DrawString(btn.Text, btn.Font, new SolidBrush(btn.ForeColor), 
+                    new RectangleF(0, 0, btn.Width, btn.Height), sf);
+            };
+            
+            btnAddUser.MouseEnter += (s, e) => 
+            {
+                btnAddUser.BackColor = ThemeConstants.AccentMaroonHover;
+                btnAddUser.Invalidate();
+            };
+            btnAddUser.MouseLeave += (s, e) => 
+            {
+                btnAddUser.BackColor = ThemeConstants.PrimaryMaroon;
+                btnAddUser.Invalidate();
+            };
+            btnAddUser.Click += (s, e) => ShowAddUserDialog();
+            
+            pnlSearchAdd.Controls.Add(pnlSearchContainer);
+            pnlSearchAdd.Controls.Add(btnAddUser);
+            
+            // Tabs panel
+            pnlUserManagementTabs = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 60,
+                BackColor = Color.White,
+                Padding = new Padding(30, 10, 30, 0)
+            };
+            
+            Panel tabBorder = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 1,
+                BackColor = Color.FromArgb(230, 230, 230)
+            };
+            pnlUserManagementTabs.Controls.Add(tabBorder);
+            
+            btnUserTabLibrarians = CreateUserManagementTabButton("Librarians/Admins", true);
+            btnUserTabStaff = CreateUserManagementTabButton("Staff Accounts", false);
+            
+            btnUserTabLibrarians.Location = new Point(0, 12);
+            btnUserTabStaff.Location = new Point(btnUserTabLibrarians.Width + 15, 12);
+            
+            btnUserTabLibrarians.Click += (s, e) => SwitchUserManagementTab("Librarians", btnUserTabLibrarians);
+            btnUserTabStaff.Click += (s, e) => SwitchUserManagementTab("Staff", btnUserTabStaff);
+            
+            pnlUserManagementTabs.Controls.AddRange(new Control[] { btnUserTabLibrarians, btnUserTabStaff });
+            
+            // Content panel
+            pnlUserManagementContent = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = ThemeConstants.BackgroundLight,
+                Padding = new Padding(30, 20, 30, 30)
+            };
+            
+            // Create table panel
+            Panel pnlTableContainer = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.White,
+                Padding = new Padding(20)
+            };
+            
+            // Table title
+            Label lblTableTitle = new Label
+            {
+                Text = "Librarians & Administrators",
+                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                ForeColor = ThemeConstants.TextDark,
+                Location = new Point(20, 20),
+                AutoSize = true
+            };
+            
+            Label lblTableDescription = new Label
+            {
+                Text = "Users with full system access and administrative privileges.",
+                Font = new Font("Segoe UI", 9F),
+                ForeColor = Color.Gray,
+                Location = new Point(20, 50),
+                AutoSize = true
+            };
+            
+            // DataGridView
+            dgvUserManagement = new DataGridView
+            {
+                Location = new Point(20, 90),
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                BackgroundColor = Color.White,
+                BorderStyle = BorderStyle.None,
+                ColumnHeadersHeight = 50,
+                RowHeadersVisible = false,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                ReadOnly = true,
+                Font = new Font("Segoe UI", 9F),
+                GridColor = Color.FromArgb(240, 240, 240),
+                Cursor = Cursors.Hand
+            };
+            
+            // Wire up cell click event
+            dgvUserManagement.CellClick += DgvUserManagement_CellClick;
+            
+            // Add columns
+            dgvUserManagement.Columns.Add("Name", "Name");
+            dgvUserManagement.Columns.Add("Email", "Email");
+            dgvUserManagement.Columns.Add("Department", "Department");
+            dgvUserManagement.Columns.Add("Role", "Role");
+            dgvUserManagement.Columns.Add("Status", "Status");
+            dgvUserManagement.Columns.Add("LastLogin", "Last Login");
+            dgvUserManagement.Columns.Add("Actions", "Actions");
+            
+            // Style columns
+            foreach (DataGridViewColumn col in dgvUserManagement.Columns)
+            {
+                col.DefaultCellStyle.Padding = new Padding(15, 10, 15, 10);
+                col.HeaderCell.Style.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+                col.HeaderCell.Style.BackColor = Color.FromArgb(248, 249, 250);
+                col.HeaderCell.Style.ForeColor = ThemeConstants.TextDark;
+            }
+            
+            // Wire up cell painting for Actions column
+            dgvUserManagement.CellPainting += DgvUserManagement_CellPainting;
+            dgvUserManagement.CellFormatting += DgvUserManagement_CellFormatting;
+            
+            // Add sample data
+            AddSampleUserData();
+            
+            pnlTableContainer.Controls.Add(lblTableTitle);
+            pnlTableContainer.Controls.Add(lblTableDescription);
+            pnlTableContainer.Controls.Add(dgvUserManagement);
+            
+            pnlUserManagementContent.Controls.Add(pnlTableContainer);
+            
+            // Add panels to main view
+            pnlUserManagementView.Controls.Add(headerPanel);
+            pnlUserManagementView.Controls.Add(pnlSearchAdd);
+            pnlUserManagementView.Controls.Add(pnlUserManagementTabs);
+            pnlUserManagementView.Controls.Add(pnlUserManagementContent);
+        }
+
+        private Button CreateUserManagementTabButton(string text, bool isActive)
+        {
+            Button btn = new Button
+            {
+                Text = text,
+                Size = new Size(180, 40),
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 0 },
+                BackColor = Color.White,
+                Font = new Font("Segoe UI", 10F, isActive ? FontStyle.Bold : FontStyle.Regular),
+                ForeColor = isActive ? ThemeConstants.PrimaryMaroon : Color.Gray,
+                Cursor = Cursors.Hand,
+                Tag = isActive
+            };
+            
+            btn.Paint += (s, e) =>
+            {
+                if ((bool)btn.Tag)
+                {
+                    using (Pen pen = new Pen(ThemeConstants.PrimaryMaroon, 2))
+                    {
+                        e.Graphics.DrawLine(pen, 0, btn.Height - 2, btn.Width, btn.Height - 2);
+                    }
+                }
+            };
+            
+            return btn;
+        }
+
+        private void SwitchUserManagementTab(string tabName, Button activeBtn)
+        {
+            // Reset all tabs
+            btnUserTabLibrarians.Tag = false;
+            btnUserTabLibrarians.Font = new Font("Segoe UI", 10F, FontStyle.Regular);
+            btnUserTabLibrarians.ForeColor = Color.Gray;
+            btnUserTabLibrarians.Invalidate();
+            
+            btnUserTabStaff.Tag = false;
+            btnUserTabStaff.Font = new Font("Segoe UI", 10F, FontStyle.Regular);
+            btnUserTabStaff.ForeColor = Color.Gray;
+            btnUserTabStaff.Invalidate();
+            
+            // Set active tab
+            activeBtn.Tag = true;
+            activeBtn.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            activeBtn.ForeColor = ThemeConstants.PrimaryMaroon;
+            activeBtn.Invalidate();
+            
+            // Update table title and data
+            Label lblTableTitle = pnlUserManagementContent.Controls[0].Controls[0] as Label;
+            Label lblTableDescription = pnlUserManagementContent.Controls[0].Controls[1] as Label;
+            
+            if (tabName == "Librarians")
+            {
+                if (lblTableTitle != null)
+                {
+                    lblTableTitle.Text = "Librarians & Administrators";
+                    lblTableDescription.Text = "Users with full system access and administrative privileges.";
+                }
+            }
+            else if (tabName == "Staff")
+            {
+                if (lblTableTitle != null)
+                {
+                    lblTableTitle.Text = "Staff Accounts";
+                    lblTableDescription.Text = "Library staff members with limited administrative access.";
+                }
+            }
+            
+            // Refresh data
+            dgvUserManagement.Rows.Clear();
+            AddSampleUserData();
+        }
+
+        private void AddSampleUserData()
+        {
+            // Sample data matching the image - Actions column left empty for custom painting
+            dgvUserManagement.Rows.Add(
+                "System Administrator",
+                "admin@library.edu",
+                "IT Department",
+                "Librarian/Admin",
+                "Active",
+                "Jan 8, 2026",
+                "" // Actions column - will be painted
+            );
+            
+            dgvUserManagement.Rows.Add(
+                "Sarah Johnson",
+                "head.librarian@library.edu",
+                "Library Administration",
+                "Librarian/Admin",
+                "Active",
+                "Jan 7, 2026",
+                "" // Actions column - will be painted
+            );
+            
+            // Style rows
+            foreach (DataGridViewRow row in dgvUserManagement.Rows)
+            {
+                row.Height = 60;
+                
+                // Style Role column (pink pill)
+                if (row.Cells["Role"].Value != null)
+                {
+                    row.Cells["Role"].Style.ForeColor = Color.FromArgb(219, 39, 119); // Pink
+                    row.Cells["Role"].Style.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+                }
+                
+                // Style Status column (green pill)
+                if (row.Cells["Status"].Value != null && row.Cells["Status"].Value.ToString() == "Active")
+                {
+                    row.Cells["Status"].Style.ForeColor = Color.FromArgb(34, 197, 94); // Green
+                    row.Cells["Status"].Style.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+                }
+            }
+        }
+
+        private void DgvUserManagement_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex < 0) return; // Header
+            
+            if (dgvUserManagement.Columns[e.ColumnIndex].Name == "Actions")
+            {
+                e.PaintBackground(e.CellBounds, true);
+                
+                // Draw icons with proper size and spacing
+                int iconSize = 24; // Smaller, reasonable size
+                int spacing = 12;
+                int startX = e.CellBounds.X + 10;
+                int centerY = e.CellBounds.Y + (e.CellBounds.Height / 2);
+                
+                // Edit icon (✏️)
+                Rectangle editRect = new Rectangle(startX, centerY - iconSize/2, iconSize, iconSize);
+                TextRenderer.DrawText(e.Graphics, "✏", new Font("Segoe UI", 12F), editRect, Color.Gray, 
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                
+                // Reset Password icon (🔑)
+                Rectangle resetRect = new Rectangle(startX + iconSize + spacing, centerY - iconSize/2, iconSize, iconSize);
+                TextRenderer.DrawText(e.Graphics, "🔑", new Font("Segoe UI", 12F), resetRect, Color.Gray, 
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                
+                // Assign Role icon (🛡️)
+                Rectangle roleRect = new Rectangle(startX + (iconSize + spacing) * 2, centerY - iconSize/2, iconSize, iconSize);
+                TextRenderer.DrawText(e.Graphics, "🛡", new Font("Segoe UI", 12F), roleRect, Color.Gray, 
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                
+                // Deactivate icon (👤-)
+                Rectangle deactivateRect = new Rectangle(startX + (iconSize + spacing) * 3, centerY - iconSize/2, iconSize, iconSize);
+                TextRenderer.DrawText(e.Graphics, "👤-", new Font("Segoe UI", 12F), deactivateRect, Color.FromArgb(220, 53, 69), 
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                
+                e.Handled = true;
+            }
+        }
+
+        private void DgvUserManagement_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.ColumnIndex >= 0 && e.RowIndex >= 0)
+            {
+                DataGridView dgv = sender as DataGridView;
+                if (dgv != null && dgv.Columns[e.ColumnIndex].Name == "Actions")
+                {
+                    e.CellStyle.BackColor = Color.FromArgb(250, 250, 250);
+                    e.CellStyle.ForeColor = ThemeConstants.PrimaryMaroon;
+                    e.CellStyle.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
+                    e.CellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                    e.CellStyle.SelectionBackColor = Color.FromArgb(240, 240, 240);
+                    e.CellStyle.SelectionForeColor = ThemeConstants.PrimaryMaroon;
+                }
+            }
+        }
+
+        private void DgvUserManagement_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            if (e.ColumnIndex != dgvUserManagement.Columns["Actions"].Index) return;
+            
+            DataGridViewRow row = dgvUserManagement.Rows[e.RowIndex];
+            string name = row.Cells["Name"].Value?.ToString() ?? "";
+            string email = row.Cells["Email"].Value?.ToString() ?? "";
+            string department = row.Cells["Department"].Value?.ToString() ?? "";
+            string role = row.Cells["Role"].Value?.ToString() ?? "";
+            
+            // Get click position relative to the Actions cell
+            Rectangle cellRect = dgvUserManagement.GetCellDisplayRectangle(e.ColumnIndex, e.RowIndex, false);
+            Point clickPoint = dgvUserManagement.PointToClient(Control.MousePosition);
+            int relativeX = clickPoint.X - cellRect.X;
+            
+            // Icon positions match the painting positions
+            int iconSize = 24;
+            int spacing = 12;
+            int startX = 10;
+            
+            // Calculate which icon was clicked based on actual icon positions
+            if (relativeX >= startX && relativeX < startX + iconSize)
+            {
+                // Edit User (first icon)
+                ShowEditUserDialog(name, email, "", department);
+            }
+            else if (relativeX >= startX + iconSize + spacing && relativeX < startX + (iconSize + spacing) * 2)
+            {
+                // Reset Password (second icon)
+                ShowResetPasswordDialog(email);
+            }
+            else if (relativeX >= startX + (iconSize + spacing) * 2 && relativeX < startX + (iconSize + spacing) * 3)
+            {
+                // Assign Role (third icon)
+                ShowAssignRoleDialog(name, role);
+            }
+            else if (relativeX >= startX + (iconSize + spacing) * 3 && relativeX < startX + (iconSize + spacing) * 4)
+            {
+                // Deactivate User (fourth icon)
+                ShowDeactivateUserDialog(name);
+            }
+        }
+
+        private void ShowEditUserDialog(string name, string email, string phone, string department)
+        {
+            using (EditUserDialog dialog = new EditUserDialog(name, email, phone, department))
+            {
+                dialog.Owner = this;
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    // Update the user data
+                    MessageBox.Show($"User '{dialog.FullName}' has been updated successfully.", "Success", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    // Refresh the grid
+                    dgvUserManagement.Rows.Clear();
+                    AddSampleUserData();
+                }
+            }
+        }
+
+        private void ShowResetPasswordDialog(string email)
+        {
+            using (UserResetPasswordDialog dialog = new UserResetPasswordDialog(email))
+            {
+                dialog.Owner = this;
+                if (dialog.ShowDialog() == DialogResult.OK && dialog.SendResetLink)
+                {
+                    MessageBox.Show($"Password reset link has been sent to {email}.", "Success", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+        }
+
+        private void ShowAssignRoleDialog(string userName, string currentRole)
+        {
+            using (AssignRoleDialog dialog = new AssignRoleDialog(userName, currentRole))
+            {
+                dialog.Owner = this;
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    MessageBox.Show($"Role '{dialog.SelectedRole}' has been assigned to {userName}.", "Success", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    // Refresh the grid
+                    dgvUserManagement.Rows.Clear();
+                    AddSampleUserData();
+                }
+            }
+        }
+
+        private void ShowDeactivateUserDialog(string userName)
+        {
+            using (DeactivateUserDialog dialog = new DeactivateUserDialog(userName))
+            {
+                dialog.Owner = this;
+                if (dialog.ShowDialog() == DialogResult.OK && dialog.DeactivateUser)
+                {
+                    MessageBox.Show($"User '{userName}' has been deactivated.", "Success", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    // Refresh the grid
+                    dgvUserManagement.Rows.Clear();
+                    AddSampleUserData();
+                }
+            }
+        }
+
+        private void ShowAddUserDialog()
+        {
+            using (AddUserDialog dialog = new AddUserDialog())
+            {
+                dialog.Owner = this;
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    MessageBox.Show($"User '{dialog.FullName}' has been added successfully.", "Success", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    // Refresh the grid
+                    dgvUserManagement.Rows.Clear();
+                    AddSampleUserData();
+                }
+            }
         }
 
 

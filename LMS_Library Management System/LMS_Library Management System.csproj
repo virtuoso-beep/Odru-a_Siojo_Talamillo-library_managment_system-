@@ -117,6 +117,21 @@
     <Compile Include="Forms\Dashboard\StaffDashboardForm.Designer.cs">
       <DependentUpon>StaffDashboardForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\Dashboard\EditUserDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\Dashboard\UserResetPasswordDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\Dashboard\AssignRoleDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\Dashboard\DeactivateUserDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\Dashboard\AddUserDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Helpers\MYSqlHelper.cs" />
     <Compile Include="Helpers\PlaceholderTextHelper.cs" />
     <Compile Include="Helpers\ThemeConstants.cs" />

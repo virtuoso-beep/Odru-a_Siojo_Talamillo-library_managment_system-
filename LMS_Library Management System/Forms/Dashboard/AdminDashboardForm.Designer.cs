@@ -21,6 +21,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.pnlAdministrator = new System.Windows.Forms.Panel();
             this.btnSignOut = new System.Windows.Forms.Button();
             this.lblAdminName = new System.Windows.Forms.Label();
+            this.btnUserManagement = new System.Windows.Forms.Button();
             this.btnSettings = new System.Windows.Forms.Button();
             this.btnSearch = new System.Windows.Forms.Button();
             this.btnReports = new System.Windows.Forms.Button();
@@ -110,16 +111,17 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             // 
             this.pnlSidebar.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(120)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
             this.pnlSidebar.Controls.Add(this.pnlAdministrator);
-            this.pnlSidebar.Controls.Add(this.btnSettings);
-            this.pnlSidebar.Controls.Add(this.btnSearch);
-            this.pnlSidebar.Controls.Add(this.btnReports);
-            this.pnlSidebar.Controls.Add(this.btnInventory);
-            this.pnlSidebar.Controls.Add(this.btnFines);
-            this.pnlSidebar.Controls.Add(this.btnReservations);
-            this.pnlSidebar.Controls.Add(this.btnCirculation);
-            this.pnlSidebar.Controls.Add(this.btnCatalog);
-            this.pnlSidebar.Controls.Add(this.btnMembers);
             this.pnlSidebar.Controls.Add(this.btnDashboard);
+            this.pnlSidebar.Controls.Add(this.btnUserManagement);
+            this.pnlSidebar.Controls.Add(this.btnMembers);
+            this.pnlSidebar.Controls.Add(this.btnCatalog);
+            this.pnlSidebar.Controls.Add(this.btnCirculation);
+            this.pnlSidebar.Controls.Add(this.btnReservations);
+            this.pnlSidebar.Controls.Add(this.btnFines);
+            this.pnlSidebar.Controls.Add(this.btnInventory);
+            this.pnlSidebar.Controls.Add(this.btnReports);
+            this.pnlSidebar.Controls.Add(this.btnSearch);
+            this.pnlSidebar.Controls.Add(this.btnSettings);
             this.pnlSidebar.Controls.Add(this.lblManagementSystem);
             this.pnlSidebar.Controls.Add(this.lblLibraryMS);
             this.pnlSidebar.Controls.Add(this.picLogo);
@@ -136,7 +138,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.pnlAdministrator.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
             this.pnlAdministrator.Controls.Add(this.btnSignOut);
             this.pnlAdministrator.Controls.Add(this.lblAdminName);
-            this.pnlAdministrator.Location = new System.Drawing.Point(0, 550);
+            this.pnlAdministrator.Location = new System.Drawing.Point(0, 600);
             this.pnlAdministrator.Margin = new System.Windows.Forms.Padding(0);
             this.pnlAdministrator.Name = "pnlAdministrator";
             this.pnlAdministrator.Padding = new System.Windows.Forms.Padding(0, 15, 0, 15);
@@ -174,6 +176,25 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.lblAdminName.TabIndex = 0;
             this.lblAdminName.Text = "Admin";
             // 
+            // btnUserManagement
+            // 
+            this.btnUserManagement.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(32)))));
+            this.btnUserManagement.FlatAppearance.BorderSize = 0;
+            this.btnUserManagement.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnUserManagement.Font = new System.Drawing.Font("Segoe UI", 11.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnUserManagement.ForeColor = System.Drawing.Color.White;
+            this.btnUserManagement.Location = new System.Drawing.Point(0, 140);
+            this.btnUserManagement.Margin = new System.Windows.Forms.Padding(0);
+            this.btnUserManagement.Name = "btnUserManagement";
+            this.btnUserManagement.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
+            this.btnUserManagement.Size = new System.Drawing.Size(280, 42);
+            this.btnUserManagement.TabIndex = 2;
+            this.btnUserManagement.Tag = "UserManagement";
+            this.btnUserManagement.Text = "  User Management";
+            this.btnUserManagement.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.btnUserManagement.UseVisualStyleBackColor = false;
+            this.btnUserManagement.Click += new System.EventHandler(this.MenuItem_Click);
+            // 
             // btnSettings
             // 
             this.btnSettings.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(32)))));
@@ -181,7 +202,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnSettings.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnSettings.Font = new System.Drawing.Font("Segoe UI", 11.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnSettings.ForeColor = System.Drawing.Color.White;
-            this.btnSettings.Location = new System.Drawing.Point(0, 540);
+            this.btnSettings.Location = new System.Drawing.Point(0, 590);
             this.btnSettings.Margin = new System.Windows.Forms.Padding(0);
             this.btnSettings.Name = "btnSettings";
             this.btnSettings.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
@@ -200,7 +221,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnSearch.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnSearch.Font = new System.Drawing.Font("Segoe UI", 11.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnSearch.ForeColor = System.Drawing.Color.White;
-            this.btnSearch.Location = new System.Drawing.Point(0, 490);
+            this.btnSearch.Location = new System.Drawing.Point(0, 540);
             this.btnSearch.Margin = new System.Windows.Forms.Padding(0);
             this.btnSearch.Name = "btnSearch";
             this.btnSearch.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
@@ -219,7 +240,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnReports.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnReports.Font = new System.Drawing.Font("Segoe UI", 11.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnReports.ForeColor = System.Drawing.Color.White;
-            this.btnReports.Location = new System.Drawing.Point(0, 440);
+            this.btnReports.Location = new System.Drawing.Point(0, 490);
             this.btnReports.Margin = new System.Windows.Forms.Padding(0);
             this.btnReports.Name = "btnReports";
             this.btnReports.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
@@ -238,12 +259,12 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnInventory.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnInventory.Font = new System.Drawing.Font("Segoe UI", 11.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnInventory.ForeColor = System.Drawing.Color.White;
-            this.btnInventory.Location = new System.Drawing.Point(0, 390);
+            this.btnInventory.Location = new System.Drawing.Point(0, 440);
             this.btnInventory.Margin = new System.Windows.Forms.Padding(0);
             this.btnInventory.Name = "btnInventory";
             this.btnInventory.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
             this.btnInventory.Size = new System.Drawing.Size(280, 42);
-            this.btnInventory.TabIndex = 8;
+            this.btnInventory.TabIndex = 9;
             this.btnInventory.Tag = "Inventory";
             this.btnInventory.Text = "  📦 Inventory";
             this.btnInventory.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -257,12 +278,12 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnFines.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnFines.Font = new System.Drawing.Font("Segoe UI", 11.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnFines.ForeColor = System.Drawing.Color.White;
-            this.btnFines.Location = new System.Drawing.Point(0, 340);
+            this.btnFines.Location = new System.Drawing.Point(0, 390);
             this.btnFines.Margin = new System.Windows.Forms.Padding(0);
             this.btnFines.Name = "btnFines";
             this.btnFines.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
             this.btnFines.Size = new System.Drawing.Size(280, 42);
-            this.btnFines.TabIndex = 7;
+            this.btnFines.TabIndex = 8;
             this.btnFines.Tag = "Fines";
             this.btnFines.Text = "  💰 Fines";
             this.btnFines.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -276,12 +297,12 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnReservations.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnReservations.Font = new System.Drawing.Font("Segoe UI", 11.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnReservations.ForeColor = System.Drawing.Color.White;
-            this.btnReservations.Location = new System.Drawing.Point(0, 290);
+            this.btnReservations.Location = new System.Drawing.Point(0, 340);
             this.btnReservations.Margin = new System.Windows.Forms.Padding(0);
             this.btnReservations.Name = "btnReservations";
             this.btnReservations.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
             this.btnReservations.Size = new System.Drawing.Size(280, 42);
-            this.btnReservations.TabIndex = 6;
+            this.btnReservations.TabIndex = 7;
             this.btnReservations.Tag = "Reservations";
             this.btnReservations.Text = "  📅 Reservations";
             this.btnReservations.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -295,12 +316,12 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnCirculation.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnCirculation.Font = new System.Drawing.Font("Segoe UI", 11.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnCirculation.ForeColor = System.Drawing.Color.White;
-            this.btnCirculation.Location = new System.Drawing.Point(0, 240);
+            this.btnCirculation.Location = new System.Drawing.Point(0, 290);
             this.btnCirculation.Margin = new System.Windows.Forms.Padding(0);
             this.btnCirculation.Name = "btnCirculation";
             this.btnCirculation.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
             this.btnCirculation.Size = new System.Drawing.Size(280, 42);
-            this.btnCirculation.TabIndex = 5;
+            this.btnCirculation.TabIndex = 6;
             this.btnCirculation.Tag = "Circulation";
             this.btnCirculation.Text = "  🔄 Circulation";
             this.btnCirculation.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -314,12 +335,12 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnCatalog.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnCatalog.Font = new System.Drawing.Font("Segoe UI", 11.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnCatalog.ForeColor = System.Drawing.Color.White;
-            this.btnCatalog.Location = new System.Drawing.Point(0, 190);
+            this.btnCatalog.Location = new System.Drawing.Point(0, 240);
             this.btnCatalog.Margin = new System.Windows.Forms.Padding(0);
             this.btnCatalog.Name = "btnCatalog";
             this.btnCatalog.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
             this.btnCatalog.Size = new System.Drawing.Size(280, 42);
-            this.btnCatalog.TabIndex = 4;
+            this.btnCatalog.TabIndex = 5;
             this.btnCatalog.Tag = "Catalog";
             this.btnCatalog.Text = "  📖 Catalog";
             this.btnCatalog.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -333,12 +354,12 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnMembers.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnMembers.Font = new System.Drawing.Font("Segoe UI", 11.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnMembers.ForeColor = System.Drawing.Color.White;
-            this.btnMembers.Location = new System.Drawing.Point(0, 140);
+            this.btnMembers.Location = new System.Drawing.Point(0, 190);
             this.btnMembers.Margin = new System.Windows.Forms.Padding(0);
             this.btnMembers.Name = "btnMembers";
             this.btnMembers.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
             this.btnMembers.Size = new System.Drawing.Size(280, 42);
-            this.btnMembers.TabIndex = 3;
+            this.btnMembers.TabIndex = 4;
             this.btnMembers.Tag = "Members";
             this.btnMembers.Text = "  👥 Members";
             this.btnMembers.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -1058,6 +1079,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
         private System.Windows.Forms.Button btnInventory;
         private System.Windows.Forms.Button btnReports;
         private System.Windows.Forms.Button btnSearch;
+        private System.Windows.Forms.Button btnUserManagement;
         private System.Windows.Forms.Button btnSettings;
         private System.Windows.Forms.Panel pnlAdministrator;
         private System.Windows.Forms.Label lblAdminName;
