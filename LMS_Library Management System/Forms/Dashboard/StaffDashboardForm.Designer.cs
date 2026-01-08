@@ -96,6 +96,13 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.lblMembersSubtitle = new System.Windows.Forms.Label();
             this.lblMembersTitle = new System.Windows.Forms.Label();
             this.btnAddMember = new System.Windows.Forms.Button();
+            this.pnlMembersView.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dgvMembers)).BeginInit();
+            this.pnlSearchFilter.SuspendLayout();
+            this.pnlCardExpiredMembers.SuspendLayout();
+            this.pnlCardSuspendedMembers.SuspendLayout();
+            this.pnlCardActiveMembersStat.SuspendLayout();
+            this.pnlCardTotalMembers.SuspendLayout();
             this.SuspendLayout();
             // 
             // pnlSidebar
@@ -127,11 +134,11 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.pnlAdministrator.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(160)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
             this.pnlAdministrator.Controls.Add(this.btnSignOut);
             this.pnlAdministrator.Controls.Add(this.lblStaffName);
-            this.pnlAdministrator.Location = new System.Drawing.Point(0, 560);
+            this.pnlAdministrator.Location = new System.Drawing.Point(0, 550);
             this.pnlAdministrator.Margin = new System.Windows.Forms.Padding(0);
             this.pnlAdministrator.Name = "pnlAdministrator";
             this.pnlAdministrator.Padding = new System.Windows.Forms.Padding(0, 15, 0, 15);
-            this.pnlAdministrator.Size = new System.Drawing.Size(280, 90);
+            this.pnlAdministrator.Size = new System.Drawing.Size(280, 100);
             this.pnlAdministrator.TabIndex = 12;
             // 
             // btnSignOut
@@ -161,13 +168,12 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.lblStaffName.ForeColor = System.Drawing.Color.White;
             this.lblStaffName.Location = new System.Drawing.Point(14, 9);
             this.lblStaffName.Name = "lblStaffName";
-            this.lblStaffName.Size = new System.Drawing.Size(73, 36);
+            this.lblStaffName.Size = new System.Drawing.Size(96, 36);
             this.lblStaffName.TabIndex = 0;
             this.lblStaffName.Text = "Staff";
             // 
-            // 
             // btnSearch
-            // 
+            //  
             this.btnSearch.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(32)))));
             this.btnSearch.FlatAppearance.BorderSize = 0;
             this.btnSearch.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -177,7 +183,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnSearch.Margin = new System.Windows.Forms.Padding(0);
             this.btnSearch.Name = "btnSearch";
             this.btnSearch.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnSearch.Size = new System.Drawing.Size(280, 50);
+            this.btnSearch.Size = new System.Drawing.Size(280, 42);
             this.btnSearch.TabIndex = 10;
             this.btnSearch.Tag = "Search";
             this.btnSearch.Text = "  🔍 Search";
@@ -196,7 +202,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnReports.Margin = new System.Windows.Forms.Padding(0);
             this.btnReports.Name = "btnReports";
             this.btnReports.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnReports.Size = new System.Drawing.Size(280, 50);
+            this.btnReports.Size = new System.Drawing.Size(280, 42);
             this.btnReports.TabIndex = 9;
             this.btnReports.Tag = "Reports";
             this.btnReports.Text = "  📊 Reports";
@@ -215,7 +221,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnInventory.Margin = new System.Windows.Forms.Padding(0);
             this.btnInventory.Name = "btnInventory";
             this.btnInventory.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnInventory.Size = new System.Drawing.Size(280, 50);
+            this.btnInventory.Size = new System.Drawing.Size(280, 42);
             this.btnInventory.TabIndex = 8;
             this.btnInventory.Tag = "Inventory";
             this.btnInventory.Text = "  📦 Inventory";
@@ -234,7 +240,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnFines.Margin = new System.Windows.Forms.Padding(0);
             this.btnFines.Name = "btnFines";
             this.btnFines.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnFines.Size = new System.Drawing.Size(280, 50);
+            this.btnFines.Size = new System.Drawing.Size(280, 42);
             this.btnFines.TabIndex = 7;
             this.btnFines.Tag = "Fines";
             this.btnFines.Text = "  💰 Fines";
@@ -253,7 +259,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnReservations.Margin = new System.Windows.Forms.Padding(0);
             this.btnReservations.Name = "btnReservations";
             this.btnReservations.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnReservations.Size = new System.Drawing.Size(280, 50);
+            this.btnReservations.Size = new System.Drawing.Size(280, 42);
             this.btnReservations.TabIndex = 6;
             this.btnReservations.Tag = "Reservations";
             this.btnReservations.Text = "  📅 Reservations";
@@ -272,7 +278,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnCirculation.Margin = new System.Windows.Forms.Padding(0);
             this.btnCirculation.Name = "btnCirculation";
             this.btnCirculation.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnCirculation.Size = new System.Drawing.Size(280, 50);
+            this.btnCirculation.Size = new System.Drawing.Size(280, 42);
             this.btnCirculation.TabIndex = 5;
             this.btnCirculation.Tag = "Circulation";
             this.btnCirculation.Text = "  🔄 Circulation";
@@ -291,7 +297,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnCatalog.Margin = new System.Windows.Forms.Padding(0);
             this.btnCatalog.Name = "btnCatalog";
             this.btnCatalog.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnCatalog.Size = new System.Drawing.Size(280, 50);
+            this.btnCatalog.Size = new System.Drawing.Size(280, 42);
             this.btnCatalog.TabIndex = 4;
             this.btnCatalog.Tag = "Catalog";
             this.btnCatalog.Text = "  📖 Catalog";
@@ -310,7 +316,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnMembers.Margin = new System.Windows.Forms.Padding(0);
             this.btnMembers.Name = "btnMembers";
             this.btnMembers.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnMembers.Size = new System.Drawing.Size(280, 50);
+            this.btnMembers.Size = new System.Drawing.Size(280, 42);
             this.btnMembers.TabIndex = 3;
             this.btnMembers.Tag = "Members";
             this.btnMembers.Text = "  👥 Members";
@@ -329,7 +335,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnDashboard.Margin = new System.Windows.Forms.Padding(0);
             this.btnDashboard.Name = "btnDashboard";
             this.btnDashboard.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnDashboard.Size = new System.Drawing.Size(280, 50);
+            this.btnDashboard.Size = new System.Drawing.Size(280, 42);
             this.btnDashboard.TabIndex = 2;
             this.btnDashboard.Tag = "Dashboard";
             this.btnDashboard.Text = "  ▦ Dashboard";
@@ -373,7 +379,6 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             // pnlMainContent
             // 
             this.pnlMainContent.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(248)))), ((int)(((byte)(249)))), ((int)(((byte)(250)))));
-            this.pnlMainContent.Controls.Add(this.pnlMembersView);
             this.pnlMainContent.Controls.Add(this.pnlCollectionCategory);
             this.pnlMainContent.Controls.Add(this.pnlWeeklyCirculation);
             this.pnlMainContent.Controls.Add(this.pnlCardPendingFines);
@@ -961,7 +966,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnAddMember.Text = "👥+ Add Member";
             this.btnAddMember.UseVisualStyleBackColor = false;
             // 
-            // StaffDashboardForm
+            // AdminDashboardForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
@@ -970,7 +975,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.Controls.Add(this.pnlMainContent);
             this.Controls.Add(this.pnlSidebar);
             this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
-            this.Name = "StaffDashboardForm";
+            this.Name = "AdminDashboardForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "LibraryMS - Staff Dashboard";
             this.Load += new System.EventHandler(this.StaffDashboardForm_Load);
