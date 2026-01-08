@@ -1020,9 +1020,9 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 if (string.IsNullOrWhiteSpace(txtEmail.GetActualText()))
                 {
                     MessageBox.Show("Please enter an email.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-
+                            return;
+                        }
+                        
                 // Mock Success
                 MessageBox.Show($"Member {txtFirstName.GetActualText()} {txtLastName.GetActualText()} registered successfully!", 
                     "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -1032,9 +1032,9 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             if (registerForm.ShowDialog(this) == DialogResult.OK)
             {
-                LoadMembersData();
-            }
-        }
+                        LoadMembersData();
+                    }
+                }
 
         private bool IsValidEducationalEmail(string email)
         {
@@ -2200,7 +2200,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 Size = new Size(90, 36), 
                 Location = new Point(pnlHeader.Width - 200, 5), 
                 FlatStyle = FlatStyle.Flat, 
-                BackColor = Color.White, 
+                BackColor = Color.White,
                 ForeColor = Color.FromArgb(60, 60, 60), 
                 Font = ThemeConstants.FontButton,
                 Anchor = AnchorStyles.Top | AnchorStyles.Right

@@ -94,7 +94,8 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
                     ctrl != pnlSearchView && 
                     ctrl != pnlSettingsView &&
-                    ctrl != pnlMembersView)
+                    ctrl != pnlMembersView &&
+                    ctrl != pnlUserManagementView)
                 {
                     toRemove.Add(ctrl);
                 }
@@ -118,7 +119,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             List<Control> toRemove = new List<Control>();
             foreach (Control ctrl in pnlMainContent.Controls)
             {
-                if (!_originalMainContentControls.Contains(ctrl) && ctrl != pnlMembersView)
+                if (!_originalMainContentControls.Contains(ctrl) && ctrl != pnlMembersView && ctrl != pnlUserManagementView)
                 {
                     toRemove.Add(ctrl);
                 }
@@ -380,6 +381,10 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
                 case "Members":
                     ShowMembersView();
+                    break;
+
+                case "UserManagement":
+                    ShowUserManagementView();
                     break;
 
                 case "Catalog":
@@ -1432,6 +1437,793 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             }
         }
 
+        private Panel pnlUserManagementView;
+        private Panel pnlUserManagementTabs;
+        private Button btnTabLibrarians;
+        private Button btnTabStaff;
+        private DataGridView dgvUsers;
+        private TextBox txtSearchUsers;
+        private string currentUserTab = "Librarians";
+
+        private void ShowUserManagementView()
+        {
+            RestoreOriginalControls();
+            ShowDashboardControls(false);
+            ClearDynamicControls();
+
+            if (pnlUserManagementView == null || pnlUserManagementView.IsDisposed)
+            {
+                SetupUserManagementView();
+            }
+
+            if (!pnlMainContent.Controls.Contains(pnlUserManagementView))
+            {
+                pnlMainContent.Controls.Add(pnlUserManagementView);
+            }
+
+            pnlUserManagementView.Visible = true;
+            pnlUserManagementView.BringToFront();
+            pnlUserManagementView.Dock = DockStyle.Fill;
+            LoadUsersData();
+        }
+
+        private void SetupUserManagementView()
+        {
+            pnlUserManagementView = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = ThemeConstants.BackgroundLight,
+                Padding = new Padding(30, 20, 30, 20)
+            };
+
+            // Header Section
+            Panel pnlHeader = new Panel
+            {
+                Height = 100,
+                Dock = DockStyle.Top,
+                BackColor = Color.Transparent
+            };
+
+            Label lblTitle = new Label
+            {
+                Text = "User Management",
+                Font = new Font("Segoe UI", 24F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(30, 30, 30),
+                Location = new Point(0, 0),
+                AutoSize = true
+            };
+
+            Label lblSubtitle = new Label
+            {
+                Text = "Manage librarian and staff accounts",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = Color.Gray,
+                Location = new Point(2, 40),
+                AutoSize = true
+            };
+
+            // Search Bar
+            Panel pnlSearchBar = new Panel
+            {
+                Location = new Point(0, 60),
+                Size = new Size(400, 40),
+                BackColor = Color.White,
+                Anchor = AnchorStyles.Top | AnchorStyles.Left
+            };
+
+            pnlSearchBar.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlSearchBar.Width - 1, pnlSearchBar.Height - 1), 8))
+                using (Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+
+            Label lblSearchIcon = new Label
+            {
+                Text = "🔍",
+                Font = new Font("Segoe UI", 12F),
+                Location = new Point(12, 8),
+                Size = new Size(25, 24),
+                ForeColor = Color.FromArgb(150, 150, 150),
+                TextAlign = ContentAlignment.MiddleCenter,
+                BackColor = Color.Transparent
+            };
+
+            txtSearchUsers = new TextBox
+            {
+                Location = new Point(40, 8),
+                Size = new Size(350, 24),
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.Gray,
+                BorderStyle = BorderStyle.None,
+                BackColor = Color.White
+            };
+            txtSearchUsers.SetPlaceholder("Search users...");
+            txtSearchUsers.TextChanged += (s, e) => LoadUsersData();
+
+            pnlSearchBar.Controls.Add(lblSearchIcon);
+            pnlSearchBar.Controls.Add(txtSearchUsers);
+
+            // Add User Button
+            Button btnAddUser = new Button
+            {
+                Text = "👤+ Add User",
+                Size = new Size(140, 40),
+                Location = new Point(pnlHeader.Width - 150, 60),
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                BackColor = Color.FromArgb(120, 20, 40),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            btnAddUser.FlatAppearance.BorderSize = 0;
+            btnAddUser.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnAddUser.Width, btnAddUser.Height), 8))
+                using (SolidBrush brush = new SolidBrush(Color.FromArgb(120, 20, 40)))
+                {
+                    e.Graphics.FillPath(brush, path);
+                }
+                TextRenderer.DrawText(e.Graphics, btnAddUser.Text, btnAddUser.Font,
+                    new Rectangle(0, 0, btnAddUser.Width, btnAddUser.Height),
+                    Color.White,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+            btnAddUser.Click += (s, e) => ShowAddUserDialog();
+
+            pnlHeader.Resize += (s, e) => btnAddUser.Left = pnlHeader.Width - 150;
+
+            pnlHeader.Controls.Add(lblTitle);
+            pnlHeader.Controls.Add(lblSubtitle);
+            pnlHeader.Controls.Add(pnlSearchBar);
+            pnlHeader.Controls.Add(btnAddUser);
+
+            // Tabs Section
+            pnlUserManagementTabs = new Panel
+            {
+                Height = 50,
+                Dock = DockStyle.Top,
+                BackColor = Color.Transparent,
+                Padding = new Padding(0, 10, 0, 0)
+            };
+
+            btnTabLibrarians = new Button
+            {
+                Text = "🛡 Librarians/Admins",
+                Size = new Size(180, 40),
+                Location = new Point(0, 0),
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                BackColor = Color.FromArgb(245, 245, 245),
+                ForeColor = Color.FromArgb(30, 30, 30),
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand,
+                Tag = "Librarians"
+            };
+            btnTabLibrarians.FlatAppearance.BorderSize = 0;
+
+            btnTabStaff = new Button
+            {
+                Text = "👥 Staff Accounts",
+                Size = new Size(150, 40),
+                Location = new Point(190, 0),
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                BackColor = Color.White,
+                ForeColor = Color.Gray,
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand,
+                Tag = "Staff"
+            };
+            btnTabStaff.FlatAppearance.BorderSize = 0;
+
+            btnTabLibrarians.Click += (s, e) => SwitchUserTab("Librarians");
+            btnTabStaff.Click += (s, e) => SwitchUserTab("Staff");
+
+            pnlUserManagementTabs.Controls.Add(btnTabLibrarians);
+            pnlUserManagementTabs.Controls.Add(btnTabStaff);
+
+            // Content Section
+            Panel pnlContent = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.Transparent,
+                Padding = new Padding(0, 20, 0, 0)
+            };
+
+            Label lblSectionTitle = new Label
+            {
+                Text = "Librarians & Administrators",
+                Font = new Font("Segoe UI", 18F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(30, 30, 30),
+                Location = new Point(0, 0),
+                AutoSize = true
+            };
+
+            Label lblSectionSubtitle = new Label
+            {
+                Text = "Users with full system access and administrative privileges",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = Color.Gray,
+                Location = new Point(0, 30),
+                AutoSize = true
+            };
+
+            // DataGridView
+            dgvUsers = new DataGridView
+            {
+                Location = new Point(0, 70),
+                Size = new Size(pnlContent.Width, pnlContent.Height - 70),
+                BackgroundColor = Color.White,
+                BorderStyle = BorderStyle.None,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                ReadOnly = true,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                MultiSelect = false,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                RowHeadersVisible = false,
+                EnableHeadersVisualStyles = false,
+                GridColor = Color.FromArgb(240, 240, 240),
+                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
+            };
+
+            dgvUsers.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
+            {
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(100, 100, 100),
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                SelectionBackColor = Color.White,
+                SelectionForeColor = Color.FromArgb(100, 100, 100),
+                Padding = new Padding(10, 0, 0, 0)
+            };
+            dgvUsers.ColumnHeadersHeight = 40;
+
+            dgvUsers.DefaultCellStyle = new DataGridViewCellStyle
+            {
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(50, 50, 50),
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Regular),
+                SelectionBackColor = Color.FromArgb(245, 245, 245),
+                SelectionForeColor = Color.FromArgb(50, 50, 50),
+                Padding = new Padding(10, 0, 0, 0)
+            };
+            dgvUsers.RowTemplate.Height = 60;
+
+            dgvUsers.CellPainting += DgvUsers_CellPainting;
+            dgvUsers.CellClick += DgvUsers_CellClick;
+
+            pnlContent.Resize += (s, e) =>
+            {
+                dgvUsers.Width = pnlContent.Width;
+                dgvUsers.Height = pnlContent.Height - 70;
+            };
+
+            pnlContent.Controls.Add(lblSectionTitle);
+            pnlContent.Controls.Add(lblSectionSubtitle);
+            pnlContent.Controls.Add(dgvUsers);
+
+            pnlUserManagementView.Controls.Add(pnlHeader);
+            pnlUserManagementView.Controls.Add(pnlUserManagementTabs);
+            pnlUserManagementView.Controls.Add(pnlContent);
+        }
+
+        private void SwitchUserTab(string tabName)
+        {
+            currentUserTab = tabName;
+
+            // Update section title based on tab
+            Panel pnlContent = pnlUserManagementView.Controls.OfType<Panel>().FirstOrDefault(p => p.Dock == DockStyle.Fill);
+            if (pnlContent != null)
+            {
+                Label lblSectionTitle = pnlContent.Controls.OfType<Label>().FirstOrDefault();
+                Label lblSectionSubtitle = pnlContent.Controls.OfType<Label>().Skip(1).FirstOrDefault();
+
+                if (tabName == "Librarians")
+                {
+                    btnTabLibrarians.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+                    btnTabLibrarians.BackColor = Color.FromArgb(245, 245, 245);
+                    btnTabLibrarians.ForeColor = Color.FromArgb(30, 30, 30);
+
+                    btnTabStaff.Font = new Font("Segoe UI", 10F, FontStyle.Regular);
+                    btnTabStaff.BackColor = Color.White;
+                    btnTabStaff.ForeColor = Color.Gray;
+
+                    if (lblSectionTitle != null)
+                    {
+                        lblSectionTitle.Text = "Librarians & Administrators";
+                        if (lblSectionSubtitle != null)
+                            lblSectionSubtitle.Text = "Users with full system access and administrative privileges";
+                    }
+                }
+                else
+                {
+                    btnTabStaff.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+                    btnTabStaff.BackColor = Color.FromArgb(245, 245, 245);
+                    btnTabStaff.ForeColor = Color.FromArgb(30, 30, 30);
+
+                    btnTabLibrarians.Font = new Font("Segoe UI", 10F, FontStyle.Regular);
+                    btnTabLibrarians.BackColor = Color.White;
+                    btnTabLibrarians.ForeColor = Color.Gray;
+
+                    if (lblSectionTitle != null)
+                    {
+                        lblSectionTitle.Text = "Staff Accounts";
+                        if (lblSectionSubtitle != null)
+                            lblSectionSubtitle.Text = "Library staff members with limited system access";
+                    }
+                }
+            }
+
+            LoadUsersData();
+        }
+
+        private void LoadUsersData()
+        {
+            if (dgvUsers == null) return;
+
+            dgvUsers.Columns.Clear();
+
+            dgvUsers.Columns.Add("Name", "Name");
+            dgvUsers.Columns.Add("Email", "Email");
+            dgvUsers.Columns.Add("Department", "Department");
+            dgvUsers.Columns.Add("Role", "Role");
+            dgvUsers.Columns.Add("Status", "Status");
+            dgvUsers.Columns.Add("LastLogin", "Last Login");
+            dgvUsers.Columns.Add("Actions", "Actions");
+
+            dgvUsers.Columns["Name"].Width = 200;
+            dgvUsers.Columns["Email"].Width = 250;
+            dgvUsers.Columns["Department"].Width = 180;
+            dgvUsers.Columns["Role"].Width = 150;
+            dgvUsers.Columns["Status"].Width = 100;
+            dgvUsers.Columns["LastLogin"].Width = 120;
+            dgvUsers.Columns["Actions"].Width = 150;
+
+            string searchText = txtSearchUsers?.Text ?? "";
+            if (searchText == "Search users..." || string.IsNullOrWhiteSpace(searchText))
+            {
+                searchText = "";
+            }
+
+            // Mock data
+            var users = new List<object[]>();
+            if (currentUserTab == "Librarians")
+            {
+                users.Add(new object[] { "System Administrator", "admin@library.edu", "IT Department", "Librarian/Admin", "Active", "Jan 7, 2026", "" });
+                users.Add(new object[] { "Sarah Johnson", "head.librarian@library.edu", "Library Administration", "Librarian/Admin", "Active", "Jan 6, 2026", "" });
+            }
+            else
+            {
+                users.Add(new object[] { "John Smith", "john.smith@library.edu", "Circulation", "Staff", "Active", "Jan 5, 2026", "" });
+                users.Add(new object[] { "Emily Davis", "emily.davis@library.edu", "Reference", "Staff", "Active", "Jan 4, 2026", "" });
+            }
+
+            // Apply search filter
+            if (!string.IsNullOrEmpty(searchText))
+            {
+                string searchLower = searchText.ToLower();
+                users = users.Where(u => 
+                    u[0].ToString().ToLower().Contains(searchLower) ||
+                    u[1].ToString().ToLower().Contains(searchLower) ||
+                    u[2].ToString().ToLower().Contains(searchLower)).ToList();
+            }
+
+            dgvUsers.Rows.Clear();
+            foreach (var user in users)
+            {
+                int rowIndex = dgvUsers.Rows.Add(user);
+                dgvUsers.Rows[rowIndex].Tag = user;
+            }
+        }
+
+        private void DgvUsers_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+
+            if (dgvUsers.Columns[e.ColumnIndex].Name == "Role")
+            {
+                e.PaintBackground(e.CellBounds, true);
+                if (e.Value != null)
+                {
+                    string role = e.Value.ToString();
+                    Color bgColor = Color.FromArgb(250, 230, 230);
+                    Color textColor = Color.FromArgb(200, 50, 50);
+
+                    using (SolidBrush bgBrush = new SolidBrush(bgColor))
+                    using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(e.CellBounds.X + 5, e.CellBounds.Y + 15, 120, 25), 4))
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        e.Graphics.FillPath(bgBrush, path);
+                    }
+
+                    TextRenderer.DrawText(e.Graphics, role, new Font("Segoe UI", 8F, FontStyle.Bold),
+                        new Rectangle(e.CellBounds.X + 5, e.CellBounds.Y + 15, 120, 25), textColor,
+                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                }
+                e.Handled = true;
+            }
+            else if (dgvUsers.Columns[e.ColumnIndex].Name == "Status")
+            {
+                e.PaintBackground(e.CellBounds, true);
+                if (e.Value != null)
+                {
+                    string status = e.Value.ToString();
+                    Color bgColor = Color.FromArgb(220, 255, 220);
+                    Color textColor = Color.FromArgb(0, 128, 0);
+
+                    using (SolidBrush bgBrush = new SolidBrush(bgColor))
+                    using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(e.CellBounds.X + 10, e.CellBounds.Y + 15, 70, 25), 12))
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        e.Graphics.FillPath(bgBrush, path);
+                    }
+
+                    TextRenderer.DrawText(e.Graphics, status, new Font("Segoe UI", 8F, FontStyle.Bold),
+                        new Rectangle(e.CellBounds.X + 10, e.CellBounds.Y + 15, 70, 25), textColor,
+                        TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                }
+                e.Handled = true;
+            }
+            else if (dgvUsers.Columns[e.ColumnIndex].Name == "Actions")
+            {
+                e.PaintBackground(e.CellBounds, true);
+                
+                int iconSize = 20;
+                int spacing = 35;
+                int startX = e.CellBounds.X + 15;
+                int centerY = e.CellBounds.Y + (e.CellBounds.Height / 2);
+
+                // Edit icon (pencil) ✏
+                TextRenderer.DrawText(e.Graphics, "✏", new Font("Segoe UI Symbol", 14F),
+                    new Rectangle(startX, centerY - iconSize / 2, iconSize, iconSize), Color.Gray,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
+                // Key icon 🔑
+                TextRenderer.DrawText(e.Graphics, "🔑", new Font("Segoe UI Symbol", 14F),
+                    new Rectangle(startX + spacing, centerY - iconSize / 2, iconSize, iconSize), Color.Gray,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
+                // Shield icon 🛡
+                TextRenderer.DrawText(e.Graphics, "🛡", new Font("Segoe UI Symbol", 14F),
+                    new Rectangle(startX + spacing * 2, centerY - iconSize / 2, iconSize, iconSize), Color.Gray,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
+                // Delete icon (user with minus) - red
+                TextRenderer.DrawText(e.Graphics, "👤", new Font("Segoe UI Symbol", 14F),
+                    new Rectangle(startX + spacing * 3, centerY - iconSize / 2, iconSize, iconSize), Color.FromArgb(200, 50, 50),
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                // Overlay X mark
+                TextRenderer.DrawText(e.Graphics, "✕", new Font("Segoe UI Symbol", 10F, FontStyle.Bold),
+                    new Rectangle(startX + spacing * 3, centerY - iconSize / 2, iconSize, iconSize), Color.FromArgb(200, 50, 50),
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
+                e.Handled = true;
+            }
+        }
+
+        private void DgvUsers_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            if (dgvUsers.Columns[e.ColumnIndex].Name == "Actions")
+            {
+                Rectangle cellRect = dgvUsers.GetCellDisplayRectangle(e.ColumnIndex, e.RowIndex, false);
+                Point clickPoint = dgvUsers.PointToClient(Control.MousePosition);
+                int relativeX = clickPoint.X - cellRect.X;
+                int spacing = 35;
+                int startX = 15;
+
+                if (relativeX >= startX && relativeX < startX + spacing)
+                {
+                    // Edit
+                    MessageBox.Show("Edit user functionality", "Edit User", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else if (relativeX >= startX + spacing && relativeX < startX + spacing * 2)
+                {
+                    // Key - Reset password
+                    MessageBox.Show("Reset password functionality", "Reset Password", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else if (relativeX >= startX + spacing * 2 && relativeX < startX + spacing * 3)
+                {
+                    // Shield - Permissions/Roles
+                    MessageBox.Show("Manage user permissions and roles", "User Permissions", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else if (relativeX >= startX + spacing * 3)
+                {
+                    // Delete
+                    DialogResult result = MessageBox.Show("Are you sure you want to delete this user?", "Delete User",
+                        MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    if (result == DialogResult.Yes)
+                    {
+                        MessageBox.Show("User deleted successfully", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        LoadUsersData();
+                    }
+                }
+            }
+        }
+
+        private void ShowAddUserDialog()
+        {
+            Form addUserForm = new Form();
+            addUserForm.Size = new Size(550, 700);
+            addUserForm.FormBorderStyle = FormBorderStyle.None;
+            addUserForm.StartPosition = FormStartPosition.CenterParent;
+            addUserForm.BackColor = Color.FromArgb(250, 250, 250);
+            addUserForm.ShowInTaskbar = false;
+
+            // Border
+            addUserForm.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (Pen p = new Pen(Color.FromArgb(200, 200, 200), 1))
+                {
+                    e.Graphics.DrawRectangle(p, 0, 0, addUserForm.Width - 1, addUserForm.Height - 1);
+                }
+            };
+
+            // Close Button (X)
+            Label btnClose = new Label();
+            btnClose.Text = "×";
+            btnClose.Font = new Font("Arial", 18, FontStyle.Regular);
+            btnClose.ForeColor = Color.Gray;
+            btnClose.Location = new Point(addUserForm.Width - 40, 15);
+            btnClose.Size = new Size(30, 30);
+            btnClose.Cursor = Cursors.Hand;
+            btnClose.Click += (s, e) => addUserForm.Close();
+            btnClose.MouseEnter += (s, e) => btnClose.ForeColor = Color.Black;
+            btnClose.MouseLeave += (s, e) => btnClose.ForeColor = Color.Gray;
+            addUserForm.Controls.Add(btnClose);
+
+            // Title
+            Label lblTitle = new Label();
+            lblTitle.Text = "Add New User";
+            lblTitle.Font = new Font("Segoe UI", 20F, FontStyle.Bold);
+            lblTitle.ForeColor = Color.FromArgb(40, 40, 40);
+            lblTitle.Location = new Point(30, 30);
+            lblTitle.AutoSize = true;
+            addUserForm.Controls.Add(lblTitle);
+
+            // Subtitle
+            Label lblSubtitle = new Label();
+            lblSubtitle.Text = "Create a new librarian or staff account";
+            lblSubtitle.Font = new Font("Segoe UI", 10F, FontStyle.Regular);
+            lblSubtitle.ForeColor = Color.Gray;
+            lblSubtitle.Location = new Point(32, 65);
+            lblSubtitle.AutoSize = true;
+            addUserForm.Controls.Add(lblSubtitle);
+
+            // Helper function for input fields
+            Func<string, string, int, bool, Control> AddInputField = (label, placeholder, yPos, isRequired) =>
+            {
+                Panel container = new Panel
+                {
+                    Location = new Point(30, yPos),
+                    Size = new Size(490, 70),
+                    BackColor = Color.Transparent
+                };
+
+                Label lbl = new Label
+                {
+                    Text = label + (isRequired ? " *" : ""),
+                    Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                    ForeColor = Color.FromArgb(50, 50, 50),
+                    Location = new Point(0, 0),
+                    AutoSize = true,
+                    Height = 20
+                };
+
+                Panel inputPanel = new Panel
+                {
+                    Location = new Point(0, 22),
+                    Size = new Size(490, 42),
+                    BackColor = Color.White,
+                    Padding = new Padding(10, 7, 10, 5) // Add padding so TextBox doesn't cover border
+                };
+
+                TextBox txt = new TextBox
+                {
+                    BorderStyle = BorderStyle.None,
+                    Font = new Font("Segoe UI", 11F),
+                    Dock = DockStyle.Fill,
+                    BackColor = Color.White,
+                    ForeColor = Color.FromArgb(50, 50, 50),
+                    Padding = new Padding(10, 0, 10, 0)
+                };
+                txt.SetPlaceholder(placeholder);
+
+                inputPanel.Controls.Add(txt);
+                inputPanel.Tag = txt;
+
+                // Paint border
+                inputPanel.Paint += (s, e) =>
+                {
+                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    bool isFocused = txt.Focused;
+                    Color borderColor = isFocused ? Color.FromArgb(200, 50, 50) : Color.FromArgb(220, 220, 220);
+                    float width = isFocused ? 2f : 1f;
+
+                    using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, inputPanel.Width - 3, inputPanel.Height - 3), 8))
+                    using (Pen pen = new Pen(borderColor, width))
+                    {
+                        e.Graphics.DrawPath(pen, path);
+                    }
+                };
+
+                txt.Enter += (s, e) => inputPanel.Invalidate();
+                txt.Leave += (s, e) => inputPanel.Invalidate();
+
+                container.Controls.Add(lbl);
+                container.Controls.Add(inputPanel);
+
+                return container;
+            };
+
+            // Input Fields
+            int currentY = 110;
+            int gap = 90;
+
+            Panel pnlFullName = AddInputField("Full Name", "Enter full name", currentY, true) as Panel;
+            TextBox txtFullName = (pnlFullName.Controls[1] as Panel).Tag as TextBox;
+            currentY += gap;
+
+            Panel pnlEmail = AddInputField("Email Address", "user@library.edu", currentY, true) as Panel;
+            TextBox txtEmail = (pnlEmail.Controls[1] as Panel).Tag as TextBox;
+            currentY += gap;
+
+            Panel pnlPhone = AddInputField("Phone Number", "(555) 000-0000", currentY, false) as Panel;
+            TextBox txtPhone = (pnlPhone.Controls[1] as Panel).Tag as TextBox;
+            currentY += gap;
+
+            Panel pnlDepartment = AddInputField("Department", "e.g., Circulation Desk", currentY, false) as Panel;
+            TextBox txtDepartment = (pnlDepartment.Controls[1] as Panel).Tag as TextBox;
+            currentY += gap;
+
+            // Role Dropdown
+            Panel pnlRoleContainer = new Panel
+            {
+                Location = new Point(30, currentY),
+                Size = new Size(490, 70),
+                BackColor = Color.Transparent
+            };
+
+            Label lblRole = new Label
+            {
+                Text = "Role *",
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(50, 50, 50),
+                Location = new Point(0, 0),
+                AutoSize = true,
+                Height = 20
+            };
+
+            Panel pnlRole = new Panel
+            {
+                Location = new Point(0, 22),
+                Size = new Size(490, 42),
+                BackColor = Color.White,
+                Padding = new Padding(10, 7, 10, 5) // Add padding so ComboBox doesn't cover border
+            };
+
+            ComboBox cmbRole = new ComboBox
+            {
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 11F),
+                Dock = DockStyle.Fill,
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(50, 50, 50)
+            };
+            cmbRole.Items.AddRange(new string[] { "Staff", "Librarian/Admin" });
+            cmbRole.SelectedIndex = 0; // Default to "Staff"
+
+            pnlRole.Controls.Add(cmbRole);
+            pnlRole.Tag = cmbRole;
+
+            pnlRole.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                bool isFocused = cmbRole.Focused;
+                Color borderColor = isFocused ? Color.FromArgb(200, 50, 50) : Color.FromArgb(220, 220, 220);
+                float width = isFocused ? 2f : 1f;
+
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlRole.Width - 3, pnlRole.Height - 3), 8))
+                using (Pen pen = new Pen(borderColor, width))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+
+            cmbRole.Enter += (s, e) => pnlRole.Invalidate();
+            cmbRole.Leave += (s, e) => pnlRole.Invalidate();
+
+            pnlRoleContainer.Controls.Add(lblRole);
+            pnlRoleContainer.Controls.Add(pnlRole);
+
+            // Buttons
+            Button btnCancel = new Button();
+            btnCancel.Text = "Cancel";
+            btnCancel.Size = new Size(100, 38);
+            btnCancel.Location = new Point(260, 620);
+            btnCancel.FlatStyle = FlatStyle.Flat;
+            btnCancel.BackColor = Color.FromArgb(240, 240, 240);
+            btnCancel.ForeColor = Color.FromArgb(60, 60, 60);
+            btnCancel.FlatAppearance.BorderSize = 0;
+            btnCancel.Font = new Font("Segoe UI", 10F, FontStyle.Regular);
+            btnCancel.Cursor = Cursors.Hand;
+            btnCancel.Click += (s, e) => addUserForm.Close();
+
+            Button btnAddUser = new Button();
+            btnAddUser.Text = "👤+ Add User";
+            btnAddUser.Size = new Size(140, 38);
+            btnAddUser.Location = new Point(380, 620);
+            btnAddUser.FlatStyle = FlatStyle.Flat;
+            btnAddUser.BackColor = Color.FromArgb(120, 20, 40);
+            btnAddUser.ForeColor = Color.White;
+            btnAddUser.FlatAppearance.BorderSize = 0;
+            btnAddUser.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnAddUser.Cursor = Cursors.Hand;
+
+            btnAddUser.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnAddUser.Width, btnAddUser.Height), 8))
+                using (SolidBrush brush = new SolidBrush(Color.FromArgb(120, 20, 40)))
+                {
+                    e.Graphics.FillPath(brush, path);
+                }
+                TextRenderer.DrawText(e.Graphics, btnAddUser.Text, btnAddUser.Font,
+                    new Rectangle(0, 0, btnAddUser.Width, btnAddUser.Height),
+                    Color.White,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+
+            btnAddUser.Click += (s, e) =>
+            {
+                // Validation
+                if (string.IsNullOrWhiteSpace(txtFullName.GetActualText()))
+                {
+                    MessageBox.Show("Full Name is required.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtFullName.Focus();
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(txtEmail.GetActualText()))
+                {
+                    MessageBox.Show("Email Address is required.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtEmail.Focus();
+                    return;
+                }
+
+                // TODO: Add user to database
+                MessageBox.Show($"User {txtFullName.GetActualText()} added successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                addUserForm.DialogResult = DialogResult.OK;
+                addUserForm.Close();
+                
+                // Refresh the user list
+                if (pnlUserManagementView != null && pnlUserManagementView.Visible)
+                {
+                    LoadUsersData();
+                }
+            };
+
+            addUserForm.Controls.Add(pnlFullName);
+            addUserForm.Controls.Add(pnlEmail);
+            addUserForm.Controls.Add(pnlPhone);
+            addUserForm.Controls.Add(pnlDepartment);
+            addUserForm.Controls.Add(pnlRoleContainer);
+            addUserForm.Controls.Add(btnCancel);
+            addUserForm.Controls.Add(btnAddUser);
+
+            addUserForm.AcceptButton = btnAddUser;
+            addUserForm.CancelButton = btnCancel;
+
+            addUserForm.ShowDialog(this);
+        }
+
         private void ShowCatalogView()
         {
             RestoreOriginalControls();
@@ -2172,8 +2964,8 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnExportInventory, statsPanel, searchPanel, dgvInventory });
         }
 
-        private FlowLayoutPanel flpReportsContent;
         private Panel pnlReportsTabs;
+        private FlowLayoutPanel flpReportsContent;
 
         private void ShowReportsView()
         {
@@ -2181,1490 +2973,2231 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             ShowDashboardControls(false);
             ClearDynamicControls();
 
-            // Main Container
-            Panel pnlReportsMain = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = Color.FromArgb(245, 245, 245),
-                Padding = new Padding(30, 20, 30, 20)
-            };
+            Panel pnlReportsMain = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(250, 252, 255) };
             pnlMainContent.Controls.Add(pnlReportsMain);
+            pnlReportsMain.BringToFront();
 
             // 1. Header Section
-            Panel pnlHeader = new Panel { Height = 80, Dock = DockStyle.Top, Margin = new Padding(0, 0, 0, 20) };
-            
-            Label lblTitle = new Label 
-            { 
-                Text = "Reports & Analytics", 
-                Font = new Font("Georgia", 24, FontStyle.Bold), 
-                Location = new Point(0, 0), 
-                AutoSize = true,
-                ForeColor = Color.FromArgb(40, 40, 40)
-            };
-            Label lblSub = new Label 
-            { 
-                Text = "Generate and view library statistics and reports", 
-                Font = new Font("Segoe UI", 10), 
-                Location = new Point(2, 40), 
-                AutoSize = true,
-                ForeColor = Color.Gray 
-            };
-            pnlHeader.Controls.Add(lblTitle);
-            pnlHeader.Controls.Add(lblSub);
+            Panel pnlHeader = new Panel { Height = 60, Dock = DockStyle.Top, BackColor = Color.Transparent };
 
             // Header Buttons
+
              Button btnExport = new Button 
+
             { 
+
                 Text = "📥  Export", 
+
                 Size = new Size(100, 36), 
+
                 Location = new Point(pnlHeader.Width - 100, 5), 
+
                 FlatStyle = FlatStyle.Flat, 
+
                 BackColor = Color.FromArgb(120, 20, 40), 
+
                 ForeColor = Color.White, 
+
                 Font = ThemeConstants.FontButton,
+
                 Anchor = AnchorStyles.Top | AnchorStyles.Right
+
             };
+
             btnExport.FlatAppearance.BorderSize = 0;
+
             btnExport.Paint += (s, e) => {
+
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnExport.Width, btnExport.Height), 6))
+
                  using(SolidBrush brush = new SolidBrush(Color.FromArgb(120, 20, 40))) 
+
                  {
+
                      e.Graphics.FillPath(brush, path);
+
                      TextRenderer.DrawText(e.Graphics, btnExport.Text, btnExport.Font, new Rectangle(0,0,btnExport.Width,btnExport.Height), Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
                  }
+
             };
+
+
 
             Button btnPrint = new Button 
+
             { 
+
                 Text = "🖨  Print", 
+
                 Size = new Size(90, 36), 
+
                 Location = new Point(pnlHeader.Width - 200, 5), 
+
                 FlatStyle = FlatStyle.Flat, 
+
                 BackColor = Color.White, 
+
                 ForeColor = Color.FromArgb(60, 60, 60), 
+
                 Font = ThemeConstants.FontButton,
+
                 Anchor = AnchorStyles.Top | AnchorStyles.Right
+
             };
+
             btnPrint.Paint += (s, e) => {
+
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnPrint.Width-1, btnPrint.Height-1), 6))
+
                  using(Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1)) 
+
                  {
+
                      e.Graphics.DrawPath(pen, path);
+
                      TextRenderer.DrawText(e.Graphics, btnPrint.Text, btnPrint.Font, new Rectangle(0,0,btnPrint.Width,btnPrint.Height), Color.FromArgb(60,60,60), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
                  }
+
             };
+
             
+
             Panel pnlDate = new Panel { Size = new Size(140, 36), Location = new Point(pnlHeader.Width - 350, 5), BackColor = Color.White, Anchor = AnchorStyles.Top | AnchorStyles.Right };
+
             ComboBox cmbDate = new ComboBox { FlatStyle = FlatStyle.Flat, Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10), DropDownStyle = ComboBoxStyle.DropDownList };
+
             cmbDate.Items.Add("📅  Last 7 days");
+
             cmbDate.SelectedIndex = 0;
+
             pnlDate.Controls.Add(cmbDate);
+
             pnlDate.Paint += (s, e) => {
+
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlDate.Width-1, pnlDate.Height-1), 6))
+
                  using(Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1)) e.Graphics.DrawPath(pen, path);
+
             };
+
+
 
             pnlHeader.Controls.Add(btnExport);
+
             pnlHeader.Controls.Add(btnPrint);
+
             pnlHeader.Controls.Add(pnlDate);
+
             pnlReportsMain.Controls.Add(pnlHeader);
 
+
+
             // 2. Tabs Section
+
             pnlReportsTabs = new Panel { Height = 40, Dock = DockStyle.Top, BackColor = Color.Transparent, Margin = new Padding(0, 0, 0, 20) };
+
             pnlReportsMain.Controls.Add(pnlReportsTabs);
 
+
+
             // 3. Content Section (Scrollable)
+
             flpReportsContent = new FlowLayoutPanel
+
             {
+
                 Dock = DockStyle.Fill,
+
                 AutoScroll = true,
+
                 FlowDirection = FlowDirection.TopDown,
+
                 WrapContents = false,
+
                 BackColor = Color.Transparent,
+
                 Padding = new Padding(0, 20, 0, 20)
+
             };
+
             pnlReportsMain.Controls.Add(flpReportsContent);
+
             flpReportsContent.BringToFront();
 
+
+
             // Initialize Tabs
+
             SetupReportsTabs();
+
             
+
             // Layout Fixes
+
             pnlReportsMain.Resize += (s, e) => {
+
                  if(flpReportsContent.Controls.Count > 0)
+
                  {
+
                      foreach(Control c in flpReportsContent.Controls)
+
                          c.Width = flpReportsContent.ClientSize.Width - 20;
+
                  }
+
             };
+
         }
+
+
 
         private void SetupReportsTabs()
+
         {
+
             string[] tabs = { "Circulation", "Members", "Collection", "Fines" };
+
             pnlReportsTabs.Controls.Clear();
+
             int tabW = 120; // Fixed width for consistent look
+
             int tabX = 0;
 
+
+
             foreach(var tab in tabs)
+
             {
+
                 Button btnTab = new Button 
+
                 { 
+
                     Text = tab, 
+
                     TextAlign = ContentAlignment.MiddleCenter, 
+
                     Font = new Font("Segoe UI", 10),
+
                     ForeColor = Color.Gray,
+
                     Size = new Size(tabW, 40),
+
                     Location = new Point(tabX, 0),
+
                     BackColor = Color.Transparent,
+
                     FlatStyle = FlatStyle.Flat,
+
                     Tag = tab
+
                 };
+
                 btnTab.FlatAppearance.BorderSize = 0;
+
                 btnTab.FlatAppearance.MouseDownBackColor = Color.Transparent;
+
                 btnTab.FlatAppearance.MouseOverBackColor = Color.Transparent;
+
                 
+
                 btnTab.Click += (s, e) => SwitchReportTab(tab, btnTab);
 
+
+
                 pnlReportsTabs.Controls.Add(btnTab);
+
                 tabX += tabW;
+
             }
+
             
+
             // Draw bottom line
+
             Panel pnlLine = new Panel { Height = 2, Dock = DockStyle.Bottom, BackColor = Color.FromArgb(230,230,230) };
+
             pnlReportsTabs.Controls.Add(pnlLine); // Add first so it's behind
 
+
+
             // Default
+
             SwitchReportTab("Circulation", pnlReportsTabs.Controls[0] as Button);
+
         }
+
+
 
         private void SwitchReportTab(string tabName, Button activeBtn)
+
         {
+
             // Reset styles
+
             foreach(Control c in pnlReportsTabs.Controls)
+
             {
+
                 if(c is Button b)
+
                 {
+
                     b.Font = new Font("Segoe UI", 10, FontStyle.Regular);
+
                     b.ForeColor = Color.Gray;
+
                     // b.Invalidate(); // To remove custom paint if any
+
                 }
+
             }
+
+
 
             // Set Active
+
             if(activeBtn != null)
+
             {
+
                 activeBtn.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+
                 activeBtn.ForeColor = ThemeConstants.PrimaryMaroon;
+
                 
+
                 // Add active indicator (custom paint on the container or the button)
+
                 // Simplified: Just Bold/Color for now, or add a line panel
+
             }
+
+
 
             // Load Content
+
             flpReportsContent.Controls.Clear();
+
             switch(tabName)
+
             {
+
                 case "Circulation": ShowReportsCirculation(); break;
+
                 case "Members": ShowReportsMembers(); break;
+
                 case "Collection": ShowReportsCollection(); break;
+
                 case "Fines": ShowReportsFines(); break;
+
             }
+
         }
+
+
 
         private void ShowReportsCirculation()
+
         {
+
              // 1. KPI Section
+
             TableLayoutPanel tlpKPI = new TableLayoutPanel
+
             {
+
                 Height = 100, 
+
                 ColumnCount = 5,
+
                 RowCount = 1,
+
                 BackColor = Color.Transparent,
+
                 Width = flpReportsContent.ClientSize.Width - 10,
+
                 Margin = new Padding(0, 0, 0, 20)
+
             };
+
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+
             
+
             tlpKPI.Controls.Add(CreateReportStatCard("Total Collection", "2,450", "📖", Color.White, Color.Black, false), 0, 0);
+
             tlpKPI.Controls.Add(CreateReportStatCard("Active Members", "142", "👥", Color.White, Color.Black, false), 1, 0);
+
             tlpKPI.Controls.Add(CreateReportStatCard("Transactions", "38", "↗", Color.White, Color.Black, false), 2, 0);
+
             tlpKPI.Controls.Add(CreateReportStatCard("Fines Collected", "$1,250", "💲", Color.White, Color.Black, false), 3, 0);
+
             tlpKPI.Controls.Add(CreateReportStatCard("Overdue", "12", "📅", Color.White, Color.Black, false), 4, 0);
+
             flpReportsContent.Controls.Add(tlpKPI);
+
+
 
             // 2. Charts Section (Daily Circulation + Top Books)
+
             TableLayoutPanel tlpCharts = new TableLayoutPanel
+
             {
+
                 Height = 350,
+
                 ColumnCount = 2,
+
                 RowCount = 1,
+
                 BackColor = Color.Transparent,
+
                 Width = flpReportsContent.ClientSize.Width - 10,
+
                 Margin = new Padding(0, 0, 0, 20)
+
             };
+
             tlpCharts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60F));
+
             tlpCharts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
+
+
 
             Panel pnlChart = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Margin = new Padding(0, 0, 20, 0) };
+
             SetupChart(pnlChart, "Daily Circulation Trends");
+
             tlpCharts.Controls.Add(pnlChart, 0, 0);
 
+
+
             Panel pnlTopBooks = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Margin = new Padding(0, 0, 0, 0) };
+
             SetupDistributionChart(pnlTopBooks, "Most Borrowed Books", new Dictionary<string, int> { 
+
                 {"The Great Gatsby", 45}, {"1984", 32}, {"To Kill a Mockingbird", 28}, {"Pride and Prejudice", 25}, {"The Hobbit", 20} 
+
             }); 
+
             tlpCharts.Controls.Add(pnlTopBooks, 1, 0);
+
             flpReportsContent.Controls.Add(tlpCharts);
+
+
 
             // 3. Overdue Grid
+
             Panel pnlGrid = new Panel { Height = 300, Width = flpReportsContent.ClientSize.Width - 10, BackColor = Color.White, Margin = new Padding(0, 0, 0, 30) };
+
              Label lblGridTitle = new Label { Text = "Overdue Books", Font = new Font("Georgia", 14, FontStyle.Bold), Location = new Point(20, 20), AutoSize = true };
+
              pnlGrid.Controls.Add(lblGridTitle);
+
              
+
              DataGridView dgv = CreateReportGrid();
+
              dgv.Columns.Add("Book", "Book");
+
              dgv.Columns.Add("Member", "Member");
+
              dgv.Columns.Add("BorrowDate", "Borrow Date");
+
              dgv.Columns.Add("DueDate", "Due Date");
+
              dgv.Columns.Add("Status", "Status");
+
              
+
              dgv.Rows.Add("Pride and Prejudice", "Michael Brown", "Oct 15, 2024", "Nov 1, 2024", "Overdue (45 days)");
+
              dgv.Rows.Add("The Catcher in the Rye", "Sarah Wilson", "Oct 20, 2024", "Nov 5, 2024", "Overdue (40 days)");
+
              dgv.Rows.Add("Brave New World", "David Lee", "Nov 1, 2024", "Nov 15, 2024", "Overdue (30 days)");
+
              
+
              pnlGrid.Controls.Add(dgv);
+
              flpReportsContent.Controls.Add(pnlGrid);
+
         }
+
+
 
         private void ShowReportsMembers()
+
         {
+
              // 1. KPI Section
+
             TableLayoutPanel tlpKPI = new TableLayoutPanel
+
             {
+
                 Height = 100, 
+
                 ColumnCount = 4,
+
                 RowCount = 1,
+
                 BackColor = Color.Transparent,
+
                 Width = flpReportsContent.ClientSize.Width - 10,
+
                 Margin = new Padding(0, 0, 0, 20)
+
             };
+
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+
             
+
             tlpKPI.Controls.Add(CreateReportStatCard("Total Members", "524", "👥", Color.White, Color.Black, false), 0, 0);
+
             tlpKPI.Controls.Add(CreateReportStatCard("New This Month", "32", "➕", Color.White, Color.Green, false), 1, 0);
+
             tlpKPI.Controls.Add(CreateReportStatCard("Active Users", "412", "⚡", Color.White, Color.Blue, false), 2, 0);
+
             tlpKPI.Controls.Add(CreateReportStatCard("Suspended", "8", "⛔", Color.White, Color.Red, false), 3, 0);
+
             flpReportsContent.Controls.Add(tlpKPI);
 
+
+
             // 2. Charts Section
+
             TableLayoutPanel tlpCharts = new TableLayoutPanel
+
             {
+
                 Height = 350,
+
                 ColumnCount = 2,
+
                 RowCount = 1,
+
                 BackColor = Color.Transparent,
+
                 Width = flpReportsContent.ClientSize.Width - 10,
+
                 Margin = new Padding(0, 0, 0, 20)
+
             };
+
             tlpCharts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+
             tlpCharts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+
+
 
             Panel pnlTypeChart = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Margin = new Padding(0, 0, 20, 0) };
+
             SetupDistributionChart(pnlTypeChart, "Member Distribution by Type", new Dictionary<string, int> { 
+
                 {"Student", 350}, {"Faculty", 80}, {"Staff", 50}, {"Guest", 44} 
+
             });
+
             tlpCharts.Controls.Add(pnlTypeChart, 0, 0);
 
+
+
             Panel pnlStatusChart = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Margin = new Padding(0, 0, 0, 0) };
+
              SetupDistributionChart(pnlStatusChart, "Membership Status", new Dictionary<string, int> { 
+
                 {"Active", 412}, {"Expired", 80}, {"Suspended", 8}, {"Pending", 24} 
+
             });
+
             tlpCharts.Controls.Add(pnlStatusChart, 1, 0);
+
             flpReportsContent.Controls.Add(tlpCharts);
 
+
+
              // 3. Grid
+
             Panel pnlGrid = new Panel { Height = 300, Width = flpReportsContent.ClientSize.Width - 10, BackColor = Color.White, Margin = new Padding(0, 0, 0, 30) };
+
              Label lblGridTitle = new Label { Text = "Recent Member Activity", Font = new Font("Georgia", 14, FontStyle.Bold), Location = new Point(20, 20), AutoSize = true };
+
              pnlGrid.Controls.Add(lblGridTitle);
+
              
+
              DataGridView dgv = CreateReportGrid();
+
              dgv.Columns.Add("MemberId", "ID");
+
              dgv.Columns.Add("Name", "Name");
+
              dgv.Columns.Add("Activity", "Activity");
+
              dgv.Columns.Add("Date", "Date");
+
              
+
              dgv.Rows.Add("MEM-2024-001", "John Doe", "Borrowed 'Clean Code'", "Just now");
+
              dgv.Rows.Add("MEM-2024-045", "Alice Smith", "Returned 'Design Patterns'", "1 hour ago");
+
              dgv.Rows.Add("MEM-2023-112", "Bob Jones", "Paid Fine ($5.00)", "2 hours ago");
+
              
+
              pnlGrid.Controls.Add(dgv);
+
              flpReportsContent.Controls.Add(pnlGrid);
+
         }
+
+
 
         private void ShowReportsCollection()
+
         {
+
              // 1. KPI Section
+
             TableLayoutPanel tlpKPI = new TableLayoutPanel
+
             {
+
                 Height = 100, 
+
                 ColumnCount = 4,
+
                 RowCount = 1,
+
                 BackColor = Color.Transparent,
+
                 Width = flpReportsContent.ClientSize.Width - 10,
+
                 Margin = new Padding(0, 0, 0, 20)
+
             };
+
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+
             
+
             tlpKPI.Controls.Add(CreateReportStatCard("Total Titles", "12,450", "📚", Color.White, Color.Black, false), 0, 0);
+
             tlpKPI.Controls.Add(CreateReportStatCard("Total Copies", "15,200", "📖", Color.White, Color.Black, false), 1, 0);
+
             tlpKPI.Controls.Add(CreateReportStatCard("Available", "11,500", "✅", Color.White, Color.Green, false), 2, 0);
+
             tlpKPI.Controls.Add(CreateReportStatCard("Lost/Damaged", "45", "❌", Color.White, Color.Red, false), 3, 0);
+
             flpReportsContent.Controls.Add(tlpKPI);
 
+
+
             // 2. Charts Section
+
             TableLayoutPanel tlpCharts = new TableLayoutPanel
+
             {
+
                 Height = 350,
+
                 ColumnCount = 2,
+
                 RowCount = 1,
+
                 BackColor = Color.Transparent,
+
                 Width = flpReportsContent.ClientSize.Width - 10,
+
                 Margin = new Padding(0, 0, 0, 20)
+
             };
+
             tlpCharts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60F));
+
             tlpCharts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
+
+
 
             Panel pnlCatChart = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Margin = new Padding(0, 0, 20, 0) };
+
              SetupDistributionChart(pnlCatChart, "Collection by Category", new Dictionary<string, int> { 
+
                 {"Fiction", 4500}, {"Science", 2500}, {"History", 1500}, {"Technology", 2000}, {"Arts", 1000}, {"Others", 950}
+
             });
+
             tlpCharts.Controls.Add(pnlCatChart, 0, 0);
 
+
+
             Panel pnlTopChart = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Margin = new Padding(0, 0, 0, 0) };
+
              SetupDistributionChart(pnlTopChart, "Most Popular Categories", new Dictionary<string, int> { 
+
                  {"Fiction", 120}, {"Technology", 95}, {"Science", 80}, {"History", 45}
+
             });
+
             tlpCharts.Controls.Add(pnlTopChart, 1, 0);
+
             flpReportsContent.Controls.Add(tlpCharts);
 
+
+
              // 3. Grid
+
             Panel pnlGrid = new Panel { Height = 300, Width = flpReportsContent.ClientSize.Width - 10, BackColor = Color.White, Margin = new Padding(0, 0, 0, 30) };
+
              Label lblGridTitle = new Label { Text = "Recent Acquisitions", Font = new Font("Georgia", 14, FontStyle.Bold), Location = new Point(20, 20), AutoSize = true };
+
              pnlGrid.Controls.Add(lblGridTitle);
+
              
+
              DataGridView dgv = CreateReportGrid();
+
              dgv.Columns.Add("Id", "Accession #");
+
              dgv.Columns.Add("Title", "Title");
+
              dgv.Columns.Add("Category", "Category");
+
              dgv.Columns.Add("DateAdded", "Date Added");
+
              
+
              dgv.Rows.Add("ACC-2024-501", "Advanced AI Algorithms", "Technology", "Dec 10, 2024");
+
              dgv.Rows.Add("ACC-2024-502", "Modern History of Europe", "History", "Dec 12, 2024");
+
              dgv.Rows.Add("ACC-2024-503", "Quick Recipes", "Lifestyle", "Dec 14, 2024");
+
              
+
              pnlGrid.Controls.Add(dgv);
+
              flpReportsContent.Controls.Add(pnlGrid);
+
         }
+
+
 
         private void ShowReportsFines()
+
         {
+
              // 1. KPI Section
+
             TableLayoutPanel tlpKPI = new TableLayoutPanel
+
             {
+
                 Height = 100, 
+
                 ColumnCount = 4,
+
                 RowCount = 1,
+
                 BackColor = Color.Transparent,
+
                 Width = flpReportsContent.ClientSize.Width - 10,
+
                 Margin = new Padding(0, 0, 0, 20)
+
             };
+
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+
             
+
             tlpKPI.Controls.Add(CreateReportStatCard("Total Collected", "$12,450", "💰", Color.White, Color.Green, false), 0, 0);
+
             tlpKPI.Controls.Add(CreateReportStatCard("Pending Fines", "$2,100", "⚠️", Color.White, Color.Orange, false), 1, 0);
+
             tlpKPI.Controls.Add(CreateReportStatCard("Waived", "$540", "👋", Color.White, Color.Gray, false), 2, 0);
+
             tlpKPI.Controls.Add(CreateReportStatCard("Overdue Cases", "45", "⚖️", Color.White, Color.Red, false), 3, 0);
+
             flpReportsContent.Controls.Add(tlpKPI);
 
+
+
             // 2. Charts Section
+
             TableLayoutPanel tlpCharts = new TableLayoutPanel
+
             {
+
                 Height = 350,
+
                 ColumnCount = 2,
+
                 RowCount = 1,
+
                 BackColor = Color.Transparent,
+
                 Width = flpReportsContent.ClientSize.Width - 10,
+
                 Margin = new Padding(0, 0, 0, 20)
+
             };
+
             tlpCharts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60F));
+
             tlpCharts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
 
+
+
             Panel pnlTrendChart = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Margin = new Padding(0, 0, 20, 0) };
+
              SetupChart(pnlTrendChart, "Daily Revenue (Fines)"); // Reusing the spline chart for now
+
             tlpCharts.Controls.Add(pnlTrendChart, 0, 0);
 
+
+
             Panel pnlTypeChart = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Margin = new Padding(0, 0, 0, 0) };
+
              SetupDistributionChart(pnlTypeChart, "Fines by Reason", new Dictionary<string, int> { 
+
                  {"Late Return", 120}, {"Lost Book", 15}, {"Damaged Book", 8}, {"Other", 5}
+
             });
+
             tlpCharts.Controls.Add(pnlTypeChart, 1, 0);
+
             flpReportsContent.Controls.Add(tlpCharts);
 
+
+
              // 3. Grid
+
             Panel pnlGrid = new Panel { Height = 300, Width = flpReportsContent.ClientSize.Width - 10, BackColor = Color.White, Margin = new Padding(0, 0, 0, 30) };
+
              Label lblGridTitle = new Label { Text = "Unpaid Fines", Font = new Font("Georgia", 14, FontStyle.Bold), Location = new Point(20, 20), AutoSize = true };
+
              pnlGrid.Controls.Add(lblGridTitle);
+
              
+
              DataGridView dgv = CreateReportGrid();
+
              dgv.Columns.Add("Member", "Member");
+
              dgv.Columns.Add("Reason", "Reason");
+
              dgv.Columns.Add("Amount", "Amount");
+
              dgv.Columns.Add("Status", "Status");
+
              
+
              dgv.Rows.Add("John Doe", "Late Return - Clean Code", "$5.00", "Pending");
+
              dgv.Rows.Add("Jane Smith", "Damaged - History 101", "$15.00", "Pending");
+
              dgv.Rows.Add("Mike Ross", "Lost - Law Basics", "$50.00", "Overdue");
+
              
+
              pnlGrid.Controls.Add(dgv);
+
              flpReportsContent.Controls.Add(pnlGrid);
+
         }
+
+
 
         private DataGridView CreateReportGrid()
+
         {
+
             DataGridView dgv = new DataGridView 
+
             { 
+
                 Location = new Point(0, 60), 
+
                 Size = new Size(1100, 240),
+
                 BackgroundColor = Color.White,
+
                 BorderStyle = BorderStyle.None,
+
                 ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None,
+
                 CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+
                 EnableHeadersVisualStyles = false,
+
                 RowHeadersVisible = false,
+
                 AllowUserToAddRows = false,
+
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+
                 RowTemplate = { Height = 40 },
+
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
+
             };
+
             dgv.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle {
+
                 BackColor = Color.White,
+
                 ForeColor = Color.DimGray,
+
                 Font = new Font("Segoe UI", 9, FontStyle.Regular),
+
                 SelectionBackColor = Color.White,
+
                 SelectionForeColor = Color.DimGray,
+
                 Padding = new Padding(10)
+
             };
+
             dgv.DefaultCellStyle = new DataGridViewCellStyle {
+
                 BackColor = Color.White,
+
                 ForeColor = Color.Black,
+
                 Font = new Font("Segoe UI", 10),
+
                 Padding = new Padding(10),
+
                 SelectionBackColor = Color.FromArgb(250, 240, 240),
+
                 SelectionForeColor = Color.Black
+
             };
+
             dgv.GridColor = Color.FromArgb(240, 240, 240);
+
             return dgv;
+
         }
+
+
 
         private void SetupDistributionChart(Panel pnl, string title, Dictionary<string, int> data)
+
         {
+
              // Header
+
             Panel pnlHeader = new Panel { Dock = DockStyle.Top, Height = 60, BackColor = Color.Transparent };
+
             Label lblTitle = new Label { Text = title, Font = new Font("Georgia", 14, FontStyle.Bold), Location = new Point(20, 20), AutoSize = true };
+
             pnlHeader.Controls.Add(lblTitle);
+
             pnl.Controls.Add(pnlHeader);
 
+
+
             Chart chart = new Chart();
+
             chart.Dock = DockStyle.Fill;
+
             
+
             ChartArea ca = new ChartArea();
+
             ca.Name = "MainArea";
+
             ca.BackColor = Color.White;
+
             chart.ChartAreas.Add(ca);
 
+
+
             Series s1 = new Series
+
             {
+
                 Name = "Data",
+
                 ChartType = SeriesChartType.Doughnut
+
             };
+
             
+
             foreach(var kvp in data)
+
             {
+
                 s1.Points.AddXY(kvp.Key, kvp.Value);
+
             }
+
             
+
             chart.Series.Add(s1);
+
             pnl.Controls.Add(chart);
+
             chart.BringToFront();
 
+
+
             pnl.Paint += (s, e) => {
+
                  using(Pen borderPen = new Pen(Color.FromArgb(230, 230, 230))) 
+
                     e.Graphics.DrawRectangle(borderPen, 0, 0, pnl.Width - 1, pnl.Height - 1);
+
             };
+
         }
+
+
+
+
+
 
 
 
 
         private void ShowSearchView()
+
         {
+
             RestoreOriginalControls();
+
             ShowDashboardControls(false);
+
             if (pnlSearchView == null || pnlSearchView.IsDisposed)
+
             {
+
                 SetupSearchView();
+
             }
+
             if (!pnlMainContent.Controls.Contains(pnlSearchView))
+
             {
+
                 pnlMainContent.Controls.Add(pnlSearchView);
+
             }
+
             pnlSearchView.Visible = true;
+
             pnlSearchView.BringToFront();
+
             pnlSearchView.Dock = DockStyle.Fill;
+
         }
+
+
 
         private void SetupSearchView()
+
         {
+
             if (pnlSearchView != null && !pnlSearchView.IsDisposed) return;
+
             pnlSearchView = new Panel
+
             {
+
                 Dock = DockStyle.Fill,
+
                 BackColor = ThemeConstants.BackgroundLight,
+
                 Padding = new Padding(30)
+
             };
+
             Label lblTitle = new Label
+
             {
+
                 Text = "Search & Discovery",
+
                 Font = new Font("Georgia", 20F, FontStyle.Bold),
+
                 ForeColor = ThemeConstants.PrimaryMaroon,
+
                 AutoSize = true,
+
                 Location = new Point(0, 0),
+
                 BackColor = Color.Transparent
+
             };
+
             Label lblSubtitle = new Label
+
             {
+
                 Text = "Find books, resources, and check availability",
+
                 Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+
                 ForeColor = Color.Gray,
+
                 AutoSize = true,
+
                 Location = new Point(2, 35),
+
                 BackColor = Color.Transparent
+
             };
+
             Panel pnlSearchBar = new Panel
+
             {
+
                 Size = new Size(pnlSearchView.Width - 60, 60),
+
                 Location = new Point(0, 70),
+
                 BackColor = Color.White,
+
                 Padding = new Padding(10),
+
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+
             };
+
             pnlSearchBar.Paint += (s, e) =>
+
             {
+
                 using (Pen p = new Pen(Color.LightGray))
+
                 {
+
                     e.Graphics.DrawRectangle(p, 0, 0, pnlSearchBar.Width - 1, pnlSearchBar.Height - 1);
+
                 }
+
             };
+
             btnTriggerSearch = new Button
+
             {
+
                 Text = "🔍 Search",
+
                 Size = new Size(100, 40),
+
                 BackColor = ThemeConstants.PrimaryMaroon,
+
                 ForeColor = Color.White,
+
                 FlatStyle = FlatStyle.Flat,
+
                 Dock = DockStyle.Right,
+
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+
                 Cursor = Cursors.Hand
+
             };
+
             btnTriggerSearch.FlatAppearance.BorderSize = 0;
+
             btnSearchFilters = new Button
+
             {
+
                 Text = "All Categories  ▼",
+
                 Size = new Size(100, 40),
+
                 BackColor = Color.White,
+
                 ForeColor = Color.Black,
+
                 FlatStyle = FlatStyle.Flat,
+
                 Dock = DockStyle.Right,
+
                 Font = new Font("Segoe UI", 10F),
+
                 Cursor = Cursors.Hand
+
             };
+
             btnSearchFilters.FlatAppearance.BorderSize = 0;
+
             txtSearchInput = new TextBox
+
             {
+
                 BorderStyle = BorderStyle.None,
+
                 Font = new Font("Segoe UI", 12F),
+
                 ForeColor = Color.Gray,
+
                 Text = "Search by title, author, ISBN, subject...",
+
                 Location = new Point(40, 18),
+
                 Width = 500,
+
                 Anchor = AnchorStyles.Left | AnchorStyles.Right
+
             };
+
             Label lblSearchIcon = new Label { Text = "🔍", Font = new Font("Segoe UI", 12F), Location = new Point(10, 15), AutoSize = true, ForeColor = Color.Gray, BackColor = Color.Transparent };
+
             pnlSearchBar.Resize += (s, e) =>
+
             {
+
                 txtSearchInput.Width = pnlSearchBar.Width - 260;
+
             };
+
             txtSearchInput.Enter += (s, e) =>
+
             {
+
                 if (txtSearchInput.Text == "Search by title, author, ISBN, subject...")
+
                 {
+
                     txtSearchInput.Text = "";
+
                     txtSearchInput.ForeColor = Color.Black;
+
                 }
+
             };
+
             txtSearchInput.Leave += (s, e) =>
+
             {
+
                 if (string.IsNullOrWhiteSpace(txtSearchInput.Text))
+
                 {
+
                     txtSearchInput.Text = "Search by title, author, ISBN, subject...";
+
                     txtSearchInput.ForeColor = Color.Gray;
+
                 }
+
             };
+
             pnlSearchBar.Controls.Add(txtSearchInput);
+
             pnlSearchBar.Controls.Add(lblSearchIcon);
+
             pnlSearchBar.Controls.Add(btnSearchFilters);
+
             pnlSearchBar.Controls.Add(btnTriggerSearch);
+
             pnlSearchContent = new Panel
+
             {
+
                 Location = new Point(0, 150),
+
                 Size = new Size(pnlSearchView.Width - 60, 500),
+
                 BackColor = Color.White,
+
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
+
             };
+
             pnlSearchContent.Paint += (s, e) =>
+
             {
+
                 using (Pen p = new Pen(Color.LightGray))
+
                 {
+
                     e.Graphics.DrawRectangle(p, 0, 0, pnlSearchContent.Width - 1, pnlSearchContent.Height - 1);
+
                 }
+
             };
+
             Label lblEmptyIcon = new Label
+
             {
+
                 Text = "🔍",
+
                 Font = new Font("Segoe UI", 60F),
+
                 ForeColor = Color.LightGray,
+
                 AutoSize = true,
+
                 BackColor = Color.Transparent
+
             };
+
             Label lblEmptyTitle = new Label
+
             {
+
                 Text = "Start your search",
+
                 Font = new Font("Georgia", 16F, FontStyle.Bold),
+
                 ForeColor = ThemeConstants.PrimaryMaroon,
+
                 AutoSize = true,
+
                 BackColor = Color.Transparent
+
             };
+
             Label lblEmptySub = new Label
+
             {
+
                 Text = "Enter a search term to find books in the library catalog",
+
                 Font = new Font("Segoe UI", 10F),
+
                 ForeColor = Color.Gray,
+
                 AutoSize = true,
+
                 BackColor = Color.Transparent
+
             };
+
             pnlSearchContent.Resize += (s, e) =>
+
             {
+
                 int cx = pnlSearchContent.Width / 2;
+
                 int cy = pnlSearchContent.Height / 2;
+
                 lblEmptyIcon.Location = new Point(cx - lblEmptyIcon.Width / 2, cy - 80);
+
                 lblEmptyTitle.Location = new Point(cx - lblEmptyTitle.Width / 2, cy + 20);
+
                 lblEmptySub.Location = new Point(cx - lblEmptySub.Width / 2, cy + 50);
+
             };
+
             btnTriggerSearch.Click += (s, e) => ShowFeatureMessage("Search", "Search functionality will be implemented.");
+
             txtSearchInput.KeyDown += (s, e) =>
+
             {
+
                 if (e.KeyCode == Keys.Enter)
+
                 {
+
                     ShowFeatureMessage("Search", "Search functionality will be implemented.");
+
                 }
+
             };
+
             pnlSearchContent.Controls.AddRange(new Control[] { lblEmptyIcon, lblEmptyTitle, lblEmptySub });
+
             pnlSearchView.Controls.Add(lblTitle);
+
             pnlSearchView.Controls.Add(lblSubtitle);
+
             pnlSearchView.Controls.Add(pnlSearchBar);
+
             pnlSearchView.Controls.Add(pnlSearchContent);
+
         }
+
+
 
         private void ShowSettingsView()
+
         {
+
             RestoreOriginalControls();
+
             ShowDashboardControls(false);
-            
+
             if (pnlSettingsView == null || pnlSettingsView.IsDisposed)
+
             {
+
                 SetupSettingsView();
+
             }
-            
+
             if (!pnlMainContent.Controls.Contains(pnlSettingsView))
+
             {
+
                 pnlMainContent.Controls.Add(pnlSettingsView);
+
             }
-            
+
             pnlSettingsView.Visible = true;
+
             pnlSettingsView.BringToFront();
+
             pnlSettingsView.Dock = DockStyle.Fill;
-            
-            // Show General tab by default
-            ShowSettingsGeneral();
+
         }
+
+
 
         private void SetupSettingsView()
+
         {
+
             if (pnlSettingsView != null && !pnlSettingsView.IsDisposed) return;
-            
-            // Main settings panel
+
             pnlSettingsView = new Panel
+
             {
+
                 Dock = DockStyle.Fill,
+
                 BackColor = ThemeConstants.BackgroundLight,
+
                 Visible = false
+
             };
-            
-            // Header panel - must be added first
-            Panel headerPanel = new Panel 
-            { 
-                Dock = DockStyle.Top, 
-                Height = 100, 
-                BackColor = Color.White,
-                Padding = new Padding(30, 20, 30, 10)
-            };
-            
-            Label lblTitle = new Label
-            {
-                Text = "Settings",
-                Font = new Font("Segoe UI", 24F, FontStyle.Bold),
-                ForeColor = ThemeConstants.PrimaryMaroon,
-                Location = new Point(30, 20),
-                AutoSize = true
-            };
-            
-            Label lblSubtitle = new Label
-            {
-                Text = "Configure library system settings and policies",
-                Font = new Font("Segoe UI", 10F),
-                ForeColor = Color.Gray,
-                Location = new Point(30, 60),
-                AutoSize = true
-            };
-            
-            headerPanel.Controls.Add(lblTitle);
-            headerPanel.Controls.Add(lblSubtitle);
-            
-            // Navigation tabs panel - added second, will be below header
+
             pnlSettingsSubNav = new Panel
+
             {
+
                 Dock = DockStyle.Top,
+
                 Height = 60,
+
                 BackColor = Color.White,
-                Padding = new Padding(30, 10, 30, 0)
+
+                Padding = new Padding(20, 0, 20, 0)
+
             };
-            
-            // Add bottom border to nav panel
-            Panel navBorder = new Panel
-            {
-                Dock = DockStyle.Bottom,
-                Height = 1,
-                BackColor = Color.FromArgb(230, 230, 230)
-            };
-            pnlSettingsSubNav.Controls.Add(navBorder);
-            
-            btnSettingGeneral = CreateSettingsTabButton("General", true);
-            btnSettingNotifications = CreateSettingsTabButton("Notifications", false);
-            btnSettingBorrowing = CreateSettingsTabButton("Borrowing", false);
-            btnSettingFines = CreateSettingsTabButton("Fines", false);
-            
-            int x = 0;
-            int gap = 15;
-            btnSettingGeneral.Location = new Point(x, 12);
+
+            btnSettingGeneral = CreateSettingsSubNavButton("General", false);
+
+            btnSettingNotifications = CreateSettingsSubNavButton("Notifications", true);
+
+            btnSettingBorrowing = CreateSettingsSubNavButton("Borrowing", false);
+
+            btnSettingFines = CreateSettingsSubNavButton("Fines", false);
+
+            int x = 20;
+
+            int gap = 10;
+
+            btnSettingGeneral.Location = new Point(x, 10);
+
             x += btnSettingGeneral.Width + gap;
-            btnSettingNotifications.Location = new Point(x, 12);
+
+            btnSettingNotifications.Location = new Point(x, 10);
+
             x += btnSettingNotifications.Width + gap;
-            btnSettingBorrowing.Location = new Point(x, 12);
+
+            btnSettingBorrowing.Location = new Point(x, 10);
+
             x += btnSettingBorrowing.Width + gap;
-            btnSettingFines.Location = new Point(x, 12);
-            
-            pnlSettingsSubNav.Controls.AddRange(new Control[] 
-            { 
-                btnSettingGeneral, 
-                btnSettingNotifications, 
-                btnSettingBorrowing, 
-                btnSettingFines 
+
+            btnSettingFines.Location = new Point(x, 10);
+
+            pnlSettingsSubNav.Controls.AddRange(new Control[] { 
+
+                btnSettingGeneral, btnSettingNotifications, btnSettingBorrowing, btnSettingFines 
+
             });
-            
-            // Content panel - added last, will fill remaining space
+
             pnlSettingsContent = new Panel
+
             {
+
                 Dock = DockStyle.Fill,
-                BackColor = ThemeConstants.BackgroundLight,
-                Padding = new Padding(30, 20, 30, 30),
-                AutoScroll = true
+
+                BackColor = Color.White,
+
+                Padding = new Padding(30)
+
             };
-            
-            // Wire up click events
-            btnSettingGeneral.Click += (s, e) => ShowSettingsGeneral();
-            btnSettingNotifications.Click += (s, e) => ShowSettingsNotifications();
-            btnSettingBorrowing.Click += (s, e) => ShowSettingsBorrowing();
-            btnSettingFines.Click += (s, e) => ShowSettingsFines();
-            
-            // Add panels in correct order: header first (top), then nav, then content (fills rest)
-            pnlSettingsView.Controls.Add(headerPanel);
-            pnlSettingsView.Controls.Add(pnlSettingsSubNav);
+
+            Panel settingsHeaderPanel = new Panel { Dock = DockStyle.Top, Height = 80, BackColor = Color.White };
+
+            Label lblSettingsTitle = new Label
+
+            {
+
+                Text = "Settings",
+
+                Font = new Font("Segoe UI", 24F, FontStyle.Bold),
+
+                Location = new Point(20, 10),
+
+                AutoSize = true,
+
+                ForeColor = Color.FromArgb(40, 40, 40)
+
+            };
+
+            Label lblSettingsSub = new Label
+
+            {
+
+                Text = "Configure library system settings and policies",
+
+                Font = new Font("Segoe UI", 10F),
+
+                Location = new Point(25, 55),
+
+                AutoSize = true,
+
+                ForeColor = Color.Gray
+
+            };
+
+            settingsHeaderPanel.Controls.Add(lblSettingsTitle);
+
+            settingsHeaderPanel.Controls.Add(lblSettingsSub);
+
             pnlSettingsView.Controls.Add(pnlSettingsContent);
+
+            pnlSettingsView.Controls.Add(pnlSettingsSubNav);
+
+            pnlSettingsView.Controls.Add(settingsHeaderPanel);
+
+            btnSettingGeneral.Click += (s, e) => ShowSettingsGeneral();
+
+            btnSettingNotifications.Click += (s, e) => ShowSettingsNotifications();
+
+            btnSettingBorrowing.Click += (s, e) => ShowSettingsBorrowing();
+
+            btnSettingFines.Click += (s, e) => ShowSettingsFines();
+
         }
 
-        private void SetActiveSettingsTab(Button activeBtn)
+
+
+        private void ResetSettingsNavButtons()
+
         {
-            foreach (Control ctrl in pnlSettingsSubNav.Controls)
+
+            foreach (Control c in pnlSettingsSubNav.Controls)
+
             {
-                if (ctrl is Button btn && btn != activeBtn)
+
+                if (c is Button btn)
+
                 {
+
                     btn.Font = new Font("Segoe UI", 10F, FontStyle.Regular);
+
                     btn.ForeColor = Color.Gray;
-                    btn.BackColor = Color.White;
-                    btn.Tag = false; // Remove underline
+
                     btn.Invalidate();
+
                 }
+
             }
-            activeBtn.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            activeBtn.ForeColor = ThemeConstants.PrimaryMaroon;
-            activeBtn.BackColor = Color.White;
-            activeBtn.Tag = true; // Show underline
-            activeBtn.Invalidate();
+
         }
+
+
+
+        private void SetActiveSettingsNavButton(Button btn)
+
+        {
+
+            ResetSettingsNavButtons();
+
+            btn.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+
+            btn.ForeColor = ThemeConstants.PrimaryMaroon;
+
+        }
+
+
 
         private void ShowSettingsGeneral()
+
         {
-            SetActiveSettingsTab(btnSettingGeneral);
+
+            SetActiveSettingsNavButton(btnSettingGeneral);
+
             pnlSettingsContent.Controls.Clear();
+
             
-            // Create white section panel with border - centered horizontally
-            Panel sectionPanel = new Panel
-            {
-                BackColor = Color.White,
-                Location = new Point(0, 220), // Top margin: 220px to push box down
-                Width = 900,
-                Height = 450,
-                Padding = new Padding(0)
+
+            FlowLayoutPanel flpContent = new FlowLayoutPanel 
+
+            { 
+
+                Dock = DockStyle.Fill, 
+
+                AutoScroll = true, 
+
+                FlowDirection = FlowDirection.TopDown, 
+
+                WrapContents = false,
+
+                Padding = new Padding(0, 0, 0, 50)
+
             };
+
+            pnlSettingsContent.Controls.Add(flpContent);
+
             
-            // Draw border
-            sectionPanel.Paint += (s, e) =>
-            {
-                using (Pen pen = new Pen(Color.FromArgb(230, 230, 230), 1))
-                {
-                    e.Graphics.DrawRectangle(pen, 0, 0, sectionPanel.Width - 1, sectionPanel.Height - 1);
-                }
-            };
-            
-            // Section header with icon
-            Label sectionTitle = new Label
-            {
-                Text = "📚 Library Information",
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(40, 40, 40),
-                Location = new Point(20, 20),
-                AutoSize = true
-            };
-            
-            Label sectionSubtitle = new Label
-            {
-                Text = "Basic library details and contact information",
-                Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.Gray,
-                Location = new Point(20, 48),
-                AutoSize = true
-            };
-            
-            // Input fields in 2 columns with proper spacing
-            TableLayoutPanel inputTable = new TableLayoutPanel
-            {
-                Location = new Point(20, 130),
-                Width = sectionPanel.Width - 40,
-                Height = 180,
-                ColumnCount = 2,
+
+            // Header
+
+            Label lblTitle = new Label { Text = "Configure library system settings and policies", Font = new Font("Segoe UI", 10), ForeColor = Color.Gray, AutoSize = true, Margin = new Padding(3, 0, 0, 20) };
+
+            flpContent.Controls.Add(lblTitle);
+
+
+
+            // Section: Library Info
+
+            Panel sectionBasic = CreateSettingSection("Library Information", "Basic library details and contact information");
+
+            Control pnlHeader = sectionBasic.Controls[0]; // Capture header reference before adding more
+
+
+
+            TableLayoutPanel tlpBasic = new TableLayoutPanel 
+
+            { 
+
+                Dock = DockStyle.Top, 
+
+                AutoSize = true,
+
+                ColumnCount = 2, 
+
                 RowCount = 2,
-                Padding = new Padding(0)
+
+                Padding = new Padding(20, 10, 20, 10)
+
             };
-            inputTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            inputTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            inputTable.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            inputTable.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+
+            tlpBasic.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+
+            tlpBasic.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+
+            tlpBasic.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+            tlpBasic.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
             
-            // Left column: Library Name, Phone
-            inputTable.Controls.Add(CreateInputField("Library Name", "Central University Library"), 0, 0);
-            inputTable.Controls.Add(CreateInputField("Phone", "+1 555-123-4567"), 0, 1);
+
+            tlpBasic.Controls.Add(CreateSettingInput("Library Name", "Central University Library"), 0, 0);
+
+            tlpBasic.Controls.Add(CreateSettingInput("Email", "library@university.edu"), 1, 0);
+
+            tlpBasic.Controls.Add(CreateSettingInput("Phone", "+1 555-123-4567"), 0, 1);
+
+            tlpBasic.Controls.Add(CreateSettingInput("Address", "123 Campus Drive, University City"), 1, 1);
+
             
-            // Right column: Email, Address
-            inputTable.Controls.Add(CreateInputField("Email", "library@university.edu"), 1, 0);
-            inputTable.Controls.Add(CreateInputField("Address", "123 Campus Drive, University City"), 1, 1);
+
+            // Add Save Button inside the card (at the bottom)
+
+            Panel pnlSave = CreateSettingsSaveButton();
+
+            // CreateSettingsSaveButton returns a panel with Dock=Top. 
+
+            // We want it at the bottom of the stack, which corresponds to the HIGHEST Z-Index in Dock=Top logic?
+
+            // No, lowest Z-Index is Topmost. High Z-Index is Bottommost.
+
+            // But we want it VISUALLY at the bottom.
+
+            // So we want: Header (Top), Table (Middle), Save (Bottom).
+
+            // Stack order (Visual Top to Bottom): Header -> Table -> Save.
+
+            // Z-Indices (Dock=Top): Header(0), Table(1), Save(2).
+
+            // So we should BringToFront in reverse order: Save, then Table, then Header.
+
             
-            // Save button at bottom right with proper spacing
-            Button btnSave = new Button
-            {
-                Text = "📄 Save Changes",
-                Size = new Size(160, 45),
-                BackColor = ThemeConstants.PrimaryMaroon,
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Location = new Point(sectionPanel.Width - 180, sectionPanel.Height - 65)
+
+            sectionBasic.Controls.Add(pnlSave); // Added first (Index 0)
+
+            sectionBasic.Controls.Add(tlpBasic); // Added second (Index 0, Save -> 1)
+
+            // Header is already there (Index 2 now, behind everything if we don't move it)
+
+            
+
+            // Re-order for correct Dock=Top stacking (Visual Top -> Bottom needs Z-Index 0 -> N)
+
+            // Wait, Dock=Top stacks items. The one with LOWEST Z-index is at the TOP edge.
+
+            // So we want: Header (0), Table (1), Save (2).
+
+            
+
+            pnlSave.BringToFront();   // Save -> 0
+
+            tlpBasic.BringToFront();  // Table -> 0, Save -> 1
+
+            pnlHeader.BringToFront(); // Header -> 0, Table -> 1, Save -> 2.
+
+            // Result Visual: Header, then Table, then Save. Correct.
+
+            
+
+            // Set initial width to prevent collapse
+
+            sectionBasic.Width = Math.Max(600, flpContent.Width - 30);
+
+            
+
+            flpContent.Controls.Add(sectionBasic);
+
+            
+
+            // Resize logic applied immediately and on event
+
+            Action resizeAction = () => {
+
+                 int w = flpContent.Width - 30;
+
+                 if(w < 400) w = 400; // min width
+
+                 foreach(Control c in flpContent.Controls)
+
+                 {
+
+                    if(c is Panel) 
+
+                    {
+
+                        c.Width = w;
+
+                        // Specifically ensure internal TableLayoutPanels resize to match parent
+
+                        foreach(Control child in c.Controls)
+
+                        {
+
+                            if (child is Panel pSave) // For safety
+
+                            {
+
+                                // The save button panel relies on its own resize event, just ensure it has width
+
+                                // But its inside a Panel which we just set width. It's Dock=Top, so it matches width automatically.
+
+                            }
+
+                        }
+
+                    }
+
+                 }
+
             };
-            btnSave.FlatAppearance.BorderSize = 0;
-            btnSave.Paint += (s, e) =>
-            {
-                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnSave.Width, btnSave.Height), 8))
-                using (SolidBrush brush = new SolidBrush(ThemeConstants.PrimaryMaroon))
-                {
-                    e.Graphics.FillPath(brush, path);
-                }
-                TextRenderer.DrawText(e.Graphics, btnSave.Text, btnSave.Font, 
-                    new Rectangle(0, 0, btnSave.Width, btnSave.Height), 
-                    Color.White, 
-                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-            };
-            btnSave.Click += (s, e) => 
-                MessageBox.Show("Settings saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
             
-            // Add all controls to section panel
-            sectionPanel.Controls.Add(sectionTitle);
-            sectionPanel.Controls.Add(sectionSubtitle);
-            sectionPanel.Controls.Add(inputTable);
-            sectionPanel.Controls.Add(btnSave);
-            
-            // Add section panel to content area
-            pnlSettingsContent.Controls.Add(sectionPanel);
-            
-            // Handle resize to maintain proper layout and center the panel
-            Action resizeAction = () =>
-            {
-                int availableWidth = pnlSettingsContent.Width - 60; // Account for padding
-                if (availableWidth < 600) availableWidth = 600;
-                if (availableWidth > 1200) availableWidth = 1200; // Max width
-                
-                // Center the section panel horizontally (Top is already set to 220 for margin)
-                sectionPanel.Width = availableWidth;
-                sectionPanel.Left = (pnlSettingsContent.Width - sectionPanel.Width) / 2;
-                sectionPanel.Top = 220; // Maintain top margin
-                
-                inputTable.Width = sectionPanel.Width - 40;
-                btnSave.Left = sectionPanel.Width - 180;
-            };
-            
-            pnlSettingsContent.Resize += (s, e) => resizeAction();
-            resizeAction();
+
+            flpContent.Resize += (s, e) => resizeAction();
+
+            resizeAction(); // Call once
+
         }
+
+
 
         private void ShowSettingsNotifications()
+
         {
-            SetActiveSettingsTab(btnSettingNotifications);
+
+            SetActiveSettingsNavButton(btnSettingNotifications);
+
             pnlSettingsContent.Controls.Clear();
-            
-            // Create white section panel
-            Panel sectionPanel = new Panel
-            {
-                BackColor = Color.White,
-                Location = new Point(0, 220),
-                Width = 900,
-                Height = 500,
-                Padding = new Padding(0)
+
+
+
+            FlowLayoutPanel flpContent = new FlowLayoutPanel 
+
+            { 
+
+                Dock = DockStyle.Fill, 
+
+                AutoScroll = true, 
+
+                FlowDirection = FlowDirection.TopDown, 
+
+                WrapContents = false,
+
+                Padding = new Padding(0, 0, 0, 20)
+
             };
+
+            pnlSettingsContent.Controls.Add(flpContent);
+
             
-            sectionPanel.Paint += (s, e) =>
+
+            // Section: Preferences
+
+            Panel sectionPrefs = CreateSettingSection("Notification Preferences", "Configure email and system notifications");
+
+            
+
+            FlowLayoutPanel flpPrefs = new FlowLayoutPanel
+
             {
-                using (Pen pen = new Pen(Color.FromArgb(230, 230, 230), 1))
-                {
-                    e.Graphics.DrawRectangle(pen, 0, 0, sectionPanel.Width - 1, sectionPanel.Height - 1);
-                }
+
+                Dock = DockStyle.Top,
+
+                AutoSize = true,
+
+                FlowDirection = FlowDirection.TopDown,
+
+                WrapContents = false,
+
+                Padding = new Padding(20, 0, 20, 10)
+
             };
-            
-            // Section header
-            Label sectionTitle = new Label
-            {
-                Text = "🔔 Notification Preferences",
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(40, 40, 40),
-                Location = new Point(20, 20),
-                AutoSize = true
+
+
+
+            flpPrefs.Controls.Add(CreateSettingToggle("Email Notifications", "Enable email notifications for library events", true));
+
+            flpPrefs.Controls.Add(CreateSettingToggle("Overdue Reminders", "Send reminders for overdue books", true));
+
+            flpPrefs.Controls.Add(CreateSettingToggle("Reservation Alerts", "Notify when reserved books become available", true));
+
+            flpPrefs.Controls.Add(CreateSettingToggle("Due Date Reminders", "Remind members before books are due", true));
+
+
+
+            // Custom "Days" input visually integrated
+
+            Panel pnlDays = new Panel { Size = new Size(600, 50), Margin = new Padding(0, 5, 0, 0) };
+
+            // Background Highlighting like screenshot
+
+            pnlDays.Paint += (s, e) => {
+
+                 using(SolidBrush b = new SolidBrush(Color.FromArgb(248, 248, 248)))
+
+                    e.Graphics.FillRectangle(b, 0, 0, pnlDays.Width, pnlDays.Height);
+
             };
+
+
+
+            Label lblDays = new Label { Text = "Send reminder", AutoSize = true, Location = new Point(20, 15), Font = new Font("Segoe UI", 9), ForeColor = Color.FromArgb(60,60,60) };
+
             
-            Label sectionSubtitle = new Label
-            {
-                Text = "Configure email and system notifications",
-                Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.Gray,
-                Location = new Point(20, 48),
-                AutoSize = true
+
+            Panel pnlNum = new Panel { Location = new Point(120, 10), Size = new Size(50, 30), BackColor = Color.White };
+
+            TextBox txtDays = new TextBox { Text = "2", Location = new Point(5, 5), Width = 40, Font = new Font("Segoe UI", 9), TextAlign = HorizontalAlignment.Center, BorderStyle = BorderStyle.None };
+
+            pnlNum.Controls.Add(txtDays);
+
+            pnlNum.Paint += (s, e) => {
+
+                 using(Pen p = new Pen(Color.FromArgb(220, 220, 220))) e.Graphics.DrawRectangle(p, 0, 0, 49, 29);
+
             };
+
+
+
+            Label lblDays2 = new Label { Text = "days before due date", AutoSize = true, Location = new Point(180, 15), Font = new Font("Segoe UI", 9), ForeColor = Color.FromArgb(60,60,60) };
+
             
-            // Toggle switches
-            Panel toggle1 = CreateNotificationToggle("Email Notifications", "Enable email notifications for library events", true, 85);
-            Panel toggle2 = CreateNotificationToggle("Overdue Reminders", "Send reminders for overdue books", true, 150);
-            Panel toggle3 = CreateNotificationToggle("Reservation Alerts", "Notify when reserved books become available", true, 215);
-            Panel toggle4 = CreateNotificationToggle("Due Date Reminders", "Remind members before books are due", true, 280);
-            
-            // Days input field
-            Panel daysPanel = new Panel
-            {
-                Location = new Point(20, 345),
-                Width = sectionPanel.Width - 40,
-                Height = 50,
-                BackColor = Color.FromArgb(248, 248, 248)
+
+            pnlDays.Controls.AddRange(new Control[] { lblDays, pnlNum, lblDays2 });
+
+            flpPrefs.Controls.Add(pnlDays);
+
+
+
+            sectionPrefs.Controls.Add(flpPrefs);
+
+            sectionPrefs.Width = Math.Max(600, flpContent.Width - 30);
+
+            flpContent.Controls.Add(sectionPrefs);
+
+
+
+             // Save Button
+
+            flpContent.Controls.Add(CreateSettingsSaveButton());
+
+
+
+             Action resizeAction = () => {
+
+                 int w = flpContent.Width - 30;
+
+                 if(w < 400) w = 400;
+
+                 
+
+                 foreach(Control c in flpContent.Controls)
+
+                 {
+
+                    if(c is Panel p) 
+
+                    {
+
+                        p.Width = w;
+
+                        if(p == sectionPrefs) 
+
+                        {
+
+                            foreach(Control inP in p.Controls) if (inP is FlowLayoutPanel flp) flp.Width = p.Width;
+
+                             // Resize the days panel specifically
+
+                            pnlDays.Width = p.Width - 40; 
+
+                        }
+
+                    }
+
+                 }
+
             };
-            
-            Label lblDays = new Label
-            {
-                Text = "Send reminder",
-                Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.FromArgb(60, 60, 60),
-                Location = new Point(20, 15),
-                AutoSize = true
-            };
-            
-            Panel inputPanel = new Panel
-            {
-                Location = new Point(120, 10),
-                Size = new Size(50, 30),
-                BackColor = Color.White
-            };
-            
-            TextBox txtDays = new TextBox
-            {
-                Text = "2",
-                Location = new Point(5, 5),
-                Width = 40,
-                Font = new Font("Segoe UI", 9F),
-                TextAlign = HorizontalAlignment.Center,
-                BorderStyle = BorderStyle.None,
-                BackColor = Color.White
-            };
-            
-            inputPanel.Controls.Add(txtDays);
-            inputPanel.Paint += (s, e) =>
-            {
-                using (Pen pen = new Pen(Color.FromArgb(220, 220, 220)))
-                {
-                    e.Graphics.DrawRectangle(pen, 0, 0, inputPanel.Width - 1, inputPanel.Height - 1);
-                }
-            };
-            
-            Label lblDays2 = new Label
-            {
-                Text = "days before due date",
-                Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.FromArgb(60, 60, 60),
-                Location = new Point(180, 15),
-                AutoSize = true
-            };
-            
-            daysPanel.Controls.Add(lblDays);
-            daysPanel.Controls.Add(inputPanel);
-            daysPanel.Controls.Add(lblDays2);
-            
-            // Save button
-            Button btnSave = new Button
-            {
-                Text = "📄 Save Changes",
-                Size = new Size(160, 45),
-                BackColor = ThemeConstants.PrimaryMaroon,
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Location = new Point(sectionPanel.Width - 180, sectionPanel.Height - 65)
-            };
-            btnSave.FlatAppearance.BorderSize = 0;
-            btnSave.Paint += (s, e) =>
-            {
-                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnSave.Width, btnSave.Height), 8))
-                using (SolidBrush brush = new SolidBrush(ThemeConstants.PrimaryMaroon))
-                {
-                    e.Graphics.FillPath(brush, path);
-                }
-                TextRenderer.DrawText(e.Graphics, btnSave.Text, btnSave.Font,
-                    new Rectangle(0, 0, btnSave.Width, btnSave.Height),
-                    Color.White,
-                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-            };
-            btnSave.Click += (s, e) =>
-                MessageBox.Show("Settings saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            
-            sectionPanel.Controls.Add(sectionTitle);
-            sectionPanel.Controls.Add(sectionSubtitle);
-            sectionPanel.Controls.Add(toggle1);
-            sectionPanel.Controls.Add(toggle2);
-            sectionPanel.Controls.Add(toggle3);
-            sectionPanel.Controls.Add(toggle4);
-            sectionPanel.Controls.Add(daysPanel);
-            sectionPanel.Controls.Add(btnSave);
-            
-            pnlSettingsContent.Controls.Add(sectionPanel);
-            
-            // Handle resize
-            Action resizeAction = () =>
-            {
-                int availableWidth = pnlSettingsContent.Width - 60;
-                if (availableWidth < 600) availableWidth = 600;
-                if (availableWidth > 1200) availableWidth = 1200;
-                
-                sectionPanel.Width = availableWidth;
-                sectionPanel.Left = (pnlSettingsContent.Width - sectionPanel.Width) / 2;
-                sectionPanel.Top = 220;
-                
-                daysPanel.Width = sectionPanel.Width - 40;
-                btnSave.Left = sectionPanel.Width - 180;
-            };
-            
-            pnlSettingsContent.Resize += (s, e) => resizeAction();
+
+            flpContent.Resize += (s, e) => resizeAction();
+
             resizeAction();
+
         }
+
+
 
         private void ShowSettingsBorrowing()
+
         {
-            SetActiveSettingsTab(btnSettingBorrowing);
+
+            SetActiveSettingsNavButton(btnSettingBorrowing);
+
             pnlSettingsContent.Controls.Clear();
+
             
-            // Create white section panel
-            Panel sectionPanel = new Panel
-            {
-                BackColor = Color.White,
-                Location = new Point(0, 220),
-                Width = 900,
-                Height = 800,
-                Padding = new Padding(0),
-                AutoScroll = true
+
+            FlowLayoutPanel flpContent = new FlowLayoutPanel 
+
+            { 
+
+                Dock = DockStyle.Fill, 
+
+                AutoScroll = true, 
+
+                FlowDirection = FlowDirection.TopDown, 
+
+                WrapContents = false,
+
+                Padding = new Padding(0, 0, 0, 20)
+
             };
+
+            pnlSettingsContent.Controls.Add(flpContent);
+
+
+
+            // Header - Reset Defaults Button
+
+            Panel pnlHeader = new Panel { Height = 50, Dock = DockStyle.Top, Margin = new Padding(0, 0, 0, 10) };
+
+            Button btnReset = new Button { Text = "↺ Reset Defaults", Size = new Size(130, 35), Location = new Point(pnlHeader.Width - 140, 5), Anchor = AnchorStyles.Top | AnchorStyles.Right, FlatStyle = FlatStyle.Flat, BackColor = Color.White, ForeColor = Color.FromArgb(80,80,80), Cursor = Cursors.Hand };
+
+            btnReset.FlatAppearance.BorderColor = Color.FromArgb(220,220,220);
+
             
-            sectionPanel.Paint += (s, e) =>
-            {
-                using (Pen pen = new Pen(Color.FromArgb(230, 230, 230), 1))
-                {
-                    e.Graphics.DrawRectangle(pen, 0, 0, sectionPanel.Width - 1, sectionPanel.Height - 1);
-                }
+
+            pnlHeader.Resize += (s, e) => btnReset.Left = pnlHeader.Width - 140;
+
+            pnlHeader.Controls.Add(btnReset);
+
+            
+
+            Label lblH = new Label { Text = "Configure borrowing limits and privileges", ForeColor = Color.FromArgb(80,80,80), AutoSize = true, Location = new Point(5, 12), Font = new Font("Segoe UI", 10) };
+
+            pnlHeader.Controls.Add(lblH);
+
+            
+
+            flpContent.Controls.Add(pnlHeader);
+
+
+
+            // Borrowing Groups
+
+            flpContent.Controls.Add(CreateBorrowingGroup("Student Members", "5", "14", "2", "5", true));
+
+            flpContent.Controls.Add(CreateBorrowingGroup("Faculty Members", "10", "30", "3", "3", true));
+
+            flpContent.Controls.Add(CreateBorrowingGroup("Staff Members", "7", "21", "2", "4", true));
+
+            flpContent.Controls.Add(CreateBorrowingGroup("Guest Members", "2", "7", "1", "10", false));
+
+            
+
+             // Save Button
+
+            flpContent.Controls.Add(CreateSettingsSaveButton());
+
+
+
+             Action resizeAction = () => {
+
+                 int w = flpContent.Width - 30;
+
+                 if(w < 400) w = 400; // min width
+
+                 foreach(Control c in flpContent.Controls)
+
+                    if(c is Panel) c.Width = w;
+
             };
+
             
-            // Section header
-            Label sectionTitle = new Label
-            {
-                Text = "📖 Borrowing Policies",
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(40, 40, 40),
-                Location = new Point(20, 20),
-                AutoSize = true
-            };
-            
-            Label sectionSubtitle = new Label
-            {
-                Text = "Configure borrowing limits and privileges by member type",
-                Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.Gray,
-                Location = new Point(20, 48),
-                AutoSize = true
-            };
-            
-            // Reset Defaults button
-            Button btnReset = new Button
-            {
-                Text = "↺ Reset Defaults",
-                Size = new Size(130, 35),
-                BackColor = Color.White,
-                ForeColor = Color.FromArgb(80, 80, 80),
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 9F),
-                Cursor = Cursors.Hand,
-                Location = new Point(sectionPanel.Width - 150, 20)
-            };
-            btnReset.FlatAppearance.BorderColor = Color.FromArgb(220, 220, 220);
-            btnReset.FlatAppearance.BorderSize = 1;
-            btnReset.Click += (s, e) => MessageBox.Show("Defaults reset!", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            
-            sectionPanel.Resize += (s, e) => btnReset.Left = sectionPanel.Width - 150;
-            
-            // Member type cards
-            Panel card1 = CreateBorrowingCard("👤 Student Members", "5", "14", "2", "5", true, 85);
-            Panel card2 = CreateBorrowingCard("👤 Faculty Members", "10", "30", "3", "3", true, 240);
-            Panel card3 = CreateBorrowingCard("👤 Staff Members", "7", "21", "2", "4", true, 395);
-            Panel card4 = CreateBorrowingCard("👤 Guest Members", "2", "7", "1", "10", false, 550);
-            
-            // Save button
-            Button btnSave = new Button
-            {
-                Text = "📄 Save Changes",
-                Size = new Size(160, 45),
-                BackColor = ThemeConstants.PrimaryMaroon,
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Location = new Point(sectionPanel.Width - 180, 720)
-            };
-            btnSave.FlatAppearance.BorderSize = 0;
-            btnSave.Paint += (s, e) =>
-            {
-                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnSave.Width, btnSave.Height), 8))
-                using (SolidBrush brush = new SolidBrush(ThemeConstants.PrimaryMaroon))
-                {
-                    e.Graphics.FillPath(brush, path);
-                }
-                TextRenderer.DrawText(e.Graphics, btnSave.Text, btnSave.Font,
-                    new Rectangle(0, 0, btnSave.Width, btnSave.Height),
-                    Color.White,
-                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-            };
-            btnSave.Click += (s, e) =>
-                MessageBox.Show("Settings saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            
-            sectionPanel.Controls.Add(sectionTitle);
-            sectionPanel.Controls.Add(sectionSubtitle);
-            sectionPanel.Controls.Add(btnReset);
-            sectionPanel.Controls.Add(card1);
-            sectionPanel.Controls.Add(card2);
-            sectionPanel.Controls.Add(card3);
-            sectionPanel.Controls.Add(card4);
-            sectionPanel.Controls.Add(btnSave);
-            
-            pnlSettingsContent.Controls.Add(sectionPanel);
-            
-            // Handle resize
-            Action resizeAction = () =>
-            {
-                int availableWidth = pnlSettingsContent.Width - 60;
-                if (availableWidth < 600) availableWidth = 600;
-                if (availableWidth > 1200) availableWidth = 1200;
-                
-                sectionPanel.Width = availableWidth;
-                sectionPanel.Left = (pnlSettingsContent.Width - sectionPanel.Width) / 2;
-                sectionPanel.Top = 220;
-                
-                // Resize all cards
-                card1.Width = sectionPanel.Width - 40;
-                card2.Width = sectionPanel.Width - 40;
-                card3.Width = sectionPanel.Width - 40;
-                card4.Width = sectionPanel.Width - 40;
-                
-                btnSave.Left = sectionPanel.Width - 180;
-            };
-            
-            pnlSettingsContent.Resize += (s, e) => resizeAction();
+
+            flpContent.Resize += (s, e) => resizeAction();
+
             resizeAction();
+
         }
 
+
+
+
+
         private void ShowSettingsFines()
+
         {
-            SetActiveSettingsTab(btnSettingFines);
+
+            SetActiveSettingsNavButton(btnSettingFines);
+
             pnlSettingsContent.Controls.Clear();
+
             
-            // Create white section panel
-            Panel sectionPanel = new Panel
-            {
-                BackColor = Color.White,
-                Location = new Point(0, 220),
-                Width = 900,
-                Height = 600,
-                Padding = new Padding(0)
+
+            FlowLayoutPanel flpContent = new FlowLayoutPanel 
+
+            { 
+
+                Dock = DockStyle.Fill, 
+
+                AutoScroll = true, 
+
+                FlowDirection = FlowDirection.TopDown, 
+
+                WrapContents = false,
+
+                Padding = new Padding(0, 0, 0, 20)
+
             };
-            
-            sectionPanel.Paint += (s, e) =>
-            {
-                using (Pen pen = new Pen(Color.FromArgb(230, 230, 230), 1))
-                {
-                    e.Graphics.DrawRectangle(pen, 0, 0, sectionPanel.Width - 1, sectionPanel.Height - 1);
-                }
-            };
-            
+
+            pnlSettingsContent.Controls.Add(flpContent);
+
+
+
             // Section 1: Fine Configuration
-            Label sectionTitle1 = new Label
-            {
-                Text = "💲 Fine Configuration",
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(40, 40, 40),
-                Location = new Point(20, 20),
-                AutoSize = true
-            };
+
+            Panel sectionConfig = CreateSettingSection("Fine Configuration", "Configure fine calculation and limits");
+
             
-            Label sectionSubtitle1 = new Label
-            {
-                Text = "Configure fine calculation and limits",
-                Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.Gray,
-                Location = new Point(20, 48),
-                AutoSize = true
-            };
-            
-            // Three input fields horizontally
-            TableLayoutPanel configTable = new TableLayoutPanel
-            {
-                Location = new Point(20, 85),
-                Width = sectionPanel.Width - 40,
-                Height = 100,
-                ColumnCount = 3,
+
+            TableLayoutPanel tlpConfig = new TableLayoutPanel 
+
+            { 
+
+                Dock = DockStyle.Top, 
+
+                Height = 100, 
+
+                ColumnCount = 3, 
+
                 RowCount = 1,
-                Padding = new Padding(0)
+
+                Padding = new Padding(20, 10, 20, 0)
+
             };
-            configTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
-            configTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
-            configTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
+
+            tlpConfig.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33F));
+
+            tlpConfig.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33F));
+
+            tlpConfig.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33F));
+
             
-            configTable.Controls.Add(CreateInputField("Maximum Fine Cap ($)", "100"), 0, 0);
-            configTable.Controls.Add(CreateInputField("Grace Period (Days)", "0"), 1, 0);
-            configTable.Controls.Add(CreateInputField("Lost Book Multiplier", "2"), 2, 0);
+
+            tlpConfig.Controls.Add(CreateSettingInput("Maximum Fine Cap ($)", "100"), 0, 0);
+
+            tlpConfig.Controls.Add(CreateSettingInput("Grace Period (Days)", "0"), 1, 0);
+
+            tlpConfig.Controls.Add(CreateSettingInput("Lost Book Multiplier", "2"), 2, 0);
+
             
-            // Section 2: Fine Rate Summary
-            Label sectionTitle2 = new Label
+
+            sectionConfig.Controls.Add(tlpConfig);
+
+            sectionConfig.Width = Math.Max(600, flpContent.Width - 30);
+
+            flpContent.Controls.Add(sectionConfig);
+
+
+
+            // Section 2: Rate Summary
+
+            Panel sectionRates = CreateSettingSection("Fine Rate Summary", "Current fine rates per member type");
+
+            TableLayoutPanel tlpRates = new TableLayoutPanel
+
             {
-                Text = "Fine Rate Summary",
-                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(40, 40, 40),
-                Location = new Point(20, 220),
-                AutoSize = true
-            };
-            
-            Label sectionSubtitle2 = new Label
-            {
-                Text = "Current fine rates per member type",
-                Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.Gray,
-                Location = new Point(20, 248),
-                AutoSize = true
-            };
-            
-            // Fine rates list
-            Panel ratesPanel = new Panel
-            {
-                Location = new Point(40, 285),
-                Width = sectionPanel.Width - 80,
-                Height = 200,
+
+                Dock = DockStyle.Top,
+
+                ColumnCount = 2,
+
+                RowCount = 4,
+
+                AutoSize = true,
+
+                Padding = new Padding(40, 20, 40, 20),
+
                 BackColor = Color.White
+
             };
+
+             tlpRates.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+
+             tlpRates.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+
+
+
+             string[] types = { "Student", "Faculty", "Staff", "Guest" };
+
+             string[] rates = { "$5 / day", "$3 / day", "$4 / day", "$10 / day" }; 
+
+             
+
+             for(int i=0; i<4; i++)
+
+             {
+
+                 Label lT = new Label { Text = types[i], Font = new Font("Segoe UI", 10, FontStyle.Regular), AutoSize = true, ForeColor = Color.FromArgb(60,60,60), Margin = new Padding(0, 10, 0, 10) };
+
+                 Label lR = new Label { Text = rates[i], Font = new Font("Segoe UI", 10, FontStyle.Bold), AutoSize = true, ForeColor = ThemeConstants.PrimaryMaroon, TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Right, Margin = new Padding(0, 10, 0, 10) };
+
+                 tlpRates.Controls.Add(lT, 0, i);
+
+                 tlpRates.Controls.Add(lR, 1, i);
+
+                 
+
+                 // Separator line
+
+                 if(i < 3) {
+
+                     Panel line = new Panel { Height = 1, BackColor = Color.FromArgb(245,245,245), Dock = DockStyle.Bottom, Margin = new Padding(0) };
+
+                     tlpRates.SetColumnSpan(line, 2);
+
+                     // TableLayout doesn't support easy lines between rows like this without extra logic, 
+
+                     // so we'll just rely on spacing for now to keep it clean.
+
+                 }
+
+             }
+
             
-            string[] types = { "Student", "Faculty", "Staff", "Guest" };
-            string[] rates = { "$5 / day", "$3 / day", "$4 / day", "$10 / day" };
-            
-            for (int i = 0; i < 4; i++)
-            {
-                Label lblType = new Label
-                {
-                    Text = types[i] + ":",
-                    Font = new Font("Segoe UI", 10F, FontStyle.Regular),
-                    ForeColor = Color.FromArgb(60, 60, 60),
-                    Location = new Point(0, i * 45),
-                    AutoSize = true
-                };
-                
-                Label lblRate = new Label
-                {
-                    Text = rates[i],
-                    Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                    ForeColor = ThemeConstants.PrimaryMaroon,
-                    Location = new Point(ratesPanel.Width - 100, i * 45),
-                    AutoSize = true,
-                    TextAlign = ContentAlignment.MiddleRight
-                };
-                
-                ratesPanel.Controls.Add(lblType);
-                ratesPanel.Controls.Add(lblRate);
-                
-                if (i < 3)
-                {
-                    Panel separator = new Panel
-                    {
-                        Location = new Point(0, (i + 1) * 45 - 1),
-                        Width = ratesPanel.Width,
-                        Height = 1,
-                        BackColor = Color.FromArgb(245, 245, 245)
-                    };
-                    ratesPanel.Controls.Add(separator);
-                }
-            }
-            
-            // Save button
-            Button btnSave = new Button
-            {
-                Text = "📄 Save Changes",
-                Size = new Size(160, 45),
-                BackColor = ThemeConstants.PrimaryMaroon,
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Location = new Point(sectionPanel.Width - 180, sectionPanel.Height - 65)
+
+            sectionRates.Controls.Add(tlpRates);
+
+            sectionRates.Width = Math.Max(600, flpContent.Width - 30);
+
+            flpContent.Controls.Add(sectionRates);
+
+
+
+             // Save Button
+
+            flpContent.Controls.Add(CreateSettingsSaveButton());
+
+
+
+             Action resizeAction = () => {
+
+                 int w = flpContent.Width - 30;
+
+                 if(w < 400) w = 400; // min width
+
+                 foreach(Control c in flpContent.Controls)
+
+                    if(c is Panel) c.Width = w;
+
             };
-            btnSave.FlatAppearance.BorderSize = 0;
-            btnSave.Paint += (s, e) =>
-            {
-                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnSave.Width, btnSave.Height), 8))
-                using (SolidBrush brush = new SolidBrush(ThemeConstants.PrimaryMaroon))
-                {
-                    e.Graphics.FillPath(brush, path);
-                }
-                TextRenderer.DrawText(e.Graphics, btnSave.Text, btnSave.Font,
-                    new Rectangle(0, 0, btnSave.Width, btnSave.Height),
-                    Color.White,
-                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-            };
-            btnSave.Click += (s, e) =>
-                MessageBox.Show("Settings saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
             
-            sectionPanel.Controls.Add(sectionTitle1);
-            sectionPanel.Controls.Add(sectionSubtitle1);
-            sectionPanel.Controls.Add(configTable);
-            sectionPanel.Controls.Add(sectionTitle2);
-            sectionPanel.Controls.Add(sectionSubtitle2);
-            sectionPanel.Controls.Add(ratesPanel);
-            sectionPanel.Controls.Add(btnSave);
-            
-            pnlSettingsContent.Controls.Add(sectionPanel);
-            
-            // Handle resize
-            Action resizeAction = () =>
-            {
-                int availableWidth = pnlSettingsContent.Width - 60;
-                if (availableWidth < 600) availableWidth = 600;
-                if (availableWidth > 1200) availableWidth = 1200;
-                
-                sectionPanel.Width = availableWidth;
-                sectionPanel.Left = (pnlSettingsContent.Width - sectionPanel.Width) / 2;
-                sectionPanel.Top = 220;
-                
-                configTable.Width = sectionPanel.Width - 40;
-                ratesPanel.Width = sectionPanel.Width - 80;
-                ratesPanel.Resize += (s, e) =>
-                {
-                    foreach (Control ctrl in ratesPanel.Controls)
-                    {
-                        if (ctrl is Label lbl && lbl.ForeColor == ThemeConstants.PrimaryMaroon)
-                        {
-                            lbl.Left = ratesPanel.Width - 100;
-                        }
-                    }
-                };
-                btnSave.Left = sectionPanel.Width - 180;
-            };
-            
-            pnlSettingsContent.Resize += (s, e) => resizeAction();
+
+            flpContent.Resize += (s, e) => resizeAction();
+
             resizeAction();
+
         }
 
         private void ShowUserManagementView()
@@ -4270,1060 +5803,2038 @@ namespace LMS_Library_Management_System.Forms.Dashboard
         }
 
 
+
+
+
         // Helper Methods for Settings UI
-        private Button CreateSettingsTabButton(string text, bool isActive)
+
+        private Panel CreateSettingSection(string title, string subtitle)
+
         {
-            Button btn = new Button
-            {
-                Text = text,
-                Size = new Size(120, 40),
-                FlatStyle = FlatStyle.Flat,
-                FlatAppearance = { BorderSize = 0 },
-                BackColor = Color.White,
-                Font = new Font("Segoe UI", 10F, isActive ? FontStyle.Bold : FontStyle.Regular),
-                ForeColor = isActive ? ThemeConstants.PrimaryMaroon : Color.Gray,
-                Cursor = Cursors.Hand,
-                Tag = isActive // Store active state for underline
+
+            Panel pnl = new Panel { 
+
+                BackColor = Color.White, 
+
+                Margin = new Padding(0, 0, 0, 20),
+
+                AutoSize = true
+
             };
-            
-            // Paint underline for active tab
-            btn.Paint += (s, e) =>
-            {
-                if ((bool)btn.Tag) // Active tab
-                {
-                    using (Pen pen = new Pen(ThemeConstants.PrimaryMaroon, 2))
-                    {
-                        e.Graphics.DrawLine(pen, 0, btn.Height - 2, btn.Width, btn.Height - 2);
-                    }
-                }
+
+            pnl.Paint += (s, e) => {
+
+                using(Pen p = new Pen(Color.FromArgb(230,230,230)))
+
+                   e.Graphics.DrawRectangle(p, 0, 0, pnl.Width-1, pnl.Height-1);
+
             };
+
+
+
+            // Header Panel used for spacing/title
+
+            Panel pnlHeader = new Panel { Dock = DockStyle.Top, Height = 70, BackColor = Color.Transparent };
+
             
-            return btn;
+
+            // Icon logic
+
+            string icon = ""; 
+
+            if(title.Contains("Library")) icon = "🏛";
+
+            if(title.Contains("Notification")) icon = "🔔";
+
+            if(title.Contains("Borrowing")) icon = "📖";
+
+            if(title.Contains("Fine")) icon = "💲";
+
+            if(!string.IsNullOrEmpty(icon)) title = icon + " " + title;
+
+
+
+            Label lblT = new Label { Text = title, Font = new Font("Georgia", 14, FontStyle.Bold), ForeColor = Color.FromArgb(40,40,40), Location = new Point(15, 15), AutoSize = true };
+
+            Label lblS = new Label { Text = subtitle, Font = new Font("Segoe UI", 9), ForeColor = Color.Gray, Location = new Point(17, 45), AutoSize = true };
+
+            
+
+            pnlHeader.Controls.Add(lblT);
+
+            pnlHeader.Controls.Add(lblS);
+
+            
+
+            pnl.Controls.Add(pnlHeader); 
+
+            
+
+            return pnl;
+
         }
 
-        private Panel CreateInputField(string label, string value)
+
+
+        private Panel CreateSettingInput(string label, string value, int width = 0)
+
         {
-            Panel container = new Panel
-            {
-                Height = 75,
-                Dock = DockStyle.Fill,
-                Padding = new Padding(0, 0, 15, 15)
-            };
+
+            // Fixed height container for consistent rows
+
+            Panel pnl = new Panel { Height = 80, Dock = DockStyle.Fill, Padding = new Padding(0, 0, 20, 10) }; 
+
+
+
+            Label lbl = new Label { Text = label, Font = new Font("Segoe UI", 9, FontStyle.Regular), AutoSize = true, ForeColor = Color.FromArgb(60,60,60), Location = new Point(0, 0) };
+
             
-            Label lbl = new Label
-            {
-                Text = label,
-                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
-                ForeColor = Color.FromArgb(60, 60, 60),
-                Location = new Point(0, 0),
-                AutoSize = true
-            };
+
+            // Custom Input Box
+
+            Panel pnlInput = new Panel { Height = 40, BackColor = Color.FromArgb(252, 252, 252), Location = new Point(0, 25), Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right };
+
             
-            Panel inputPanel = new Panel
+
+            if (width > 0) 
+
             {
-                Height = 40,
+
+                pnl.Width = width;
+
+                pnlInput.Width = width - 20;
+
+            }
+
+            else 
+
+            {
+
+                pnlInput.Width = 300; // Initial default
+
+            }
+
+
+
+            TextBox txt = new TextBox 
+
+            { 
+
+                Text = value, 
+
+                Font = new Font("Segoe UI", 10), 
+
+                BorderStyle = BorderStyle.None, 
+
                 BackColor = Color.FromArgb(252, 252, 252),
-                Location = new Point(0, 30),
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
-            };
-            
-            TextBox txt = new TextBox
-            {
-                Text = value,
-                Font = new Font("Segoe UI", 10F),
-                BorderStyle = BorderStyle.None,
-                BackColor = Color.FromArgb(252, 252, 252),
-                ForeColor = Color.FromArgb(40, 40, 40),
+
+                ForeColor = Color.FromArgb(40,40,40),
+
                 Location = new Point(10, 10),
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-                Width = inputPanel.Width - 20
+
+                Width = pnlInput.Width - 20,
+
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+
             };
-            
-            inputPanel.Resize += (s, e) => txt.Width = inputPanel.Width - 20;
-            
-            inputPanel.Paint += (s, e) =>
-            {
+
+
+
+            pnlInput.Controls.Add(txt);
+
+            pnl.Controls.Add(lbl);
+
+            pnl.Controls.Add(pnlInput);
+
+
+
+            // Important: Handle resize manually for the inner input panel to match parent width
+
+            pnl.Resize += (s, e) => {
+
+                 pnlInput.Width = Math.Max(100, pnl.Width - 10); // Use almost full width
+
+            };
+
+
+
+            // Custom Paint for Input Border
+
+            pnlInput.Paint += (s, e) => {
+
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                 bool isFocused = txt.Focused;
+
                 Color borderColor = isFocused ? ThemeConstants.PrimaryMaroon : Color.FromArgb(220, 220, 220);
-                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, inputPanel.Width - 1, inputPanel.Height - 1), 6))
-                using (Pen pen = new Pen(borderColor, isFocused ? 1.5f : 1f))
+
+                using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlInput.Width-1, pnlInput.Height-1), 6))
+
+                using(Pen pen = new Pen(borderColor, isFocused ? 1.5f : 1))
+
                 {
+
                     e.Graphics.DrawPath(pen, path);
+
                 }
+
             };
+
             
-            txt.Enter += (s, e) => inputPanel.Invalidate();
-            txt.Leave += (s, e) => inputPanel.Invalidate();
-            
-            container.Resize += (s, e) => inputPanel.Width = container.Width - 15;
-            
-            inputPanel.Controls.Add(txt);
-            container.Controls.Add(lbl);
-            container.Controls.Add(inputPanel);
-            
-            return container;
+
+            txt.Enter += (s, e) => { pnlInput.Invalidate(); };
+
+            txt.Leave += (s, e) => { pnlInput.Invalidate(); };
+
+
+
+            return pnl;
+
         }
 
-        private Panel CreateNotificationToggle(string title, string description, bool isOn, int topPosition)
+
+
+        private Panel CreateSettingToggle(string title, string sub, bool check)
+
         {
-            Panel container = new Panel
-            {
-                Location = new Point(20, topPosition),
-                Width = 860,
-                Height = 60,
-                BackColor = Color.Transparent
-            };
-            
-            Label lblTitle = new Label
-            {
-                Text = title,
-                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(40, 40, 40),
-                Location = new Point(0, 10),
-                AutoSize = true
-            };
-            
-            Label lblDesc = new Label
-            {
-                Text = description,
-                Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.Gray,
-                Location = new Point(0, 30),
-                AutoSize = true
-            };
-            
-            Panel togglePanel = new Panel
-            {
-                Size = new Size(46, 24),
-                Location = new Point(container.Width - 60, 18),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Cursor = Cursors.Hand,
-                Tag = isOn
-            };
-            
-            togglePanel.Paint += (s, e) =>
-            {
-                bool isOnState = (bool)togglePanel.Tag;
-                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                Color col = isOnState ? ThemeConstants.PrimaryMaroon : Color.FromArgb(200, 200, 200);
-                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 45, 23), 12))
-                using (SolidBrush brush = new SolidBrush(col))
-                {
-                    e.Graphics.FillPath(brush, path);
-                }
-                
-                int circleX = isOnState ? 24 : 2;
-                e.Graphics.FillEllipse(Brushes.White, circleX, 2, 19, 19);
-            };
-            
-            togglePanel.Click += (s, e) =>
-            {
-                togglePanel.Tag = !(bool)togglePanel.Tag;
-                togglePanel.Invalidate();
-            };
-            
-            container.Resize += (s, e) => togglePanel.Left = container.Width - 60;
-            
-            container.Controls.Add(lblTitle);
-            container.Controls.Add(lblDesc);
-            container.Controls.Add(togglePanel);
-            
-            return container;
+
+             Panel pnl = new Panel { Height = 60, Dock = DockStyle.Top, Margin = new Padding(0,0,0,10) };
+
+             Label lblT = new Label { Text = title, Font = new Font("Segoe UI", 9, FontStyle.Bold), Location = new Point(0, 10), AutoSize = true, ForeColor = Color.FromArgb(40,40,40) };
+
+             Label lblS = new Label { Text = sub, Font = new Font("Segoe UI", 9), ForeColor = Color.Gray, Location = new Point(0, 30), AutoSize = true };
+
+             
+
+             Panel pnlToggle = new Panel { Size = new Size(46, 24), Location = new Point(pnl.Width - 60, 15), Anchor = AnchorStyles.Top | AnchorStyles.Right, Cursor = Cursors.Hand, Tag = check };
+
+             pnlToggle.Paint += (s, e) => {
+
+                 bool isOn = (bool)pnlToggle.Tag;
+
+                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
+                 Color col = isOn ? ThemeConstants.PrimaryMaroon : Color.FromArgb(200, 200, 200);
+
+                 using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(0,0,45,23), 12))
+
+                 using(SolidBrush b = new SolidBrush(col)) e.Graphics.FillPath(b, path);
+
+                 
+
+                 int circleX = isOn ? 24 : 2;
+
+                 e.Graphics.FillEllipse(Brushes.White, circleX, 2, 19, 19);
+
+             };
+
+             pnlToggle.Click += (s, e) => {
+
+                 pnlToggle.Tag = !(bool)pnlToggle.Tag;
+
+                 pnlToggle.Invalidate();
+
+             };
+
+
+
+             pnl.Controls.Add(lblT);
+
+             pnl.Controls.Add(lblS);
+
+             pnl.Controls.Add(pnlToggle);
+
+
+
+             return pnl;
+
         }
 
-        private Panel CreateBorrowingCard(string title, string maxBooks, string days, string renewals, string fine, bool canReserve, int topPosition)
+
+
+        private Panel CreateSettingsSaveButton()
+
         {
-            Panel card = new Panel
+
+             Panel pnlObj = new Panel { Height = 80, Dock = DockStyle.Top, Padding = new Padding(0, 20, 0, 0) };
+
+             Button btn = new Button 
+
+             { 
+
+                 Text = "💾  Save Changes", 
+
+                 Size = new Size(160, 45), 
+
+                 BackColor = ThemeConstants.PrimaryMaroon, 
+
+                 ForeColor = Color.White, 
+
+                 FlatStyle = FlatStyle.Flat,
+
+                 Font = new Font("Segoe UI", 10, FontStyle.Bold),
+
+                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
+
+                 Cursor = Cursors.Hand,
+
+                 Location = new Point(pnlObj.Width - 180, 20)
+
+             };
+
+             btn.FlatAppearance.BorderSize = 0;
+
+             pnlObj.Resize += (s, e) => btn.Left = pnlObj.Width - 180;
+
+             
+
+             btn.Paint += (s, e) => {
+
+                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
+                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(0,0,btn.Width,btn.Height), 8))
+
+                  using(SolidBrush b = new SolidBrush(ThemeConstants.PrimaryMaroon)) e.Graphics.FillPath(b, path);
+
+                  TextRenderer.DrawText(e.Graphics, btn.Text, btn.Font, new Rectangle(0,0,btn.Width,btn.Height), Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
+             };
+
+             btn.Click += (s, e) => MessageBox.Show("Settings saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+
+
+             pnlObj.Controls.Add(btn);
+
+             return pnlObj;
+
+        }
+
+
+
+        private Panel CreateBorrowingGroup(string title, string maxBooks, string days, string renewals, string fine, bool canReserve)
+
+        {
+
+            Panel pnl = CreateSettingSection(title, "Configure privileges for this group");
+
+            // Override height and structure
+
+             pnl.Controls.Clear();
+
+             
+
+             Label lblT = new Label { Text = "👤  " + title, Font = new Font("Georgia", 11, FontStyle.Bold), ForeColor = Color.FromArgb(40,40,40), Location = new Point(15, 15), AutoSize = true };
+
+             pnl.Controls.Add(lblT);
+
+             
+
+             Panel line = new Panel { Height = 1, BackColor = Color.FromArgb(240,240,240), Dock = DockStyle.Top };
+
+             pnl.Controls.Add(line);
+
+             
+
+             // Top Spacer
+
+             pnl.Controls.Add(new Panel { Height = 50, Dock = DockStyle.Top }); 
+
+
+
+             TableLayoutPanel tlp = new TableLayoutPanel 
+
+             { 
+
+                 Location = new Point(0, 50),
+
+                 Width = 1000, 
+
+                 Height = 90,
+
+                 ColumnCount = 5, 
+
+                 RowCount = 1,
+
+                 Padding = new Padding(10, 0, 10, 0),
+
+                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+
+             };
+
+            tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+
+            tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+
+            tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+
+            tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+
+            tlp.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+
+            
+
+            // Use width=120 to make them compact inputs
+
+            tlp.Controls.Add(CreateSettingInput("Max Books", maxBooks, 120), 0, 0);
+
+            tlp.Controls.Add(CreateSettingInput("Days Limit", days, 120), 1, 0);
+
+            tlp.Controls.Add(CreateSettingInput("Renewals", renewals, 120), 2, 0);
+
+            tlp.Controls.Add(CreateSettingInput("Fine ($)", fine, 120), 3, 0);
+
+            
+
+            // Reserve Toggle in last column
+
+            Panel pnlReserve = new Panel { Dock = DockStyle.Fill };
+
+            Label lblRes = new Label { Text = "Can Reserve", Font = new Font("Segoe UI", 9, FontStyle.Regular), ForeColor = Color.Gray, AutoSize = true, Location = new Point(0, 0) };
+
+             // Toggle Switch
+
+             Panel pnlToggle = new Panel { Size = new Size(40, 20), Location = new Point(0, 30), Cursor = Cursors.Hand, Tag = canReserve };
+
+             pnlToggle.Paint += (s, e) => {
+
+                 bool isOn = (bool)pnlToggle.Tag;
+
+                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
+                 Color col = isOn ? ThemeConstants.PrimaryMaroon : Color.FromArgb(200, 200, 200);
+
+                 using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(0,0,39,19), 10))
+
+                 using(SolidBrush b = new SolidBrush(col)) e.Graphics.FillPath(b, path);
+
+                 int circleX = isOn ? 22 : 2;
+
+                 e.Graphics.FillEllipse(Brushes.White, circleX, 2, 16, 16);
+
+             };
+
+             pnlToggle.Click += (s, e) => {
+
+                 pnlToggle.Tag = !(bool)pnlToggle.Tag;
+
+                 pnlToggle.Invalidate();
+
+             };
+
+             pnlReserve.Controls.Add(lblRes);
+
+             pnlReserve.Controls.Add(pnlToggle);
+
+            tlp.Controls.Add(pnlReserve, 4, 0);
+
+
+
+             pnl.Controls.Add(tlp);
+
+             pnl.Height = 150;
+
+             pnl.Controls.SetChildIndex(line, 0);
+
+             pnl.Controls.SetChildIndex(lblT, 0); // Header on top
+
+             
+
+             pnl.Paint += (s, e) => {
+
+                using(Pen p = new Pen(Color.FromArgb(230,230,230)))
+
+                   e.Graphics.DrawRectangle(p, 0, 0, pnl.Width-1, pnl.Height-1);
+
+            };
+
+
+
+            return pnl;
+
+        }
+
+
+
+        private Button CreateSettingsSubNavButton(string text, bool isActive)
+
+        {
+
+            return new Button
+
             {
-                Location = new Point(20, topPosition),
-                Width = 860,
-                Height = 140,
+
+                Text = text,
+
+                Size = new Size(150, 40),
+
+                FlatStyle = FlatStyle.Flat,
+
+                FlatAppearance = { BorderSize = 0 },
+
                 BackColor = Color.White,
-                Padding = new Padding(0)
-            };
-            
-            card.Paint += (s, e) =>
-            {
-                using (Pen pen = new Pen(Color.FromArgb(230, 230, 230), 1))
-                {
-                    e.Graphics.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1);
-                }
-            };
-            
-            // Title
-            Label lblTitle = new Label
-            {
-                Text = title,
-                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(40, 40, 40),
-                Location = new Point(15, 15),
-                AutoSize = true
-            };
-            
-            // Separator line
-            Panel separator = new Panel
-            {
-                Location = new Point(0, 50),
-                Width = card.Width,
-                Height = 1,
-                BackColor = Color.FromArgb(240, 240, 240)
-            };
-            
-            // Input fields in a row
-            TableLayoutPanel inputTable = new TableLayoutPanel
-            {
-                Location = new Point(10, 60),
-                Width = card.Width - 20,
-                Height = 60,
-                ColumnCount = 5,
-                RowCount = 1,
-                Padding = new Padding(0)
-            };
-            inputTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
-            inputTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
-            inputTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
-            inputTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
-            inputTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
-            
-            inputTable.Controls.Add(CreateInputField("Max Books", maxBooks), 0, 0);
-            inputTable.Controls.Add(CreateInputField("Days Limit", days), 1, 0);
-            inputTable.Controls.Add(CreateInputField("Renewals", renewals), 2, 0);
-            inputTable.Controls.Add(CreateInputField("Fine ($)", fine), 3, 0);
-            
-            // Can Reserve toggle
-            Panel reservePanel = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(5, 0, 0, 0)
-            };
-            
-            Label lblReserve = new Label
-            {
-                Text = "Can Reserve",
-                Font = new Font("Segoe UI", 9F),
-                ForeColor = Color.Gray,
-                Location = new Point(0, 0),
-                AutoSize = true
-            };
-            
-            Panel togglePanel = new Panel
-            {
-                Size = new Size(40, 20),
-                Location = new Point(0, 25),
+
+                Font = new Font("Segoe UI", 10F, isActive ? FontStyle.Bold : FontStyle.Regular),
+
+                ForeColor = isActive ? ThemeConstants.PrimaryMaroon : Color.Gray,
+
                 Cursor = Cursors.Hand,
-                Tag = canReserve
+
+                Tag = text
+
             };
-            
-            togglePanel.Paint += (s, e) =>
-            {
-                bool isOn = (bool)togglePanel.Tag;
-                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                Color col = isOn ? ThemeConstants.PrimaryMaroon : Color.FromArgb(200, 200, 200);
-                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 39, 19), 10))
-                using (SolidBrush brush = new SolidBrush(col))
-                {
-                    e.Graphics.FillPath(brush, path);
-                }
-                int circleX = isOn ? 22 : 2;
-                e.Graphics.FillEllipse(Brushes.White, circleX, 2, 16, 16);
-            };
-            
-            togglePanel.Click += (s, e) =>
-            {
-                togglePanel.Tag = !(bool)togglePanel.Tag;
-                togglePanel.Invalidate();
-            };
-            
-            reservePanel.Controls.Add(lblReserve);
-            reservePanel.Controls.Add(togglePanel);
-            inputTable.Controls.Add(reservePanel, 4, 0);
-            
-            card.Resize += (s, e) =>
-            {
-                separator.Width = card.Width;
-                inputTable.Width = card.Width - 20;
-            };
-            
-            card.Controls.Add(lblTitle);
-            card.Controls.Add(separator);
-            card.Controls.Add(inputTable);
-            
-            return card;
+
         }
+
+
 
         private Panel CreateCatalogStatCard(string icon, string value, string label, Color accentColor, Point location)
+
         {
+
             Panel card = new Panel
+
             {
+
                 Location = location,
+
                 Size = new Size(200, 70),
+
                 BackColor = Color.White,
+
                 BorderStyle = BorderStyle.None
+
             };
+
             card.Paint += (s, e) =>
+
             {
+
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                 Rectangle shadowRect = new Rectangle(2, 2, card.Width - 2, card.Height - 2);
+
                 Rectangle cardRect = new Rectangle(0, 0, card.Width - 2, card.Height - 2);
+
                 using (var shadowBrush = new SolidBrush(Color.FromArgb(8, 0, 0, 0)))
+
                 using (var shadowPath = CreateRoundedRectangle(shadowRect, 4))
+
                 {
+
                     e.Graphics.FillPath(shadowBrush, shadowPath);
+
                 }
+
                 using (var bgBrush = new SolidBrush(Color.White))
+
                 using (var cardPath = CreateRoundedRectangle(cardRect, 4))
+
                 {
+
                     e.Graphics.FillPath(bgBrush, cardPath);
+
                 }
+
                 using (var borderPen = new Pen(Color.FromArgb(230, 230, 230), 1))
+
                 using (var borderPath = CreateRoundedRectangle(cardRect, 4))
+
                 {
+
                     e.Graphics.DrawPath(borderPen, borderPath);
+
                 }
+
             };
+
             Label lblIcon = new Label
+
             {
+
                 Text = icon,
+
                 Font = new Font("Segoe UI", 20F),
+
                 Location = new Point(15, 15),
+
                 Size = new Size(40, 40),
+
                 ForeColor = accentColor,
+
                 TextAlign = ContentAlignment.MiddleCenter,
+
                 BackColor = Color.Transparent
+
             };
+
             Label lblValue = new Label
+
             {
+
                 Text = value,
+
                 Font = new Font("Segoe UI", 20F, FontStyle.Bold),
+
                 Location = new Point(65, 5),
+
                 Size = new Size(125, 35),
+
                 ForeColor = Color.FromArgb(40, 40, 40),
+
                 TextAlign = ContentAlignment.MiddleLeft,
+
                 Tag = "Value",
+
                 BackColor = Color.Transparent
+
             };
+
             Label lblLabel = new Label
+
             {
+
                 Text = label,
+
                 Font = new Font("Segoe UI", 9F),
+
                 Location = new Point(65, 42),
+
                 Size = new Size(125, 20),
+
                 ForeColor = Color.FromArgb(100, 100, 100),
+
                 TextAlign = ContentAlignment.MiddleLeft,
+
                 BackColor = Color.Transparent
+
             };
+
             card.Controls.AddRange(new Control[] { lblIcon, lblValue, lblLabel });
+
             return card;
+
         }
+
+
 
         private void UpdateCatalogStatCard(Panel card, string newValue)
+
         {
+
             foreach (Control ctrl in card.Controls)
+
             {
+
                 if (ctrl.Tag?.ToString() == "Value" && ctrl is Label lbl)
+
                 {
+
                     lbl.Text = newValue;
+
                     break;
+
                 }
+
             }
+
         }
+
+
 
         private void ShowFeatureMessage(string title, string message)
+
         {
+
             MessageBox.Show(message, 
+
                 $"{title} - Coming Soon", 
+
                 MessageBoxButtons.OK, 
+
                 MessageBoxIcon.Information);
+
         }
+
+
 
         private void AdminDashboardForm_Load(object sender, EventArgs e)
+
         {
+
             LoadUserInfo();
+
             LoadLogo();
+
             LoadDashboardData();
+
             UpdateDate();
+
         }
+
+
 
         private void LoadUserInfo()
+
         {
+
             if (SignInForm.CurrentUser != null)
+
             {
+
                 lblWelcome.Text = $"Welcome back, {SignInForm.CurrentUser.FullName}";
+
                 lblAdminName.Text = SignInForm.CurrentUser.FullName;
+
             }
+
         }
+
+
 
         private void LoadLogo()
+
         {
+
             string logoPath = Path.Combine(Application.StartupPath, "Resources", "logo.png");
+
             if (File.Exists(logoPath))
+
             {
+
                 picLogo.Image = Image.FromFile(logoPath);
+
             }
+
         }
+
+
 
         private void LoadDashboardData()
+
         {
+
             // TODO: Load actual data from database
+
             // For now, using placeholder values
+
             lblTotalBooks.Text = "0";
+
             lblTotalBooksChange.Text = "+0% from last week";
+
             lblActiveMembers.Text = "0";
+
             lblActiveMembersChange.Text = "+0% from last week";
+
             lblBooksBorrowed.Text = "0";
+
             lblBooksBorrowedChange.Text = "+0% from last week";
+
             lblOverdueBooks.Text = "0";
+
             lblOverdueBooksChange.Text = "+0% from last week";
+
             lblTodaysBorrowings.Text = "0";
+
             lblTodaysReturns.Text = "0";
+
             lblPendingFines.Text = "0";
+
         }
+
+
 
         private void UpdateDate()
+
         {
+
             lblDate.Text = DateTime.Now.ToString("MMM d, yyyy");
+
         }
+
+
 
         private void btnLogout_Click(object sender, EventArgs e)
+
         {
+
             DialogResult result = MessageBox.Show(
+
                 "Are you sure you want to sign out?",
+
                 "Confirm Sign Out",
+
                 MessageBoxButtons.YesNo,
+
                 MessageBoxIcon.Question
+
             );
 
+
+
             if (result == DialogResult.Yes)
+
             {
+
                 SignInForm.ClearCurrentUser();
+
                 this.Close();
+
             }
+
         }
+
         private void ShowAddBookDialog()
+
         {
+
             Form addBookForm = new Form();
+
             addBookForm.Size = new Size(600, 750); // Adjusted height
+
             addBookForm.FormBorderStyle = FormBorderStyle.None;
+
             addBookForm.StartPosition = FormStartPosition.CenterParent;
+
             addBookForm.BackColor = Color.White;
+
             addBookForm.ShowInTaskbar = false;
 
+
+
             // Border Point
+
             addBookForm.Paint += (s, e) => {
+
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                  using (Pen p = new Pen(Color.FromArgb(200, 200, 200), 1))
+
                  {
+
                      e.Graphics.DrawRectangle(p, 0, 0, addBookForm.Width - 1, addBookForm.Height - 1);
+
                  }
+
             };
+
+
 
             // Close
+
             Label btnClose = new Label { Text = "×", Font = new Font("Arial", 18), ForeColor = Color.Gray, Location = new Point(addBookForm.Width - 40, 10), Size = new Size(30, 30), Cursor = Cursors.Hand };
+
             btnClose.Click += (s, e) => addBookForm.Close();
+
             btnClose.MouseEnter += (s, e) => btnClose.ForeColor = Color.Black;
+
             btnClose.MouseLeave += (s, e) => btnClose.ForeColor = Color.Gray;
+
             addBookForm.Controls.Add(btnClose);
 
+
+
             // Title
+
             Label lblTitle = new Label { Text = "Add New Book", Font = new Font("Georgia", 16, FontStyle.Bold), ForeColor = Color.FromArgb(40, 40, 40), Location = new Point(30, 30), AutoSize = true };
+
             addBookForm.Controls.Add(lblTitle);
 
+
+
             Label lblSubtitle = new Label { Text = "Enter the book details to add it to the catalog", Font = new Font("Segoe UI", 10), ForeColor = Color.Gray, Location = new Point(32, 60), AutoSize = true };
+
             addBookForm.Controls.Add(lblSubtitle);
 
+
+
             // Helper for Inputs
+
              Func<string, int, int, int, Control> AddInput = (placeholder, x, posY, w) => {
+
                 Panel pnl = new Panel();
+
                 pnl.Location = new Point(x, posY + 25);
+
                 pnl.Size = new Size(w, 40); // Slightly compact
+
                 pnl.BackColor = Color.White;
+
                 pnl.Padding = new Padding(10, 8, 10, 5);
+
                 
+
                 TextBox tb = new TextBox();
+
                 tb.BorderStyle = BorderStyle.None;
+
                 tb.Font = new Font("Segoe UI", 10F);
+
                 tb.Dock = DockStyle.Fill;
+
                 tb.BackColor = Color.White;
+
                 if(!string.IsNullOrEmpty(placeholder)) tb.SetPlaceholder(placeholder); 
 
+
+
                 pnl.Controls.Add(tb);
+
                 addBookForm.Controls.Add(pnl);
+
                 
+
                 pnl.Paint += (s, e) => {
+
                      e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                      bool isFocused = (pnl.Tag as string == "Focused");
+
                      Color borderColor = isFocused ? Color.Maroon : Color.FromArgb(220, 220, 220);
+
                      float width = isFocused ? 1.5f : 1f;
+
                      using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnl.Width - 3, pnl.Height - 3), 6))
+
                      using(Pen pen = new Pen(borderColor, width))
+
                      {
+
                          e.Graphics.DrawPath(pen, path);
+
                      }
+
                 };
+
                 tb.Enter += (s, e) => { pnl.Tag = "Focused"; pnl.Invalidate(); };
+
                 tb.Leave += (s, e) => { pnl.Tag = ""; pnl.Invalidate(); };
+
                 return tb;
+
             };
+
+
 
             Action<string, int, int> AddLabel = (text, x, posY) => {
+
                 Label l = new Label { Text = text, Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(50, 50, 50), Location = new Point(x, posY), AutoSize = true };
+
                 addBookForm.Controls.Add(l);
+
             };
+
+
 
             // Layout
+
             int y = 100;
+
             int col1 = 30;
+
             int col2 = 300;
+
             int w1 = 250;
+
             int wFull = 520;
 
+
+
             // Row 1
+
             AddLabel("Title *", col1, y);
+
             AddInput("Book title", col1, y, w1);
+
             AddLabel("Subtitle", col2, y);
+
             AddInput("Optional subtitle", col2, y, w1);
+
             y += 75;
+
+
 
             // Row 2
+
             AddLabel("ISBN *", col1, y);
+
             AddInput("978-0-00-000000-0", col1, y, w1);
+
             
+
             AddLabel("Category *", col2, y);
+
              // Custom Combo for Category
+
             Panel pnlCat = new Panel { Location = new Point(col2, y + 25), Size = new Size(w1, 40), BackColor = Color.White };
+
             ComboBox cmbCat = new ComboBox { FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 10), Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
+
             cmbCat.Items.AddRange(new string[] { "Fiction", "Non-Fiction", "Science", "History", "Arts" });
+
             pnlCat.Controls.Add(cmbCat);
+
             addBookForm.Controls.Add(pnlCat);
+
              pnlCat.Paint += (s, e) => {
+
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlCat.Width - 3, pnlCat.Height - 3), 6))
+
                  using(Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1)) e.Graphics.DrawPath(pen, path);
+
             };
+
             y += 75;
+
+
 
             // Row 3
+
             AddLabel("Author *", col1, y);
+
             AddInput("Author name", col1, y, w1);
+
             AddLabel("Publisher *", col2, y);
+
             AddInput("Publisher name", col2, y, w1);
+
             y += 75;
+
+
 
             // Row 4
+
             AddLabel("Publication Year", col1, y);
+
             AddInput("2026", col1, y, 70);
+
             
+
             AddLabel("Pages", col1 + 90, y);
+
             AddInput("0", col1 + 90, y, 70);
 
+
+
             AddLabel("Copies", col2, y);
+
             AddInput("1", col2, y, w1);
+
             y += 75;
+
+
 
             // Row 5
+
             AddLabel("Language", col1, y);
+
             AddInput("English", col1, y, w1);
+
             AddLabel("Location *", col2, y);
+
             AddInput("Section A, Shelf 1", col2, y, w1);
+
             y += 75;
+
+
 
             // Row 6
+
             AddLabel("Resource Type", col1, y);
+
             // Type Combo
+
             Panel pnlType = new Panel { Location = new Point(col1, y + 25), Size = new Size(wFull, 40), BackColor = Color.White };
+
             ComboBox cmbType = new ComboBox { FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 10), Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
+
             cmbType.Items.Add("Book");
+
             cmbType.SelectedIndex = 0;
+
             pnlType.Controls.Add(cmbType);
+
             addBookForm.Controls.Add(pnlType);
+
             pnlType.Paint += (s, e) => {
+
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlType.Width - 3, pnlType.Height - 3), 6))
+
                  using(Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1)) e.Graphics.DrawPath(pen, path);
+
             };
+
             y += 75;
 
+
+
              // Row 7 Description
+
             AddLabel("Description", col1, y);
+
             Panel pnlDesc = new Panel { Location = new Point(col1, y + 25), Size = new Size(wFull, 80), BackColor = Color.White, Padding = new Padding(10) };
+
             TextBox txtDesc = new TextBox { BorderStyle = BorderStyle.None, Multiline = true, Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10) };
+
             txtDesc.SetPlaceholder("Brief description of the book...");
+
             pnlDesc.Controls.Add(txtDesc);
+
             addBookForm.Controls.Add(pnlDesc);
+
             pnlDesc.Paint += (s, e) => {
+
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                  bool isFocused = (pnlDesc.Tag as string == "Focused");
+
                  Color borderColor = isFocused ? Color.Maroon : Color.FromArgb(220, 220, 220);
+
                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlDesc.Width - 3, pnlDesc.Height - 3), 6))
+
                  using(Pen pen = new Pen(borderColor, 1)) e.Graphics.DrawPath(pen, path);
+
             };
+
              txtDesc.Enter += (s, e) => { pnlDesc.Tag = "Focused"; pnlDesc.Invalidate(); };
+
              txtDesc.Leave += (s, e) => { pnlDesc.Tag = ""; pnlDesc.Invalidate(); };
 
+
+
             // Buttons
+
             Button btnCancel = new Button { Text = "Cancel", Size = new Size(100, 35), Location = new Point(addBookForm.Width - 240, addBookForm.Height - 50), FlatStyle = FlatStyle.Flat, BackColor = Color.White, ForeColor = Color.Black, Font = ThemeConstants.FontButton };
+
             btnCancel.Click += (s, e) => addBookForm.Close();
 
+
+
             Button btnAdd = new Button { Text = "Add Book", Size = new Size(120, 35), Location = new Point(addBookForm.Width - 130, addBookForm.Height - 50), FlatStyle = FlatStyle.Flat, BackColor = Color.Maroon, ForeColor = Color.White, Font = ThemeConstants.FontButton };
+
             btnAdd.FlatAppearance.BorderSize = 0;
+
             btnAdd.Paint += (s, e) => {
+
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnAdd.Width, btnAdd.Height), 6))
+
                  using(SolidBrush brush = new SolidBrush(Color.Maroon))
+
                  {
+
                      e.Graphics.FillPath(brush, path);
+
                      TextRenderer.DrawText(e.Graphics, btnAdd.Text, btnAdd.Font, new Rectangle(0,0,btnAdd.Width,btnAdd.Height), Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
                  }
+
             };
+
             btnAdd.Click += (s, e) => { MessageBox.Show("Book added!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information); addBookForm.Close(); };
 
+
+
             addBookForm.Controls.Add(btnCancel);
+
             addBookForm.Controls.Add(btnAdd);
+
             addBookForm.ShowDialog(this);
+
         }
+
+
 
         private void ShowCheckOutDialog()
+
         {
+
             Form checkOutForm = new Form();
+
             checkOutForm.Size = new Size(450, 350);
+
             checkOutForm.FormBorderStyle = FormBorderStyle.None;
+
             checkOutForm.StartPosition = FormStartPosition.CenterParent;
+
             checkOutForm.BackColor = Color.White;
+
             checkOutForm.ShowInTaskbar = false;
 
+
+
              checkOutForm.Paint += (s, e) => {
+
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                  using (Pen p = new Pen(Color.FromArgb(200, 200, 200), 1))
+
                  {
+
                      e.Graphics.DrawRectangle(p, 0, 0, checkOutForm.Width - 1, checkOutForm.Height - 1);
+
                  }
+
             };
+
+
 
             Label btnClose = new Label { Text = "×", Font = new Font("Arial", 18), ForeColor = Color.Gray, Location = new Point(checkOutForm.Width - 40, 10), Size = new Size(30, 30), Cursor = Cursors.Hand };
+
             btnClose.Click += (s, e) => checkOutForm.Close();
+
             checkOutForm.Controls.Add(btnClose);
 
+
+
             Label lblTitle = new Label { Text = "Check Out Book", Font = new Font("Georgia", 16, FontStyle.Bold), ForeColor = Color.FromArgb(40, 40, 40), Location = new Point(30, 25), AutoSize = true };
+
             checkOutForm.Controls.Add(lblTitle);
+
              Label lblSubtitle = new Label { Text = "Issue a book to a library member", Font = new Font("Segoe UI", 10), ForeColor = Color.Gray, Location = new Point(32, 55), AutoSize = true };
+
             checkOutForm.Controls.Add(lblSubtitle);
 
+
+
             int y = 100;
+
             // Member Select
+
             Label lblMem = new Label { Text = "Select Member", Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(50, 50, 50), Location = new Point(30, y), AutoSize = true };
+
             checkOutForm.Controls.Add(lblMem);
+
             
+
             Panel pnlMem = new Panel { Location = new Point(30, y + 25), Size = new Size(390, 45), BackColor = Color.White, Padding = new Padding(10, 8, 10, 5) };
+
             ComboBox cmbMem = new ComboBox { FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 11), Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDown }; 
+
             // Mock Data
+
             cmbMem.Items.Add("John Smith (MEM-001)");
+
             pnlMem.Controls.Add(cmbMem);
+
             checkOutForm.Controls.Add(pnlMem);
+
             
+
              pnlMem.Paint += (s, e) => {
+
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                  bool isFocused = cmbMem.Focused;
+
                  Color borderColor = isFocused ? Color.Maroon : Color.FromArgb(120, 0, 0); // Solid Maroon Border as per image
+
                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlMem.Width - 3, pnlMem.Height - 3), 8))
+
                  using(Pen pen = new Pen(borderColor, 1.5f)) e.Graphics.DrawPath(pen, path);
+
             };
+
             cmbMem.Enter += (s, e) => pnlMem.Invalidate();
+
             cmbMem.Leave += (s, e) => pnlMem.Invalidate();
+
             
+
             y += 85;
 
+
+
             // Book Select
+
             Label lblBk = new Label { Text = "Select Book", Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(50, 50, 50), Location = new Point(30, y), AutoSize = true };
+
             checkOutForm.Controls.Add(lblBk);
+
             
+
              Panel pnlBk = new Panel { Location = new Point(30, y + 25), Size = new Size(390, 45), BackColor = Color.White, Padding = new Padding(10, 8, 10, 5) };
+
             ComboBox cmbBk = new ComboBox { FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 11), Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDown }; 
+
              cmbBk.Items.Add("Intro to C# (ISBN-123)");
+
             pnlBk.Controls.Add(cmbBk);
+
             checkOutForm.Controls.Add(pnlBk);
+
             
+
              pnlBk.Paint += (s, e) => {
+
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlBk.Width - 3, pnlBk.Height - 3), 8))
+
                  using(Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1)) e.Graphics.DrawPath(pen, path);
+
             };
+
             
+
             cmbBk.Enter += (s, e) => pnlBk.Invalidate();
+
             cmbBk.Leave += (s, e) => pnlBk.Invalidate();
 
+
+
             // Buttons
+
             Button btnCancel = new Button { Text = "Cancel", Size = new Size(100, 38), Location = new Point(190, 280), FlatStyle = FlatStyle.Flat, BackColor = Color.White, ForeColor = Color.Black, Font = ThemeConstants.FontButton };
+
             btnCancel.Click += (s, e) => checkOutForm.Close();
 
+
+
              Button btnConfirm = new Button { Text = "Confirm Checkout", Size = new Size(140, 38), Location = new Point(300, 280), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(180, 120, 120), ForeColor = Color.White, Font = ThemeConstants.FontButton };
+
             btnConfirm.FlatAppearance.BorderSize = 0;
+
              btnConfirm.Paint += (s, e) => {
+
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnConfirm.Width, btnConfirm.Height), 6))
+
                  using(SolidBrush brush = new SolidBrush(Color.FromArgb(180, 120, 120))) // Rose/Mauve color from image
+
                  {
+
                      e.Graphics.FillPath(brush, path);
+
                      TextRenderer.DrawText(e.Graphics, "Confirm Checkout", btnConfirm.Font, new Rectangle(0,0,btnConfirm.Width,btnConfirm.Height), Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
                  }
+
             };
+
+
 
              checkOutForm.Controls.Add(btnCancel);
+
              checkOutForm.Controls.Add(btnConfirm);
+
              checkOutForm.ShowDialog(this);
+
         }
+
+
 
         private void ShowReservationDialog()
+
         {
+
             Form rvForm = new Form();
+
             rvForm.Size = new Size(450, 400);
+
             rvForm.FormBorderStyle = FormBorderStyle.None;
+
             rvForm.StartPosition = FormStartPosition.CenterParent;
+
             rvForm.BackColor = Color.White;
+
             rvForm.ShowInTaskbar = false;
 
+
+
              rvForm.Paint += (s, e) => {
+
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                  using (Pen p = new Pen(Color.FromArgb(200, 200, 200), 1))
+
                  {
+
                      e.Graphics.DrawRectangle(p, 0, 0, rvForm.Width - 1, rvForm.Height - 1);
+
                  }
+
             };
+
+
 
             Label btnClose = new Label { Text = "×", Font = new Font("Arial", 18), ForeColor = Color.Gray, Location = new Point(rvForm.Width - 40, 10), Size = new Size(30, 30), Cursor = Cursors.Hand };
+
             btnClose.Click += (s, e) => rvForm.Close();
+
             btnClose.MouseEnter += (s, e) => btnClose.ForeColor = Color.Black;
+
             btnClose.MouseLeave += (s, e) => btnClose.ForeColor = Color.Gray;
+
             rvForm.Controls.Add(btnClose);
 
+
+
             Label lblTitle = new Label { Text = "Create Reservation", Font = new Font("Georgia", 16, FontStyle.Bold), ForeColor = Color.FromArgb(40, 40, 40), Location = new Point(30, 25), AutoSize = true };
+
             rvForm.Controls.Add(lblTitle);
+
              Label lblSubtitle = new Label { Text = "Reserve a book for a library member", Font = new Font("Segoe UI", 10), ForeColor = Color.Gray, Location = new Point(32, 55), AutoSize = true };
+
             rvForm.Controls.Add(lblSubtitle);
 
+
+
             int y = 100;
+
             // Member Select
+
             Label lblMem = new Label { Text = "Select Member", Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(50, 50, 50), Location = new Point(30, y), AutoSize = true };
+
             rvForm.Controls.Add(lblMem);
+
             
+
             Panel pnlMem = new Panel { Location = new Point(30, y + 25), Size = new Size(390, 45), BackColor = Color.White, Padding = new Padding(10, 8, 10, 5) };
+
             ComboBox cmbMem = new ComboBox { FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 11), Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDown }; 
+
             cmbMem.Items.Add("Choose a member...");
+
             cmbMem.SelectedIndex = 0;
+
             pnlMem.Controls.Add(cmbMem);
+
             rvForm.Controls.Add(pnlMem);
+
             
+
              pnlMem.Paint += (s, e) => {
+
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                  bool isFocused = cmbMem.Focused;
+
                  Color borderColor = isFocused ? Color.Maroon : Color.FromArgb(120, 0, 0); 
+
                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlMem.Width - 3, pnlMem.Height - 3), 8))
+
                  using(Pen pen = new Pen(borderColor, 1.5f)) e.Graphics.DrawPath(pen, path);
+
             };
+
             cmbMem.Enter += (s, e) => pnlMem.Invalidate();
+
             cmbMem.Leave += (s, e) => pnlMem.Invalidate();
+
             
+
             y += 85;
 
+
+
             // Book Select
+
             Label lblBk = new Label { Text = "Select Book", Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(50, 50, 50), Location = new Point(30, y), AutoSize = true };
+
             rvForm.Controls.Add(lblBk);
+
             
+
              Panel pnlBk = new Panel { Location = new Point(30, y + 25), Size = new Size(390, 45), BackColor = Color.White, Padding = new Padding(10, 8, 10, 5) };
+
             ComboBox cmbBk = new ComboBox { FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 11), Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDown }; 
+
              cmbBk.Items.Add("Choose a book...");
+
              cmbBk.SelectedIndex = 0;
+
             pnlBk.Controls.Add(cmbBk);
+
             rvForm.Controls.Add(pnlBk);
+
             
+
              pnlBk.Paint += (s, e) => {
+
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlBk.Width - 3, pnlBk.Height - 3), 8))
+
                  using(Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1)) e.Graphics.DrawPath(pen, path);
+
             };
+
              cmbBk.Enter += (s, e) => pnlBk.Invalidate();
+
              cmbBk.Leave += (s, e) => pnlBk.Invalidate();
 
+
+
             // Buttons
+
             Button btnCancel = new Button { Text = "Cancel", Size = new Size(100, 38), Location = new Point(180, 330), FlatStyle = FlatStyle.Flat, BackColor = Color.White, ForeColor = Color.Black, Font = ThemeConstants.FontButton };
+
             btnCancel.Click += (s, e) => rvForm.Close();
 
+
+
              Button btnConfirm = new Button { Text = "Create Reservation", Size = new Size(150, 38), Location = new Point(290, 330), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(120, 20, 40), ForeColor = Color.White, Font = ThemeConstants.FontButton }; // Darker Maroon
+
             btnConfirm.FlatAppearance.BorderSize = 0;
+
              btnConfirm.Paint += (s, e) => {
+
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnConfirm.Width, btnConfirm.Height), 6))
+
                  using(SolidBrush brush = new SolidBrush(Color.FromArgb(120, 20, 40))) 
+
                  {
+
                      e.Graphics.FillPath(brush, path);
+
                      TextRenderer.DrawText(e.Graphics, "Create Reservation", btnConfirm.Font, new Rectangle(0,0,btnConfirm.Width,btnConfirm.Height), Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
                  }
+
             };
 
+
+
              rvForm.Controls.Add(btnCancel);
+
              rvForm.Controls.Add(btnConfirm);
+
              rvForm.ShowDialog(this);
+
         }
+
+
+
 
 
         private void ShowAddFineDialog()
+
         {
+
             Form fineForm = new Form();
+
             fineForm.Size = new Size(450, 600);
+
             fineForm.FormBorderStyle = FormBorderStyle.None;
+
             fineForm.StartPosition = FormStartPosition.CenterParent;
+
             fineForm.BackColor = Color.White;
+
             fineForm.ShowInTaskbar = false;
 
+
+
              fineForm.Paint += (s, e) => {
+
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                  using (Pen p = new Pen(Color.FromArgb(200, 200, 200), 1))
+
                  {
+
                      e.Graphics.DrawRectangle(p, 0, 0, fineForm.Width - 1, fineForm.Height - 1);
+
                  }
+
             };
+
+
 
             Label btnClose = new Label { Text = "×", Font = new Font("Arial", 18), ForeColor = Color.Gray, Location = new Point(fineForm.Width - 40, 10), Size = new Size(30, 30), Cursor = Cursors.Hand };
+
             btnClose.Click += (s, e) => fineForm.Close();
+
             fineForm.Controls.Add(btnClose);
 
+
+
             Label lblTitle = new Label { Text = "Add New Fine", Font = new Font("Georgia", 16, FontStyle.Bold), ForeColor = Color.FromArgb(40, 40, 40), Location = new Point(30, 25), AutoSize = true };
+
             fineForm.Controls.Add(lblTitle);
+
             Label lblSubtitle = new Label { Text = "Create a new fine for a member", Font = new Font("Segoe UI", 10), ForeColor = Color.Gray, Location = new Point(32, 55), AutoSize = true };
+
             fineForm.Controls.Add(lblSubtitle);
 
+
+
             int y = 90;
+
             // Member Select
+
             Label lblMem = new Label { Text = "Select Member", Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(50, 50, 50), Location = new Point(30, y), AutoSize = true };
+
             fineForm.Controls.Add(lblMem);
+
             Panel pnlMem = new Panel { Location = new Point(30, y + 25), Size = new Size(390, 45), BackColor = Color.White, Padding = new Padding(10, 8, 10, 5) };
+
             ComboBox cmbMem = new ComboBox { FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 11), Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDown }; 
+
             cmbMem.Items.Add("Choose a member...");
+
             cmbMem.SelectedIndex = 0;
+
             pnlMem.Controls.Add(cmbMem);
+
             fineForm.Controls.Add(pnlMem);
+
              pnlMem.Paint += (s, e) => {
+
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                  bool isFocused = cmbMem.Focused;
+
                  Color borderColor = isFocused ? Color.Maroon : Color.FromArgb(120, 0, 0); 
+
                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlMem.Width - 3, pnlMem.Height - 3), 8))
+
                  using(Pen pen = new Pen(borderColor, 1.5f)) e.Graphics.DrawPath(pen, path);
+
             };
+
             cmbMem.Enter += (s, e) => pnlMem.Invalidate();
+
             cmbMem.Leave += (s, e) => pnlMem.Invalidate();
+
             y += 80;
+
+
 
              // Fine Type
+
             Label lblType = new Label { Text = "Fine Type", Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(50, 50, 50), Location = new Point(30, y), AutoSize = true };
+
             fineForm.Controls.Add(lblType);
+
             Panel pnlType = new Panel { Location = new Point(30, y + 25), Size = new Size(390, 45), BackColor = Color.White, Padding = new Padding(10, 8, 10, 5) };
+
             ComboBox cmbType = new ComboBox { FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 11), Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList }; 
+
             cmbType.Items.AddRange(new string[] { "Late Return", "Lost Book", "Damaged Book", "Other" });
+
             cmbType.SelectedItem = "Other";
+
             pnlType.Controls.Add(cmbType);
+
             fineForm.Controls.Add(pnlType);
+
              pnlType.Paint += (s, e) => {
+
                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlType.Width - 3, pnlType.Height - 3), 8))
+
                  using(Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1)) e.Graphics.DrawPath(pen, path);
+
             };
+
             y += 80;
+
+
 
             // Amount
+
              Label lblAmt = new Label { Text = "Amount", Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(50, 50, 50), Location = new Point(30, y), AutoSize = true };
+
             fineForm.Controls.Add(lblAmt);
+
              Panel pnlAmt = new Panel { Location = new Point(30, y + 25), Size = new Size(390, 45), BackColor = Color.White, Padding = new Padding(10, 10, 10, 5) };
+
              Label lblSign = new Label { Text = "$", Font = new Font("Segoe UI", 11), ForeColor = Color.Gray, AutoSize = true, Location = new Point(10, 8) };
+
              TextBox txtAmt = new TextBox { BorderStyle = BorderStyle.None, Font = new Font("Segoe UI", 11), Location = new Point(30, 8), Width = 340 };
+
              txtAmt.Text = "0";
+
              pnlAmt.Controls.Add(lblSign);
+
              pnlAmt.Controls.Add(txtAmt);
+
              fineForm.Controls.Add(pnlAmt);
+
               pnlAmt.Paint += (s, e) => {
+
                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlAmt.Width - 3, pnlAmt.Height - 3), 8))
+
                  using(Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1)) e.Graphics.DrawPath(pen, path);
+
             };
+
             y += 80;
 
+
+
             // Book Title (Opt)
+
              Label lblBk = new Label { Text = "Book Title (optional)", Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(50, 50, 50), Location = new Point(30, y), AutoSize = true };
+
             fineForm.Controls.Add(lblBk);
+
              Panel pnlBk = new Panel { Location = new Point(30, y + 25), Size = new Size(390, 45), BackColor = Color.White, Padding = new Padding(10, 10, 10, 5) };
+
              TextBox txtBk = new TextBox { BorderStyle = BorderStyle.None, Font = new Font("Segoe UI", 10), Dock = DockStyle.Fill };
+
              txtBk.SetPlaceholder("Related book title...");
+
              pnlBk.Controls.Add(txtBk);
+
              fineForm.Controls.Add(pnlBk);
+
               pnlBk.Paint += (s, e) => {
+
                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlBk.Width - 3, pnlBk.Height - 3), 8))
+
                  using(Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1)) e.Graphics.DrawPath(pen, path);
+
             };
+
              y += 80;
 
+
+
              // Notes
+
              Label lblNotes = new Label { Text = "Notes", Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(50, 50, 50), Location = new Point(30, y), AutoSize = true };
+
             fineForm.Controls.Add(lblNotes);
+
              Panel pnlNotes = new Panel { Location = new Point(30, y + 25), Size = new Size(390, 90), BackColor = Color.White, Padding = new Padding(10) };
+
              TextBox txtNotes = new TextBox { BorderStyle = BorderStyle.None, Font = new Font("Segoe UI", 10), Dock = DockStyle.Fill, Multiline = true };
+
              txtNotes.SetPlaceholder("Additional notes...");
+
              pnlNotes.Controls.Add(txtNotes);
+
              fineForm.Controls.Add(pnlNotes);
+
               pnlNotes.Paint += (s, e) => {
+
                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlNotes.Width - 3, pnlNotes.Height - 3), 8))
+
                  using(Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1)) e.Graphics.DrawPath(pen, path);
+
             };
+
+
 
              // Buttons
+
             Button btnCancel = new Button { Text = "Cancel", Size = new Size(100, 38), Location = new Point(230, 540), FlatStyle = FlatStyle.Flat, BackColor = Color.White, ForeColor = Color.Black, Font = ThemeConstants.FontButton };
+
             btnCancel.Click += (s, e) => fineForm.Close();
 
+
+
              Button btnConfirm = new Button { Text = "Add Fine", Size = new Size(100, 38), Location = new Point(340, 540), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(120, 20, 40), ForeColor = Color.White, Font = ThemeConstants.FontButton };
+
             btnConfirm.FlatAppearance.BorderSize = 0;
+
              btnConfirm.Paint += (s, e) => {
+
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnConfirm.Width, btnConfirm.Height), 6))
+
                  using(SolidBrush brush = new SolidBrush(Color.FromArgb(120, 20, 40))) 
+
                  {
+
                      e.Graphics.FillPath(brush, path);
+
                      TextRenderer.DrawText(e.Graphics, "Add Fine", btnConfirm.Font, new Rectangle(0,0,btnConfirm.Width,btnConfirm.Height), Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+
                  }
+
             };
+
+
 
              fineForm.Controls.Add(btnCancel);
+
              fineForm.Controls.Add(btnConfirm);
+
              fineForm.ShowDialog(this);
+
         }
+
+
 
         private Panel CreateReportStatCard(string title, string value, string icon, Color bg, Color fg, bool isDark)
+
         {
+
             Panel card = new Panel { Dock = DockStyle.Fill, BackColor = bg, Margin = new Padding(5) };
+
             
+
             // Icon at x=10
+
             Label lblIcon = new Label 
+
             { 
+
                 Text = icon, 
+
                 Font = new Font("Segoe UI", 20, FontStyle.Regular), // Increased font size slightly
+
                 ForeColor = isDark ? Color.White : Color.FromArgb(40,40,40), 
+
                 Location = new Point(10, 15), 
+
                 AutoSize = true, 
+
                 BackColor = Color.Transparent 
+
             };
+
+
 
             // Value at x=70 (giving 60px space for icon)
+
             Label lblVal = new Label 
+
             { 
+
                 Text = value, 
+
                 Font = new Font("Segoe UI", 16, FontStyle.Bold), 
+
                 ForeColor = fg, 
+
                 Location = new Point(70, 10), 
+
                 AutoEllipsis = true,
+
                 AutoSize = true
+
             };
+
+
 
             // Title below value at x=70
+
             Label lblTitle = new Label 
+
             { 
+
                 Text = title, 
+
                 Font = new Font("Segoe UI", 9), 
+
                 ForeColor = isDark ? Color.FromArgb(200, 200, 200) : Color.Gray, 
+
                 Location = new Point(70, 45), 
+
                 AutoEllipsis = true,
+
                 AutoSize = true
+
             };
+
             
+
              card.Controls.Add(lblIcon);
+
              card.Controls.Add(lblVal);
+
              card.Controls.Add(lblTitle);
+
              
+
             // Dynamic Resizing Logic
+
             card.Resize += (s, e) => {
+
                  int maxW = card.Width - 80; // 70 offset + 10 margin
+
                  if (maxW > 20) 
+
                  {
+
                     lblVal.MaximumSize = new Size(maxW, 40);
+
                     lblTitle.MaximumSize = new Size(maxW, 25);
+
                  }
+
                  else
+
                  {
+
                     lblVal.MaximumSize = Size.Empty;
+
                     lblTitle.MaximumSize = Size.Empty; 
+
                  }
+
              };
+
              
+
              card.Paint += (s, e) => {
+
                  using(Pen p = new Pen(Color.FromArgb(230, 230, 230)))
+
                  {
+
                       if(!isDark) e.Graphics.DrawRectangle(p, 0, 0, card.Width - 1, card.Height - 1);
+
                  }
+
              };
+
              return card;
+
         }
+
+
 
         private void SetupChart(Panel pnl, string title)
+
         {
+
             // Header Panel
+
             Panel pnlHeader = new Panel { Dock = DockStyle.Top, Height = 80, BackColor = Color.Transparent };
+
             Label lblTitle = new Label { Text = title, Font = new Font("Georgia", 14, FontStyle.Bold), Location = new Point(20, 20), AutoSize = true };
+
             Label lblSub = new Label { Text = "Borrowings and returns over time", Font = new Font("Segoe UI", 9), ForeColor = Color.Gray, Location = new Point(22, 50), AutoSize = true };
+
             pnlHeader.Controls.Add(lblTitle);
+
             pnlHeader.Controls.Add(lblSub);
+
             pnl.Controls.Add(pnlHeader);
 
+
+
             Chart chart = new Chart();
+
             chart.Dock = DockStyle.Fill;
+
             // Removed manual Height setting which caused the bug
+
             
+
             ChartArea ca = new ChartArea();
+
             ca.Name = "MainArea";
+
             ca.BackColor = Color.White;
+
             ca.AxisX.MajorGrid.LineColor = Color.FromArgb(245, 245, 245);
+
             ca.AxisY.MajorGrid.LineColor = Color.FromArgb(245, 245, 245);
+
             ca.AxisX.LineColor = Color.Gray;
+
             ca.AxisY.LineColor = Color.Transparent;
+
             ca.AxisX.LabelStyle.Font = new Font("Segoe UI", 8);
+
             ca.AxisY.LabelStyle.Font = new Font("Segoe UI", 8);
+
             ca.AxisX.LabelStyle.ForeColor = Color.Gray;
+
             ca.AxisY.LabelStyle.ForeColor = Color.Gray;
+
             chart.ChartAreas.Add(ca);
 
+
+
             Series s1 = new Series
+
             {
+
                 Name = "Borrowings",
+
                 Color = Color.Maroon,
+
                 ChartType = SeriesChartType.Spline,
+
                 BorderWidth = 3
+
             };
+
             s1.Points.AddXY("Jan 1", 5);
+
             s1.Points.AddXY("Jan 2", 12);
+
             s1.Points.AddXY("Jan 3", 8);
+
             s1.Points.AddXY("Jan 4", 15);
+
             s1.Points.AddXY("Jan 5", 6);
+
             s1.Points.AddXY("Jan 6", 10);
+
             
+
              Series s2 = new Series
+
             {
+
                 Name = "Returns",
+
                 Color = Color.Green,
+
                 ChartType = SeriesChartType.Spline,
+
                 BorderWidth = 3
+
             };
+
             s2.Points.AddXY("Jan 1", 2);
+
             s2.Points.AddXY("Jan 2", 5);
+
             s2.Points.AddXY("Jan 3", 8);
+
             s2.Points.AddXY("Jan 4", 10);
+
             s2.Points.AddXY("Jan 5", 4);
+
             s2.Points.AddXY("Jan 6", 9);
 
+
+
             chart.Series.Add(s1);
+
             chart.Series.Add(s2);
+
             
+
             pnl.Controls.Add(chart);
+
             chart.BringToFront(); // Ensure chart is not covered by header if layout is weird, but Dock Fill + Top works naturally
 
+
+
             pnl.Paint += (s, e) => {
+
                  using(Pen borderPen = new Pen(Color.FromArgb(230, 230, 230))) 
+
                     e.Graphics.DrawRectangle(borderPen, 0, 0, pnl.Width - 1, pnl.Height - 1);
+
             };
+
         }
+
+
+
 
 
     }
+
 }
+
