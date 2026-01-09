@@ -856,7 +856,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             registerForm.Size = new Size(550, 720);
             registerForm.FormBorderStyle = FormBorderStyle.None; // Custom chrome
             registerForm.StartPosition = FormStartPosition.CenterParent;
-            registerForm.BackColor = Color.White;
+            registerForm.BackColor = Color.FromArgb(245, 240, 235); // Beige background
             registerForm.ShowInTaskbar = false;
 
             // Paint Border
@@ -1204,18 +1204,14 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 Point clickPoint = dgv.PointToClient(Control.MousePosition);
                 int relativeX = clickPoint.X - cellRect.X;
                 int cellWidth = cellRect.Width;
-                int thirdWidth = cellWidth / 3;
-                if (relativeX < thirdWidth)
+                int halfWidth = cellWidth / 2;
+                if (relativeX < halfWidth)
                 {
                     ViewMember(memberId);
                 }
-                else if (relativeX < thirdWidth * 2)
-                {
-                    EditMember(memberId);
-                }
                 else
                 {
-                    DeleteMember(memberId);
+                    EditMember(memberId);
                 }
             }
         }
@@ -1245,57 +1241,567 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 _isProcessingAction = true;
                 
                 // TODO: Load actual member data from database
-                // For now, show a dialog with member information
+                // Mock data for now
+                string memberName = "John Smith";
+                string memberType = "Student";
+                string email = "john.smith@university.edu";
+                string phone = "+1 555-0101";
+                string status = "Active";
+                string registeredDate = "Jan 15, 2024";
+                string expiryDate = "Jan 15, 2025";
+                string address = "123 Campus Drive, University City";
+                int currentBooks = 3;
+                int maxBooks = 5;
+                int totalBorrowed = 15;
+                decimal unpaidFines = 0;
+                
                 using (Form viewForm = new Form())
                 {
-                    viewForm.Text = $"Member Details - {memberId}";
-                    viewForm.Size = new Size(500, 500);
+                    viewForm.Text = "";
+                    viewForm.Size = new Size(700, 750);
                     viewForm.StartPosition = FormStartPosition.CenterParent;
-                    viewForm.FormBorderStyle = FormBorderStyle.FixedDialog;
-                    viewForm.MaximizeBox = false;
-                    viewForm.MinimizeBox = false;
+                    viewForm.FormBorderStyle = FormBorderStyle.None;
+                    viewForm.BackColor = Color.FromArgb(245, 240, 235); // Beige background
+                    viewForm.Padding = new Padding(0);
                     
+                    // Main container panel
+                    Panel mainPanel = new Panel
+                    {
+                        Dock = DockStyle.Fill,
+                        BackColor = Color.FromArgb(245, 240, 235), // Beige background
+                        Padding = new Padding(0)
+                    };
+                    
+                    // Header panel
+                    Panel headerPanel = new Panel
+                    {
+                        Dock = DockStyle.Top,
+                        Height = 90,
+                        BackColor = Color.FromArgb(245, 240, 235), // Beige background
+                        Padding = new Padding(30, 25, 30, 15)
+                    };
+                    
+                    // Close button (X)
+                    Button btnCloseX = new Button
+                    {
+                        Text = "✕",
+                        Size = new Size(30, 30),
+                        Location = new Point(640, 25),
+                        Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                        FlatStyle = FlatStyle.Flat,
+                        BackColor = Color.Transparent,
+                        ForeColor = Color.Gray,
+                        Font = new Font("Segoe UI", 12F),
+                        Cursor = Cursors.Hand
+                    };
+                    btnCloseX.FlatAppearance.BorderSize = 0;
+                    btnCloseX.Click += (s, e) => viewForm.Close();
+                    headerPanel.Controls.Add(btnCloseX);
+                    
+                    // Title and ID
                     Label lblTitle = new Label
                     {
-                        Text = $"Member Information: {memberId}",
-                        Font = new Font("Segoe UI", 14F, FontStyle.Bold),
-                        ForeColor = ThemeConstants.PrimaryMaroon,
+                        Text = memberName,
+                        Font = new Font("Segoe UI", 20F, FontStyle.Bold),
+                        ForeColor = Color.FromArgb(40, 40, 40),
+                        Location = new Point(0, 0),
+                        AutoSize = true
+                    };
+                    headerPanel.Controls.Add(lblTitle);
+                    
+                    Label lblMemberId = new Label
+                    {
+                        Text = memberId,
+                        Font = new Font("Segoe UI", 10F),
+                        ForeColor = Color.Gray,
+                        Location = new Point(0, 35),
+                        AutoSize = true
+                    };
+                    headerPanel.Controls.Add(lblMemberId);
+                    
+                    // Content panel
+                    Panel contentPanel = new Panel
+                    {
+                        Dock = DockStyle.Fill,
+                        AutoScroll = true,
+                        BackColor = Color.FromArgb(245, 240, 235), // Beige background
+                        Padding = new Padding(30, 40, 30, 20)
+                    };
+                    
+                    // Avatar and info section
+                    Panel avatarSection = new Panel
+                    {
+                        Height = 120,
+                        Dock = DockStyle.Top,
+                        BackColor = Color.FromArgb(245, 240, 235) // Beige background
+                    };
+                    
+                    // Avatar circle
+                    Panel avatarPanel = new Panel
+                    {
+                        Size = new Size(80, 80),
+                        Location = new Point(0, 0),
+                        BackColor = Color.FromArgb(245, 240, 235)
+                    };
+                    avatarPanel.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 79, 79), 40))
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(245, 240, 235)))
+                            e.Graphics.FillPath(brush, path);
+                        using (Font font = new Font("Segoe UI", 24F, FontStyle.Bold))
+                        using (SolidBrush brush = new SolidBrush(ThemeConstants.PrimaryMaroon))
+                        {
+                            SizeF textSize = e.Graphics.MeasureString("JS", font);
+                            e.Graphics.DrawString("JS", font, brush, (80 - textSize.Width) / 2, (80 - textSize.Height) / 2);
+                        }
+                    };
+                    avatarSection.Controls.Add(avatarPanel);
+                    
+                    // Status tags
+                    Panel tagActive = new Panel
+                    {
+                        Size = new Size(60, 24),
+                        Location = new Point(100, 0),
+                        BackColor = Color.FromArgb(220, 252, 231)
+                    };
+                    tagActive.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 59, 23), 12))
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(220, 252, 231)))
+                            e.Graphics.FillPath(brush, path);
+                        using (Font font = new Font("Segoe UI", 8F, FontStyle.Bold))
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(34, 197, 94)))
+                            e.Graphics.DrawString("Active", font, brush, 8, 5);
+                    };
+                    avatarSection.Controls.Add(tagActive);
+                    
+                    Panel tagStudent = new Panel
+                    {
+                        Size = new Size(70, 24),
+                        Location = new Point(170, 0),
+                        BackColor = Color.FromArgb(219, 234, 254)
+                    };
+                    tagStudent.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 69, 23), 12))
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(219, 234, 254)))
+                            e.Graphics.FillPath(brush, path);
+                        using (Font font = new Font("Segoe UI", 8F, FontStyle.Bold))
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(59, 130, 246)))
+                            e.Graphics.DrawString("Student", font, brush, 8, 5);
+                    };
+                    avatarSection.Controls.Add(tagStudent);
+                    
+                    // Contact info
+                    Label lblEmail = new Label
+                    {
+                        Text = email,
+                        Font = new Font("Segoe UI", 10F),
+                        ForeColor = Color.FromArgb(60, 60, 60),
+                        Location = new Point(100, 35),
+                        AutoSize = true
+                    };
+                    avatarSection.Controls.Add(lblEmail);
+                    
+                    Label lblPhone = new Label
+                    {
+                        Text = phone,
+                        Font = new Font("Segoe UI", 10F),
+                        ForeColor = Color.FromArgb(60, 60, 60),
+                        Location = new Point(100, 55),
+                        AutoSize = true
+                    };
+                    avatarSection.Controls.Add(lblPhone);
+                    
+                    contentPanel.Controls.Add(avatarSection);
+                    
+                    // Two column cards
+                    Panel cardsContainer = new Panel
+                    {
+                        Height = 180,
+                        Dock = DockStyle.Top,
+                        BackColor = Color.FromArgb(245, 240, 235), // Beige background
+                        Padding = new Padding(0, 30, 0, 0)
+                    };
+                    
+                    // Membership Details card
+                    Panel cardMembership = new Panel
+                    {
+                        Size = new Size(300, 160),
+                        Location = new Point(0, 0),
+                        BackColor = Color.FromArgb(245, 240, 235) // Beige background
+                    };
+                    cardMembership.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 299, 159), 8))
+                        using (Pen pen = new Pen(Color.FromArgb(230, 230, 230)))
+                            e.Graphics.DrawPath(pen, path);
+                    };
+                    
+                    Label lblMembershipTitle = new Label
+                    {
+                        Text = "Membership Details",
+                        Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                        ForeColor = Color.FromArgb(40, 40, 40),
                         Location = new Point(20, 20),
                         AutoSize = true
                     };
+                    cardMembership.Controls.Add(lblMembershipTitle);
                     
-                    // Mock member data - replace with actual data loading
-                    string memberInfo = $"Member ID: {memberId}\n\n" +
-                                      $"Name: [Member Name]\n" +
-                                      $"Type: [Member Type]\n" +
-                                      $"Email: [Email Address]\n" +
-                                      $"Phone: [Phone Number]\n" +
-                                      $"Status: [Status]\n" +
-                                      $"Books Borrowed: [Count]\n" +
-                                      $"Fines: ₱[Amount]\n\n" +
-                                      $"Registration Date: [Date]\n" +
-                                      $"Expiry Date: [Date]";
-                    
-                    TextBox txtInfo = new TextBox
+                    Label lblRegistered = new Label
                     {
-                        Text = memberInfo,
-                        Multiline = true,
-                        ReadOnly = true,
-                        Location = new Point(20, 60),
-                        Size = new Size(440, 350),
-                        Font = new Font("Segoe UI", 10F),
-                        ScrollBars = ScrollBars.Vertical
+                        Text = $"Registered: {registeredDate}",
+                        Font = new Font("Segoe UI", 9F),
+                        ForeColor = Color.FromArgb(100, 100, 100),
+                        Location = new Point(20, 50),
+                        AutoSize = true
+                    };
+                    cardMembership.Controls.Add(lblRegistered);
+                    
+                    Label lblExpires = new Label
+                    {
+                        Text = $"Expires: {expiryDate}",
+                        Font = new Font("Segoe UI", 9F),
+                        ForeColor = Color.FromArgb(100, 100, 100),
+                        Location = new Point(20, 75),
+                        AutoSize = true
+                    };
+                    cardMembership.Controls.Add(lblExpires);
+                    
+                    Label lblAddress = new Label
+                    {
+                        Text = $"Address: {address}",
+                        Font = new Font("Segoe UI", 9F),
+                        ForeColor = Color.FromArgb(100, 100, 100),
+                        Location = new Point(20, 100),
+                        AutoSize = true,
+                        MaximumSize = new Size(260, 0)
+                    };
+                    cardMembership.Controls.Add(lblAddress);
+                    
+                    cardsContainer.Controls.Add(cardMembership);
+                    
+                    // Borrowing Statistics card
+                    Panel cardStatistics = new Panel
+                    {
+                        Size = new Size(300, 160),
+                        Location = new Point(320, 0),
+                        BackColor = Color.FromArgb(245, 240, 235) // Beige background
+                    };
+                    cardStatistics.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 299, 159), 8))
+                        using (Pen pen = new Pen(Color.FromArgb(230, 230, 230)))
+                            e.Graphics.DrawPath(pen, path);
+                    };
+                    
+                    Label lblStatsTitle = new Label
+                    {
+                        Text = "Borrowing Statistics",
+                        Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                        ForeColor = Color.FromArgb(40, 40, 40),
+                        Location = new Point(20, 20),
+                        AutoSize = true
+                    };
+                    cardStatistics.Controls.Add(lblStatsTitle);
+                    
+                    Label lblCurrentBooks = new Label
+                    {
+                        Text = $"Current Books: {currentBooks}/{maxBooks}",
+                        Font = new Font("Segoe UI", 9F),
+                        ForeColor = Color.FromArgb(100, 100, 100),
+                        Location = new Point(20, 50),
+                        AutoSize = true
+                    };
+                    cardStatistics.Controls.Add(lblCurrentBooks);
+                    
+                    Label lblTotalBorrowed = new Label
+                    {
+                        Text = $"Total Borrowed: {totalBorrowed}",
+                        Font = new Font("Segoe UI", 9F),
+                        ForeColor = Color.FromArgb(100, 100, 100),
+                        Location = new Point(20, 75),
+                        AutoSize = true
+                    };
+                    cardStatistics.Controls.Add(lblTotalBorrowed);
+                    
+                    Label lblFines = new Label
+                    {
+                        Text = $"Unpaid Fines: ${unpaidFines:F2}",
+                        Font = new Font("Segoe UI", 9F),
+                        ForeColor = Color.FromArgb(100, 100, 100),
+                        Location = new Point(20, 100),
+                        AutoSize = true
+                    };
+                    cardStatistics.Controls.Add(lblFines);
+                    
+                    cardsContainer.Controls.Add(cardStatistics);
+                    
+                    // Resize handler for cards
+                    cardsContainer.Resize += (s, e) =>
+                    {
+                        int cardWidth = (cardsContainer.Width - 20) / 2;
+                        cardMembership.Width = cardWidth;
+                        cardStatistics.Width = cardWidth;
+                        cardStatistics.Left = cardWidth + 20;
+                    };
+                    
+                    contentPanel.Controls.Add(cardsContainer);
+                    
+                    // Borrowing History section
+                    Panel historySection = new Panel
+                    {
+                        Height = 200,
+                        Dock = DockStyle.Top,
+                        BackColor = Color.FromArgb(245, 240, 235), // Beige background
+                        Padding = new Padding(0, 30, 0, 0)
+                    };
+                    historySection.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, historySection.Width - 1, historySection.Height - 1), 8))
+                        using (Pen pen = new Pen(Color.FromArgb(230, 230, 230)))
+                            e.Graphics.DrawPath(pen, path);
+                    };
+                    
+                    Label lblHistoryTitle = new Label
+                    {
+                        Text = "🕐 Borrowing History",
+                        Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                        ForeColor = Color.FromArgb(40, 40, 40),
+                        Location = new Point(20, 20),
+                        AutoSize = true
+                    };
+                    historySection.Controls.Add(lblHistoryTitle);
+                    
+                    // History items
+                    Panel historyItem1 = new Panel
+                    {
+                        Height = 50,
+                        Dock = DockStyle.Top,
+                        BackColor = Color.Transparent,
+                        Padding = new Padding(20, 10, 20, 0)
+                    };
+                    
+                    Label lblBook1 = new Label
+                    {
+                        Text = "1984",
+                        Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                        ForeColor = Color.FromArgb(40, 40, 40),
+                        Location = new Point(0, 5),
+                        AutoSize = true
+                    };
+                    historyItem1.Controls.Add(lblBook1);
+                    
+                    Label lblDate1 = new Label
+                    {
+                        Text = "Nov 20, 2024",
+                        Font = new Font("Segoe UI", 9F),
+                        ForeColor = Color.Gray,
+                        Location = new Point(0, 25),
+                        AutoSize = true
+                    };
+                    historyItem1.Controls.Add(lblDate1);
+                    
+                    Panel tagOverdue = new Panel
+                    {
+                        Size = new Size(70, 22),
+                        Location = new Point(historyItem1.Width - 90, 14),
+                        Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                        BackColor = Color.FromArgb(254, 226, 226)
+                    };
+                    tagOverdue.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 69, 21), 11))
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(254, 226, 226)))
+                            e.Graphics.FillPath(brush, path);
+                        using (Font font = new Font("Segoe UI", 8F, FontStyle.Bold))
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(239, 68, 68)))
+                            e.Graphics.DrawString("Overdue", font, brush, 8, 4);
+                    };
+                    historyItem1.Controls.Add(tagOverdue);
+                    historySection.Controls.Add(historyItem1);
+                    
+                    Panel historyItem2 = new Panel
+                    {
+                        Height = 50,
+                        Dock = DockStyle.Top,
+                        BackColor = Color.Transparent,
+                        Padding = new Padding(20, 10, 20, 0)
+                    };
+                    
+                    Label lblBook2 = new Label
+                    {
+                        Text = "Outliers",
+                        Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                        ForeColor = Color.FromArgb(40, 40, 40),
+                        Location = new Point(0, 5),
+                        AutoSize = true
+                    };
+                    historyItem2.Controls.Add(lblBook2);
+                    
+                    Label lblDate2 = new Label
+                    {
+                        Text = "Nov 1, 2024",
+                        Font = new Font("Segoe UI", 9F),
+                        ForeColor = Color.Gray,
+                        Location = new Point(0, 25),
+                        AutoSize = true
+                    };
+                    historyItem2.Controls.Add(lblDate2);
+                    
+                    Panel tagReturned = new Panel
+                    {
+                        Size = new Size(70, 22),
+                        Location = new Point(historyItem2.Width - 90, 14),
+                        Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                        BackColor = Color.FromArgb(243, 244, 246)
+                    };
+                    tagReturned.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 69, 21), 11))
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(243, 244, 246)))
+                            e.Graphics.FillPath(brush, path);
+                        using (Font font = new Font("Segoe UI", 8F, FontStyle.Bold))
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(107, 114, 128)))
+                            e.Graphics.DrawString("Returned", font, brush, 8, 4);
+                    };
+                    historyItem2.Controls.Add(tagReturned);
+                    historySection.Controls.Add(historyItem2);
+                    
+                    contentPanel.Controls.Add(historySection);
+                    
+                    // Quick Actions section
+                    Panel actionsSection = new Panel
+                    {
+                        Height = 100,
+                        Dock = DockStyle.Top,
+                        BackColor = Color.FromArgb(245, 240, 235), // Beige background
+                        Padding = new Padding(0, 30, 0, 0)
+                    };
+                    actionsSection.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, actionsSection.Width - 1, actionsSection.Height - 1), 8))
+                        using (Pen pen = new Pen(Color.FromArgb(230, 230, 230)))
+                            e.Graphics.DrawPath(pen, path);
+                    };
+                    
+                    Label lblActionsTitle = new Label
+                    {
+                        Text = "Quick Actions",
+                        Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                        ForeColor = Color.FromArgb(40, 40, 40),
+                        Location = new Point(20, 20),
+                        AutoSize = true
+                    };
+                    actionsSection.Controls.Add(lblActionsTitle);
+                    
+                    Button btnSuspend = new Button
+                    {
+                        Text = "Suspend Member",
+                        Size = new Size(150, 35),
+                        Location = new Point(20, 50),
+                        FlatStyle = FlatStyle.Flat,
+                        BackColor = Color.FromArgb(243, 244, 246),
+                        ForeColor = Color.FromArgb(40, 40, 40),
+                        Font = new Font("Segoe UI", 9F),
+                        Cursor = Cursors.Hand
+                    };
+                    btnSuspend.FlatAppearance.BorderSize = 0;
+                    btnSuspend.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnSuspend.Width - 1, btnSuspend.Height - 1), 6))
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(243, 244, 246)))
+                            e.Graphics.FillPath(brush, path);
+                        TextRenderer.DrawText(e.Graphics, btnSuspend.Text, btnSuspend.Font, new Rectangle(0, 0, btnSuspend.Width, btnSuspend.Height), Color.FromArgb(40, 40, 40), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                    };
+                    actionsSection.Controls.Add(btnSuspend);
+                    
+                    contentPanel.Controls.Add(actionsSection);
+                    
+                    // Footer buttons
+                    Panel footerPanel = new Panel
+                    {
+                        Dock = DockStyle.Bottom,
+                        Height = 70,
+                        BackColor = Color.FromArgb(245, 240, 235), // Beige background
+                        Padding = new Padding(30, 15, 30, 15)
                     };
                     
                     Button btnClose = new Button
                     {
                         Text = "Close",
-                        Location = new Point(385, 420),
-                        Size = new Size(75, 35),
-                        DialogResult = DialogResult.OK
+                        Size = new Size(100, 40),
+                        Location = new Point(470, 15),
+                        FlatStyle = FlatStyle.Flat,
+                        BackColor = Color.FromArgb(243, 244, 246),
+                        ForeColor = Color.FromArgb(40, 40, 40),
+                        Font = new Font("Segoe UI", 9F),
+                        Cursor = Cursors.Hand,
+                        DialogResult = DialogResult.Cancel
+                    };
+                    btnClose.FlatAppearance.BorderSize = 0;
+                    btnClose.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnClose.Width - 1, btnClose.Height - 1), 6))
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(243, 244, 246)))
+                            e.Graphics.FillPath(brush, path);
+                        TextRenderer.DrawText(e.Graphics, btnClose.Text, btnClose.Font, new Rectangle(0, 0, btnClose.Width, btnClose.Height), Color.FromArgb(40, 40, 40), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                    };
+                    footerPanel.Controls.Add(btnClose);
+                    
+                    Button btnEdit = new Button
+                    {
+                        Text = "✏ Edit Member",
+                        Size = new Size(130, 40),
+                        Location = new Point(580, 15),
+                        FlatStyle = FlatStyle.Flat,
+                        BackColor = ThemeConstants.PrimaryMaroon,
+                        ForeColor = Color.White,
+                        Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                        Cursor = Cursors.Hand
+                    };
+                    btnEdit.FlatAppearance.BorderSize = 0;
+                    btnEdit.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnEdit.Width - 1, btnEdit.Height - 1), 6))
+                        using (SolidBrush brush = new SolidBrush(ThemeConstants.PrimaryMaroon))
+                            e.Graphics.FillPath(brush, path);
+                        TextRenderer.DrawText(e.Graphics, btnEdit.Text, btnEdit.Font, new Rectangle(0, 0, btnEdit.Width, btnEdit.Height), Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                    };
+                    btnEdit.Click += (s, e) =>
+                    {
+                        viewForm.DialogResult = DialogResult.OK;
+                        viewForm.Close();
+                        EditMember(memberId);
+                    };
+                    footerPanel.Controls.Add(btnEdit);
+                    
+                    mainPanel.Controls.Add(footerPanel);
+                    mainPanel.Controls.Add(contentPanel);
+                    mainPanel.Controls.Add(headerPanel);
+                    
+                    // Form border/shadow effect
+                    viewForm.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, viewForm.Width - 1, viewForm.Height - 1), 12))
+                        using (Pen pen = new Pen(Color.FromArgb(200, 200, 200), 1))
+                            e.Graphics.DrawPath(pen, path);
                     };
                     
-                    viewForm.Controls.AddRange(new Control[] { lblTitle, txtInfo, btnClose });
+                    viewForm.Controls.Add(mainPanel);
                     viewForm.ShowDialog();
                 }
             }
@@ -1317,78 +1823,383 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             {
                 _isProcessingAction = true;
                 
+                // TODO: Load actual member data from database
+                // Mock data for now
+                string firstName = "John";
+                string lastName = "Smith";
+                string email = "john.smith@university.edu";
+                string phone = "+1 555-0101";
+                string address = "123 Campus Drive, University City";
+                string status = "Active";
+                
                 using (Form editForm = new Form())
                 {
-                    editForm.Text = $"Edit Member - {memberId}";
-                    editForm.Size = new Size(500, 600);
+                    editForm.Text = "";
+                    editForm.Size = new Size(550, 650);
                     editForm.StartPosition = FormStartPosition.CenterParent;
-                    editForm.FormBorderStyle = FormBorderStyle.FixedDialog;
-                    editForm.MaximizeBox = false;
-                    editForm.MinimizeBox = false;
+                    editForm.FormBorderStyle = FormBorderStyle.None;
+                    editForm.BackColor = Color.FromArgb(245, 240, 235); // Beige background
+                    editForm.Padding = new Padding(0);
                     
-                    Label lblTitle = new Label
+                    // Main container panel
+                    Panel mainPanel = new Panel
                     {
-                        Text = $"Edit Member: {memberId}",
-                        Font = new Font("Segoe UI", 16F, FontStyle.Bold),
-                        ForeColor = ThemeConstants.PrimaryMaroon,
-                        Location = new Point(20, 20),
-                        AutoSize = true
+                        Dock = DockStyle.Fill,
+                        BackColor = Color.FromArgb(245, 240, 235), // Beige background
+                        Padding = new Padding(0)
                     };
                     
-                    Label lblMemberId = new Label { Text = "Member ID:", Location = new Point(20, 70), AutoSize = true };
-                    TextBox txtMemberId = new TextBox { Text = memberId, Location = new Point(20, 95), Size = new Size(440, 30), Font = new Font("Segoe UI", 10F), ReadOnly = true, BackColor = Color.LightGray };
-                    
-                    Label lblName = new Label { Text = "Full Name:", Location = new Point(20, 140), AutoSize = true };
-                    TextBox txtName = new TextBox { Text = "[Member Name]", Location = new Point(20, 165), Size = new Size(440, 30), Font = new Font("Segoe UI", 10F) };
-                    
-                    Label lblType = new Label { Text = "Member Type:", Location = new Point(20, 210), AutoSize = true };
-                    ComboBox cmbType = new ComboBox { Location = new Point(20, 235), Size = new Size(440, 30), DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 10F) };
-                    cmbType.Items.AddRange(new[] { "Student", "Faculty", "Staff", "Guest" });
-                    cmbType.SelectedIndex = 0;
-                    
-                    Label lblEmail = new Label { Text = "Email:", Location = new Point(20, 280), AutoSize = true };
-                    TextBox txtEmail = new TextBox { Text = "[Email Address]", Location = new Point(20, 305), Size = new Size(440, 30), Font = new Font("Segoe UI", 10F) };
-                    
-                    Label lblPhone = new Label { Text = "Phone:", Location = new Point(20, 350), AutoSize = true };
-                    TextBox txtPhone = new TextBox { Text = "[Phone Number]", Location = new Point(20, 375), Size = new Size(440, 30), Font = new Font("Segoe UI", 10F) };
-                    
-                    Label lblStatus = new Label { Text = "Status:", Location = new Point(20, 410), AutoSize = true };
-                    ComboBox cmbStatus = new ComboBox { Location = new Point(20, 435), Size = new Size(440, 30), DropDownStyle = ComboBoxStyle.DropDownList, Font = new Font("Segoe UI", 10F) };
-                    cmbStatus.Items.AddRange(new[] { "Active", "Suspended", "Expired", "Inactive" });
-                    cmbStatus.SelectedIndex = 0;
-                    
-                    Button btnSave = new Button
+                    // Header panel
+                    Panel headerPanel = new Panel
                     {
-                        Text = "Save Changes",
-                        Location = new Point(300, 480),
-                        Size = new Size(100, 35),
-                        BackColor = ThemeConstants.PrimaryMaroon,
-                        ForeColor = Color.White,
+                        Dock = DockStyle.Top,
+                        Height = 80,
+                        BackColor = Color.FromArgb(245, 240, 235), // Beige background
+                        Padding = new Padding(30, 25, 30, 10)
+                    };
+                    
+                    // Close button (X)
+                    Button btnCloseX = new Button
+                    {
+                        Text = "✕",
+                        Size = new Size(30, 30),
+                        Location = new Point(490, 25),
+                        Anchor = AnchorStyles.Top | AnchorStyles.Right,
                         FlatStyle = FlatStyle.Flat,
-                        DialogResult = DialogResult.OK
+                        BackColor = Color.Transparent,
+                        ForeColor = Color.Gray,
+                        Font = new Font("Segoe UI", 12F),
+                        Cursor = Cursors.Hand
+                    };
+                    btnCloseX.FlatAppearance.BorderSize = 0;
+                    btnCloseX.Click += (s, e) => editForm.DialogResult = DialogResult.Cancel;
+                    headerPanel.Controls.Add(btnCloseX);
+                    
+                    // Title
+                    Label lblTitle = new Label
+                    {
+                        Text = "Edit Member",
+                        Font = new Font("Segoe UI", 20F, FontStyle.Bold),
+                        ForeColor = Color.FromArgb(80, 40, 20), // Dark brown
+                        Location = new Point(0, 0),
+                        AutoSize = true
+                    };
+                    headerPanel.Controls.Add(lblTitle);
+                    
+                    // Member ID
+                    Label lblMemberId = new Label
+                    {
+                        Text = memberId,
+                        Font = new Font("Segoe UI", 10F),
+                        ForeColor = Color.Gray,
+                        Location = new Point(0, 35),
+                        AutoSize = true
+                    };
+                    headerPanel.Controls.Add(lblMemberId);
+                    
+                    // Content panel
+                    Panel contentPanel = new Panel
+                    {
+                        Dock = DockStyle.Fill,
+                        AutoScroll = true,
+                        BackColor = Color.FromArgb(245, 240, 235), // Beige background
+                        Padding = new Padding(30, 20, 30, 20)
+                    };
+                    
+                    int yPos = 0;
+                    int fieldHeight = 70;
+                    int spacing = 10;
+                    
+                    // Helper function to create input field
+                    Func<string, string, Control> CreateInputField = (label, value) =>
+                    {
+                        Panel fieldContainer = new Panel
+                        {
+                            Height = fieldHeight,
+                            Dock = DockStyle.Top,
+                            BackColor = Color.Transparent
+                        };
+                        
+                        Label lbl = new Label
+                        {
+                            Text = label,
+                            Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                            ForeColor = Color.FromArgb(60, 60, 60),
+                            Location = new Point(0, 5),
+                            AutoSize = true
+                        };
+                        fieldContainer.Controls.Add(lbl);
+                        
+                        Panel inputPanel = new Panel
+                        {
+                            Height = 40,
+                            Location = new Point(0, 28),
+                            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                            BackColor = Color.White,
+                            Padding = new Padding(10, 0, 10, 0)
+                        };
+                        
+                        TextBox txt = new TextBox
+                        {
+                            Text = value,
+                            Dock = DockStyle.Fill,
+                            BorderStyle = BorderStyle.None,
+                            Font = new Font("Segoe UI", 10F),
+                            BackColor = Color.White
+                        };
+                        
+                        inputPanel.Paint += (s, e) =>
+                        {
+                            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                            bool isFocused = txt.Focused;
+                            Color borderColor = isFocused ? ThemeConstants.PrimaryMaroon : Color.FromArgb(220, 220, 220);
+                            using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, inputPanel.Width - 1, inputPanel.Height - 1), 6))
+                            using (Pen pen = new Pen(borderColor, isFocused ? 1.5f : 1f))
+                                e.Graphics.DrawPath(pen, path);
+                        };
+                        
+                        txt.Enter += (s, e) => inputPanel.Invalidate();
+                        txt.Leave += (s, e) => inputPanel.Invalidate();
+                        
+                        // Handle resize for input panel
+                        fieldContainer.Resize += (s, e) =>
+                        {
+                            inputPanel.Width = fieldContainer.Width;
+                        };
+                        
+                        inputPanel.Controls.Add(txt);
+                        fieldContainer.Controls.Add(inputPanel);
+                        
+                        return fieldContainer;
+                    };
+                    
+                    // Helper function to create dropdown field
+                    Func<string, string[], string, Control> CreateDropdownField = (label, items, selectedValue) =>
+                    {
+                        Panel fieldContainer = new Panel
+                        {
+                            Height = fieldHeight,
+                            Dock = DockStyle.Top,
+                            BackColor = Color.Transparent
+                        };
+                        
+                        Label lbl = new Label
+                        {
+                            Text = label,
+                            Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                            ForeColor = Color.FromArgb(60, 60, 60),
+                            Location = new Point(0, 5),
+                            AutoSize = true
+                        };
+                        fieldContainer.Controls.Add(lbl);
+                        
+                        Panel inputPanel = new Panel
+                        {
+                            Height = 40,
+                            Location = new Point(0, 28),
+                            Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                            BackColor = Color.White,
+                            Padding = new Padding(10, 0, 10, 0)
+                        };
+                        
+                        ComboBox cmb = new ComboBox
+                        {
+                            Dock = DockStyle.Fill,
+                            FlatStyle = FlatStyle.Flat,
+                            Font = new Font("Segoe UI", 10F),
+                            DropDownStyle = ComboBoxStyle.DropDownList,
+                            BackColor = Color.White
+                        };
+                        cmb.Items.AddRange(items);
+                        if (!string.IsNullOrEmpty(selectedValue) && cmb.Items.Contains(selectedValue))
+                            cmb.SelectedItem = selectedValue;
+                        else if (cmb.Items.Count > 0)
+                            cmb.SelectedIndex = 0;
+                        
+                        inputPanel.Paint += (s, e) =>
+                        {
+                            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                            bool isFocused = cmb.Focused;
+                            Color borderColor = isFocused ? ThemeConstants.PrimaryMaroon : Color.FromArgb(220, 220, 220);
+                            using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, inputPanel.Width - 1, inputPanel.Height - 1), 6))
+                            using (Pen pen = new Pen(borderColor, isFocused ? 1.5f : 1f))
+                                e.Graphics.DrawPath(pen, path);
+                        };
+                        
+                        cmb.Enter += (s, e) => inputPanel.Invalidate();
+                        cmb.Leave += (s, e) => inputPanel.Invalidate();
+                        
+                        // Handle resize for input panel
+                        fieldContainer.Resize += (s, e) =>
+                        {
+                            inputPanel.Width = fieldContainer.Width;
+                        };
+                        
+                        inputPanel.Controls.Add(cmb);
+                        fieldContainer.Controls.Add(inputPanel);
+                        
+                        return fieldContainer;
+                    };
+                    
+                    // Two-column layout for First Name and Last Name
+                    Panel nameRowContainer = new Panel
+                    {
+                        Height = fieldHeight,
+                        Dock = DockStyle.Top,
+                        BackColor = Color.Transparent
+                    };
+                    
+                    // Calculate field width (form width - padding - spacing)
+                    int fieldWidth = (editForm.Width - 60 - 10) / 2;
+                    
+                    // First Name field (left column)
+                    Panel pnlFirstName = CreateInputField("First Name", firstName) as Panel;
+                    pnlFirstName.Dock = DockStyle.None;
+                    pnlFirstName.Location = new Point(0, 0);
+                    pnlFirstName.Width = fieldWidth;
+                    nameRowContainer.Controls.Add(pnlFirstName);
+                    
+                    // Last Name field (right column)
+                    Panel pnlLastName = CreateInputField("Last Name", lastName) as Panel;
+                    pnlLastName.Dock = DockStyle.None;
+                    pnlLastName.Location = new Point(fieldWidth + 10, 0);
+                    pnlLastName.Width = fieldWidth;
+                    nameRowContainer.Controls.Add(pnlLastName);
+                    
+                    // Resize handler for name row
+                    Action resizeNameRow = () =>
+                    {
+                        int newFieldWidth = (nameRowContainer.Width - 10) / 2;
+                        pnlFirstName.Width = newFieldWidth;
+                        pnlLastName.Width = newFieldWidth;
+                        pnlLastName.Left = newFieldWidth + 10;
+                    };
+                    
+                    nameRowContainer.Resize += (s, e) => resizeNameRow();
+                    
+                    // Initial sizing after form loads
+                    editForm.Load += (s, e) => resizeNameRow();
+                    
+                    // Create other fields (full width)
+                    Panel pnlEmail = CreateInputField("Email", email) as Panel;
+                    Panel pnlPhone = CreateInputField("Phone", phone) as Panel;
+                    Panel pnlAddress = CreateInputField("Address", address) as Panel;
+                    Panel pnlStatus = CreateDropdownField("Status", new[] { "Active", "Suspended", "Expired", "Inactive" }, status) as Panel;
+                    
+                    // Add fields in reverse order for proper docking
+                    contentPanel.Controls.Add(pnlStatus);
+                    contentPanel.Controls.Add(pnlAddress);
+                    contentPanel.Controls.Add(pnlPhone);
+                    contentPanel.Controls.Add(pnlEmail);
+                    contentPanel.Controls.Add(nameRowContainer);
+                    
+                    // Footer buttons
+                    Panel footerPanel = new Panel
+                    {
+                        Dock = DockStyle.Bottom,
+                        Height = 70,
+                        BackColor = Color.FromArgb(245, 240, 235), // Beige background
+                        Padding = new Padding(30, 15, 30, 15)
                     };
                     
                     Button btnCancel = new Button
                     {
                         Text = "Cancel",
-                        Location = new Point(410, 480),
-                        Size = new Size(75, 35),
+                        Size = new Size(100, 40),
+                        Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                        FlatStyle = FlatStyle.Flat,
+                        BackColor = Color.FromArgb(245, 240, 235), // Beige background
+                        ForeColor = Color.FromArgb(80, 40, 20), // Dark brown
+                        Font = new Font("Segoe UI", 9F),
+                        Cursor = Cursors.Hand,
                         DialogResult = DialogResult.Cancel
                     };
-                    
-                    editForm.Controls.AddRange(new Control[] { lblTitle, lblMemberId, txtMemberId, lblName, txtName, 
-                        lblType, cmbType, lblEmail, txtEmail, lblPhone, txtPhone, lblStatus, cmbStatus, btnSave, btnCancel });
-                    
-                    if (editForm.ShowDialog() == DialogResult.OK)
+                    btnCancel.FlatAppearance.BorderSize = 0;
+                    btnCancel.Paint += (s, e) =>
                     {
-                        if (string.IsNullOrWhiteSpace(txtName.Text))
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnCancel.Width - 1, btnCancel.Height - 1), 6))
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(245, 240, 235)))
+                            e.Graphics.FillPath(brush, path);
+                        TextRenderer.DrawText(e.Graphics, btnCancel.Text, btnCancel.Font, new Rectangle(0, 0, btnCancel.Width, btnCancel.Height), Color.FromArgb(80, 40, 20), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                    };
+                    
+                    Button btnSave = new Button
+                    {
+                        Text = "Save Changes",
+                        Size = new Size(130, 40),
+                        Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                        FlatStyle = FlatStyle.Flat,
+                        BackColor = ThemeConstants.PrimaryMaroon,
+                        ForeColor = Color.White,
+                        Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                        Cursor = Cursors.Hand
+                    };
+                    
+                    btnSave.FlatAppearance.BorderSize = 0;
+                    btnSave.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnSave.Width - 1, btnSave.Height - 1), 6))
+                        using (SolidBrush brush = new SolidBrush(ThemeConstants.PrimaryMaroon))
+                            e.Graphics.FillPath(brush, path);
+                        TextRenderer.DrawText(e.Graphics, btnSave.Text, btnSave.Font, new Rectangle(0, 0, btnSave.Width, btnSave.Height), Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                    };
+                    btnSave.Click += (s, e) =>
+                    {
+                        TextBox txtFirstName = pnlFirstName.Controls.OfType<Panel>().First().Controls.OfType<TextBox>().First();
+                        TextBox txtLastName = pnlLastName.Controls.OfType<Panel>().First().Controls.OfType<TextBox>().First();
+                        
+                        if (string.IsNullOrWhiteSpace(txtFirstName.Text) || string.IsNullOrWhiteSpace(txtLastName.Text))
                         {
-                            MessageBox.Show("Name is required.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            MessageBox.Show("First Name and Last Name are required.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                             return;
                         }
                         
+                        editForm.DialogResult = DialogResult.OK;
+                    };
+                    
+                    footerPanel.Controls.Add(btnCancel);
+                    footerPanel.Controls.Add(btnSave);
+                    
+                    // Position buttons properly
+                    Action positionButtons = () =>
+                    {
+                        btnSave.Location = new Point(footerPanel.Width - 30 - 130, 15);
+                        btnCancel.Location = new Point(footerPanel.Width - 30 - 130 - 110, 15);
+                    };
+                    
+                    footerPanel.Resize += (s, e) => positionButtons();
+                    
+                    // Initial positioning
+                    editForm.Load += (s, e) => positionButtons();
+                    
+                    mainPanel.Controls.Add(footerPanel);
+                    mainPanel.Controls.Add(contentPanel);
+                    mainPanel.Controls.Add(headerPanel);
+                    
+                    // Form border/shadow effect
+                    editForm.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, editForm.Width - 1, editForm.Height - 1), 12))
+                        using (Pen pen = new Pen(Color.FromArgb(200, 200, 200), 1))
+                            e.Graphics.DrawPath(pen, path);
+                    };
+                    
+                    editForm.Controls.Add(mainPanel);
+                    
+                    if (editForm.ShowDialog() == DialogResult.OK)
+                    {
+                        TextBox txtFirstName = pnlFirstName.Controls.OfType<Panel>().First().Controls.OfType<TextBox>().First();
+                        TextBox txtLastName = pnlLastName.Controls.OfType<Panel>().First().Controls.OfType<TextBox>().First();
+                        TextBox txtEmail = pnlEmail.Controls.OfType<Panel>().First().Controls.OfType<TextBox>().First();
+                        TextBox txtPhone = pnlPhone.Controls.OfType<Panel>().First().Controls.OfType<TextBox>().First();
+                        TextBox txtAddress = pnlAddress.Controls.OfType<Panel>().First().Controls.OfType<TextBox>().First();
+                        ComboBox cmbStatus = pnlStatus.Controls.OfType<Panel>().First().Controls.OfType<ComboBox>().First();
+                        
                         // TODO: Update database
-                        MessageBox.Show($"Member {txtName.Text} has been updated successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show($"Member {txtFirstName.Text} {txtLastName.Text} has been updated successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         LoadMembersData();
                     }
                 }
@@ -3572,35 +4383,23 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
 
         private void ShowSettingsView()
-
         {
-
             RestoreOriginalControls();
-
             ShowDashboardControls(false);
 
             if (pnlSettingsView == null || pnlSettingsView.IsDisposed)
-
             {
-
                 SetupSettingsView();
-
             }
 
             if (!pnlMainContent.Controls.Contains(pnlSettingsView))
-
             {
-
                 pnlMainContent.Controls.Add(pnlSettingsView);
-
             }
 
             pnlSettingsView.Visible = true;
-
             pnlSettingsView.BringToFront();
-
             pnlSettingsView.Dock = DockStyle.Fill;
-
         }
 
 
@@ -3633,19 +4432,19 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
                 BackColor = Color.White,
 
-                Padding = new Padding(20, 0, 20, 0)
+                Padding = new Padding(30, 0, 30, 0)
 
             };
 
-            btnSettingGeneral = CreateSettingsSubNavButton("General", false);
+            btnSettingGeneral = CreateSettingsSubNavButton("General", true);
 
-            btnSettingNotifications = CreateSettingsSubNavButton("Notifications", true);
+            btnSettingNotifications = CreateSettingsSubNavButton("Notifications", false);
 
             btnSettingBorrowing = CreateSettingsSubNavButton("Borrowing", false);
 
             btnSettingFines = CreateSettingsSubNavButton("Fines", false);
 
-            int x = 20;
+            int x = 0;
 
             int gap = 10;
 
@@ -3675,13 +4474,13 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
                 Dock = DockStyle.Fill,
 
-                BackColor = Color.White,
+                BackColor = ThemeConstants.BackgroundLight,
 
-                Padding = new Padding(30)
+                Padding = new Padding(30, 20, 30, 30)
 
             };
 
-            Panel settingsHeaderPanel = new Panel { Dock = DockStyle.Top, Height = 80, BackColor = Color.White };
+            Panel settingsHeaderPanel = new Panel { Dock = DockStyle.Top, Height = 100, BackColor = Color.White, Padding = new Padding(30, 20, 30, 0) };
 
             Label lblSettingsTitle = new Label
 
@@ -3691,7 +4490,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
                 Font = new Font("Segoe UI", 24F, FontStyle.Bold),
 
-                Location = new Point(20, 10),
+                Location = new Point(0, 0),
 
                 AutoSize = true,
 
@@ -3707,7 +4506,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
                 Font = new Font("Segoe UI", 10F),
 
-                Location = new Point(25, 55),
+                Location = new Point(0, 45),
 
                 AutoSize = true,
 
@@ -3726,13 +4525,12 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             pnlSettingsView.Controls.Add(settingsHeaderPanel);
 
             btnSettingGeneral.Click += (s, e) => ShowSettingsGeneral();
-
             btnSettingNotifications.Click += (s, e) => ShowSettingsNotifications();
-
             btnSettingBorrowing.Click += (s, e) => ShowSettingsBorrowing();
-
             btnSettingFines.Click += (s, e) => ShowSettingsFines();
 
+            // Initialize default content so Settings is never blank on first open.
+            ShowSettingsGeneral();
         }
 
 
@@ -3785,43 +4583,15 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             pnlSettingsContent.Controls.Clear();
 
-            
-
-            FlowLayoutPanel flpContent = new FlowLayoutPanel 
-
-            { 
-
-                Dock = DockStyle.Fill, 
-
-                AutoScroll = true, 
-
-                FlowDirection = FlowDirection.TopDown, 
-
-                WrapContents = false,
-
-                Padding = new Padding(0, 0, 0, 50)
-
-            };
-
-            pnlSettingsContent.Controls.Add(flpContent);
-
-            
-
-            // Header
-
-            Label lblTitle = new Label { Text = "Configure library system settings and policies", Font = new Font("Segoe UI", 10), ForeColor = Color.Gray, AutoSize = true, Margin = new Padding(3, 0, 0, 20) };
-
-            flpContent.Controls.Add(lblTitle);
-
-
-
-            // Section: Library Info
+            // Library Information Section
 
             Panel sectionBasic = CreateSettingSection("Library Information", "Basic library details and contact information");
 
-            Control pnlHeader = sectionBasic.Controls[0]; // Capture header reference before adding more
+            sectionBasic.AutoSize = false;
 
+            Control pnlHeader = sectionBasic.Controls[0];
 
+            // Two-column layout for inputs
 
             TableLayoutPanel tlpBasic = new TableLayoutPanel 
 
@@ -3829,13 +4599,13 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
                 Dock = DockStyle.Top, 
 
-                AutoSize = true,
+                Height = 180,
 
                 ColumnCount = 2, 
 
                 RowCount = 2,
 
-                Padding = new Padding(20, 10, 20, 10)
+                Padding = new Padding(20, 10, 20, 20)
 
             };
 
@@ -3843,127 +4613,71 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             tlpBasic.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
 
-            tlpBasic.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            tlpBasic.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
 
-            tlpBasic.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            tlpBasic.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
 
-            
+            // Create input panels - they already have Dock=Fill from CreateSettingInput
 
-            tlpBasic.Controls.Add(CreateSettingInput("Library Name", "Central University Library"), 0, 0);
+            Panel pnlLibraryName = CreateSettingInput("Library Name", "Central University Library");
 
-            tlpBasic.Controls.Add(CreateSettingInput("Email", "library@university.edu"), 1, 0);
+            Panel pnlPhone = CreateSettingInput("Phone", "+1 555-123-4567");
 
-            tlpBasic.Controls.Add(CreateSettingInput("Phone", "+1 555-123-4567"), 0, 1);
+            Panel pnlEmail = CreateSettingInput("Email", "library@university.edu");
 
-            tlpBasic.Controls.Add(CreateSettingInput("Address", "123 Campus Drive, University City"), 1, 1);
+            Panel pnlAddress = CreateSettingInput("Address", "123 Campus Drive, University City");
 
-            
+            tlpBasic.Controls.Add(pnlLibraryName, 0, 0);
 
-            // Add Save Button inside the card (at the bottom)
+            tlpBasic.Controls.Add(pnlEmail, 1, 0);
+
+            tlpBasic.Controls.Add(pnlPhone, 0, 1);
+
+            tlpBasic.Controls.Add(pnlAddress, 1, 1);
+
+            // Save button panel
 
             Panel pnlSave = CreateSettingsSaveButton();
 
-            // CreateSettingsSaveButton returns a panel with Dock=Top. 
+            // Add controls to section in correct order (header, table, save button)
 
-            // We want it at the bottom of the stack, which corresponds to the HIGHEST Z-Index in Dock=Top logic?
+            sectionBasic.Controls.Add(pnlSave);
 
-            // No, lowest Z-Index is Topmost. High Z-Index is Bottommost.
+            sectionBasic.Controls.Add(tlpBasic);
 
-            // But we want it VISUALLY at the bottom.
+            pnlSave.BringToFront();
 
-            // So we want: Header (Top), Table (Middle), Save (Bottom).
+            tlpBasic.BringToFront();
 
-            // Stack order (Visual Top to Bottom): Header -> Table -> Save.
+            pnlHeader.BringToFront();
 
-            // Z-Indices (Dock=Top): Header(0), Table(1), Save(2).
+            // Calculate and set section height
 
-            // So we should BringToFront in reverse order: Save, then Table, then Header.
+            int sectionHeight = 70 + 180 + 80; // header + table + save button
 
-            
+            sectionBasic.Height = sectionHeight;
 
-            sectionBasic.Controls.Add(pnlSave); // Added first (Index 0)
+            // Set initial width and add to content
 
-            sectionBasic.Controls.Add(tlpBasic); // Added second (Index 0, Save -> 1)
+            int initialWidth = pnlSettingsContent.Width > 0 ? Math.Max(600, pnlSettingsContent.Width - 60) : 800;
 
-            // Header is already there (Index 2 now, behind everything if we don't move it)
+            sectionBasic.Width = initialWidth;
 
-            
+            sectionBasic.Location = new Point(30, 0);
 
-            // Re-order for correct Dock=Top stacking (Visual Top -> Bottom needs Z-Index 0 -> N)
+            pnlSettingsContent.Controls.Add(sectionBasic);
 
-            // Wait, Dock=Top stacks items. The one with LOWEST Z-index is at the TOP edge.
+            // Resize handler
 
-            // So we want: Header (0), Table (1), Save (2).
+            pnlSettingsContent.Resize += (s, e) => {
 
-            
+                int w = pnlSettingsContent.Width - 60;
 
-            pnlSave.BringToFront();   // Save -> 0
+                if(w < 600) w = 600;
 
-            tlpBasic.BringToFront();  // Table -> 0, Save -> 1
-
-            pnlHeader.BringToFront(); // Header -> 0, Table -> 1, Save -> 2.
-
-            // Result Visual: Header, then Table, then Save. Correct.
-
-            
-
-            // Set initial width to prevent collapse
-
-            sectionBasic.Width = Math.Max(600, flpContent.Width - 30);
-
-            
-
-            flpContent.Controls.Add(sectionBasic);
-
-            
-
-            // Resize logic applied immediately and on event
-
-            Action resizeAction = () => {
-
-                 int w = flpContent.Width - 30;
-
-                 if(w < 400) w = 400; // min width
-
-                 foreach(Control c in flpContent.Controls)
-
-                 {
-
-                    if(c is Panel) 
-
-                    {
-
-                        c.Width = w;
-
-                        // Specifically ensure internal TableLayoutPanels resize to match parent
-
-                        foreach(Control child in c.Controls)
-
-                        {
-
-                            if (child is Panel pSave) // For safety
-
-                            {
-
-                                // The save button panel relies on its own resize event, just ensure it has width
-
-                                // But its inside a Panel which we just set width. It's Dock=Top, so it matches width automatically.
-
-                            }
-
-                        }
-
-                    }
-
-                 }
+                sectionBasic.Width = w;
 
             };
-
-            
-
-            flpContent.Resize += (s, e) => resizeAction();
-
-            resizeAction(); // Call once
 
         }
 
@@ -3977,67 +4691,31 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             pnlSettingsContent.Controls.Clear();
 
-
-
-            FlowLayoutPanel flpContent = new FlowLayoutPanel 
-
-            { 
-
-                Dock = DockStyle.Fill, 
-
-                AutoScroll = true, 
-
-                FlowDirection = FlowDirection.TopDown, 
-
-                WrapContents = false,
-
-                Padding = new Padding(0, 0, 0, 20)
-
-            };
-
-            pnlSettingsContent.Controls.Add(flpContent);
-
-            
-
-            // Section: Preferences
+            // Notification Preferences Section
 
             Panel sectionPrefs = CreateSettingSection("Notification Preferences", "Configure email and system notifications");
 
-            
+            sectionPrefs.AutoSize = false;
 
-            FlowLayoutPanel flpPrefs = new FlowLayoutPanel
+            Control pnlHeader = sectionPrefs.Controls[0];
 
-            {
+            // Container panel for all preferences
 
-                Dock = DockStyle.Top,
+            Panel pnlContent = new Panel { Dock = DockStyle.Top, Height = 350, Padding = new Padding(20, 0, 20, 20) };
 
-                AutoSize = true,
+            // Add toggle switches (they already have Dock=Top from CreateSettingToggle)
 
-                FlowDirection = FlowDirection.TopDown,
+            Panel toggle1 = CreateSettingToggle("Email Notifications", "Enable email notifications for library events", true);
 
-                WrapContents = false,
+            Panel toggle2 = CreateSettingToggle("Overdue Reminders", "Send reminders for overdue books", true);
 
-                Padding = new Padding(20, 0, 20, 10)
+            Panel toggle3 = CreateSettingToggle("Reservation Alerts", "Notify when reserved books become available", true);
 
-            };
+            Panel toggle4 = CreateSettingToggle("Due Date Reminders", "Remind members before books are due", true);
 
+            // Reminder interval input
 
-
-            flpPrefs.Controls.Add(CreateSettingToggle("Email Notifications", "Enable email notifications for library events", true));
-
-            flpPrefs.Controls.Add(CreateSettingToggle("Overdue Reminders", "Send reminders for overdue books", true));
-
-            flpPrefs.Controls.Add(CreateSettingToggle("Reservation Alerts", "Notify when reserved books become available", true));
-
-            flpPrefs.Controls.Add(CreateSettingToggle("Due Date Reminders", "Remind members before books are due", true));
-
-
-
-            // Custom "Days" input visually integrated
-
-            Panel pnlDays = new Panel { Size = new Size(600, 50), Margin = new Padding(0, 5, 0, 0) };
-
-            // Background Highlighting like screenshot
+            Panel pnlDays = new Panel { Height = 50, Dock = DockStyle.Top, Padding = new Padding(0, 10, 0, 0) };
 
             pnlDays.Paint += (s, e) => {
 
@@ -4047,11 +4725,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             };
 
-
-
-            Label lblDays = new Label { Text = "Send reminder", AutoSize = true, Location = new Point(20, 15), Font = new Font("Segoe UI", 9), ForeColor = Color.FromArgb(60,60,60) };
-
-            
+            Label lblDays = new Label { Text = "Send reminder", AutoSize = true, Location = new Point(0, 15), Font = new Font("Segoe UI", 9), ForeColor = Color.FromArgb(60,60,60) };
 
             Panel pnlNum = new Panel { Location = new Point(120, 10), Size = new Size(50, 30), BackColor = Color.White };
 
@@ -4065,71 +4739,73 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             };
 
-
-
             Label lblDays2 = new Label { Text = "days before due date", AutoSize = true, Location = new Point(180, 15), Font = new Font("Segoe UI", 9), ForeColor = Color.FromArgb(60,60,60) };
-
-            
 
             pnlDays.Controls.AddRange(new Control[] { lblDays, pnlNum, lblDays2 });
 
-            flpPrefs.Controls.Add(pnlDays);
+            // Handle resize for days panel
 
+            pnlDays.Resize += (s, e) => {
 
+                pnlNum.Left = 120;
 
-            sectionPrefs.Controls.Add(flpPrefs);
-
-            sectionPrefs.Width = Math.Max(600, flpContent.Width - 30);
-
-            flpContent.Controls.Add(sectionPrefs);
-
-
-
-             // Save Button
-
-            flpContent.Controls.Add(CreateSettingsSaveButton());
-
-
-
-             Action resizeAction = () => {
-
-                 int w = flpContent.Width - 30;
-
-                 if(w < 400) w = 400;
-
-                 
-
-                 foreach(Control c in flpContent.Controls)
-
-                 {
-
-                    if(c is Panel p) 
-
-                    {
-
-                        p.Width = w;
-
-                        if(p == sectionPrefs) 
-
-                        {
-
-                            foreach(Control inP in p.Controls) if (inP is FlowLayoutPanel flp) flp.Width = p.Width;
-
-                             // Resize the days panel specifically
-
-                            pnlDays.Width = p.Width - 40; 
-
-                        }
-
-                    }
-
-                 }
+                lblDays2.Left = 180;
 
             };
 
-            flpContent.Resize += (s, e) => resizeAction();
+            // Add controls in reverse order for proper docking (last added = topmost)
 
-            resizeAction();
+            pnlContent.Controls.Add(pnlDays);
+
+            pnlContent.Controls.Add(toggle4);
+
+            pnlContent.Controls.Add(toggle3);
+
+            pnlContent.Controls.Add(toggle2);
+
+            pnlContent.Controls.Add(toggle1);
+
+            // Save button panel
+
+            Panel pnlSave = CreateSettingsSaveButton();
+
+            sectionPrefs.Controls.Add(pnlSave);
+
+            sectionPrefs.Controls.Add(pnlContent);
+
+            pnlSave.BringToFront();
+
+            pnlContent.BringToFront();
+
+            pnlHeader.BringToFront();
+
+            // Calculate section height
+
+            int sectionHeight = 70 + 350 + 80; // header + content + save button
+
+            sectionPrefs.Height = sectionHeight;
+
+            // Set initial width and add to content
+
+            int initialWidth = pnlSettingsContent.Width > 0 ? Math.Max(600, pnlSettingsContent.Width - 60) : 800;
+
+            sectionPrefs.Width = initialWidth;
+
+            sectionPrefs.Location = new Point(30, 0);
+
+            pnlSettingsContent.Controls.Add(sectionPrefs);
+
+            // Resize handler
+
+            pnlSettingsContent.Resize += (s, e) => {
+
+                int w = pnlSettingsContent.Width - 60;
+
+                if(w < 600) w = 600;
+
+                sectionPrefs.Width = w;
+
+            };
 
         }
 
@@ -4143,89 +4819,83 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             pnlSettingsContent.Controls.Clear();
 
-            
+            // Borrowing Policies Section
 
-            FlowLayoutPanel flpContent = new FlowLayoutPanel 
+            Panel sectionBorrowing = CreateSettingSection("Borrowing Policies", "Configure borrowing limits and privileges by member type");
 
-            { 
+            sectionBorrowing.AutoSize = false;
 
-                Dock = DockStyle.Fill, 
+            Control pnlHeader = sectionBorrowing.Controls[0];
 
-                AutoScroll = true, 
+            // Container for borrowing groups
 
-                FlowDirection = FlowDirection.TopDown, 
+            Panel pnlGroups = new Panel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(0, 0, 0, 20) };
 
-                WrapContents = false,
+            Panel group1 = CreateBorrowingGroup("Student Members", "5", "14", "2", "5", true);
 
-                Padding = new Padding(0, 0, 0, 20)
+            Panel group2 = CreateBorrowingGroup("Faculty Members", "10", "30", "3", "3", true);
+
+            Panel group3 = CreateBorrowingGroup("Staff Members", "7", "21", "2", "4", true);
+
+            Panel group4 = CreateBorrowingGroup("Guest Members", "2", "7", "1", "10", false);
+
+            group1.Dock = DockStyle.Top;
+
+            group2.Dock = DockStyle.Top;
+
+            group3.Dock = DockStyle.Top;
+
+            group4.Dock = DockStyle.Top;
+
+            pnlGroups.Controls.Add(group4);
+
+            pnlGroups.Controls.Add(group3);
+
+            pnlGroups.Controls.Add(group2);
+
+            pnlGroups.Controls.Add(group1);
+
+            // Save button panel
+
+            Panel pnlSave = CreateSettingsSaveButton();
+
+            sectionBorrowing.Controls.Add(pnlSave);
+
+            sectionBorrowing.Controls.Add(pnlGroups);
+
+            pnlSave.BringToFront();
+
+            pnlGroups.BringToFront();
+
+            pnlHeader.BringToFront();
+
+            // Calculate section height (4 groups * 150px each + spacing)
+
+            int sectionHeight = 70 + (4 * 150) + 100 + 80; // header + groups + spacing + save button
+
+            sectionBorrowing.Height = sectionHeight;
+
+            // Set initial width and add to content
+
+            int initialWidth = pnlSettingsContent.Width > 0 ? Math.Max(600, pnlSettingsContent.Width - 60) : 800;
+
+            sectionBorrowing.Width = initialWidth;
+
+            sectionBorrowing.Location = new Point(30, 0);
+
+            pnlSettingsContent.Controls.Add(sectionBorrowing);
+
+            // Resize handler
+
+            pnlSettingsContent.Resize += (s, e) => {
+
+                int w = pnlSettingsContent.Width - 60;
+
+                if(w < 600) w = 600;
+
+                sectionBorrowing.Width = w;
 
             };
-
-            pnlSettingsContent.Controls.Add(flpContent);
-
-
-
-            // Header - Reset Defaults Button
-
-            Panel pnlHeader = new Panel { Height = 50, Dock = DockStyle.Top, Margin = new Padding(0, 0, 0, 10) };
-
-            Button btnReset = new Button { Text = "↺ Reset Defaults", Size = new Size(130, 35), Location = new Point(pnlHeader.Width - 140, 5), Anchor = AnchorStyles.Top | AnchorStyles.Right, FlatStyle = FlatStyle.Flat, BackColor = Color.White, ForeColor = Color.FromArgb(80,80,80), Cursor = Cursors.Hand };
-
-            btnReset.FlatAppearance.BorderColor = Color.FromArgb(220,220,220);
-
-            
-
-            pnlHeader.Resize += (s, e) => btnReset.Left = pnlHeader.Width - 140;
-
-            pnlHeader.Controls.Add(btnReset);
-
-            
-
-            Label lblH = new Label { Text = "Configure borrowing limits and privileges", ForeColor = Color.FromArgb(80,80,80), AutoSize = true, Location = new Point(5, 12), Font = new Font("Segoe UI", 10) };
-
-            pnlHeader.Controls.Add(lblH);
-
-            
-
-            flpContent.Controls.Add(pnlHeader);
-
-
-
-            // Borrowing Groups
-
-            flpContent.Controls.Add(CreateBorrowingGroup("Student Members", "5", "14", "2", "5", true));
-
-            flpContent.Controls.Add(CreateBorrowingGroup("Faculty Members", "10", "30", "3", "3", true));
-
-            flpContent.Controls.Add(CreateBorrowingGroup("Staff Members", "7", "21", "2", "4", true));
-
-            flpContent.Controls.Add(CreateBorrowingGroup("Guest Members", "2", "7", "1", "10", false));
-
-            
-
-             // Save Button
-
-            flpContent.Controls.Add(CreateSettingsSaveButton());
-
-
-
-             Action resizeAction = () => {
-
-                 int w = flpContent.Width - 30;
-
-                 if(w < 400) w = 400; // min width
-
-                 foreach(Control c in flpContent.Controls)
-
-                    if(c is Panel) c.Width = w;
-
-            };
-
-            
-
-            flpContent.Resize += (s, e) => resizeAction();
-
-            resizeAction();
 
         }
 
@@ -4241,33 +4911,13 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             pnlSettingsContent.Controls.Clear();
 
-            
-
-            FlowLayoutPanel flpContent = new FlowLayoutPanel 
-
-            { 
-
-                Dock = DockStyle.Fill, 
-
-                AutoScroll = true, 
-
-                FlowDirection = FlowDirection.TopDown, 
-
-                WrapContents = false,
-
-                Padding = new Padding(0, 0, 0, 20)
-
-            };
-
-            pnlSettingsContent.Controls.Add(flpContent);
-
-
-
             // Section 1: Fine Configuration
 
             Panel sectionConfig = CreateSettingSection("Fine Configuration", "Configure fine calculation and limits");
 
-            
+            sectionConfig.AutoSize = false;
+
+            Control pnlHeader1 = sectionConfig.Controls[0];
 
             TableLayoutPanel tlpConfig = new TableLayoutPanel 
 
@@ -4281,7 +4931,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
                 RowCount = 1,
 
-                Padding = new Padding(20, 10, 20, 0)
+                Padding = new Padding(20, 10, 20, 20)
 
             };
 
@@ -4291,27 +4941,37 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             tlpConfig.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33F));
 
-            
-
             tlpConfig.Controls.Add(CreateSettingInput("Maximum Fine Cap ($)", "100"), 0, 0);
 
             tlpConfig.Controls.Add(CreateSettingInput("Grace Period (Days)", "0"), 1, 0);
 
             tlpConfig.Controls.Add(CreateSettingInput("Lost Book Multiplier", "2"), 2, 0);
 
-            
-
             sectionConfig.Controls.Add(tlpConfig);
 
-            sectionConfig.Width = Math.Max(600, flpContent.Width - 30);
+            tlpConfig.BringToFront();
 
-            flpContent.Controls.Add(sectionConfig);
+            pnlHeader1.BringToFront();
 
+            int configHeight = 70 + 100; // header + table
 
+            sectionConfig.Height = configHeight;
 
-            // Section 2: Rate Summary
+            int initialWidth1 = pnlSettingsContent.Width > 0 ? Math.Max(600, pnlSettingsContent.Width - 60) : 800;
+
+            sectionConfig.Width = initialWidth1;
+
+            sectionConfig.Location = new Point(30, 0);
+
+            pnlSettingsContent.Controls.Add(sectionConfig);
+
+            // Section 2: Fine Rate Summary
 
             Panel sectionRates = CreateSettingSection("Fine Rate Summary", "Current fine rates per member type");
+
+            sectionRates.AutoSize = false;
+
+            Control pnlHeader2 = sectionRates.Controls[0];
 
             TableLayoutPanel tlpRates = new TableLayoutPanel
 
@@ -4323,89 +4983,141 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
                 RowCount = 4,
 
-                AutoSize = true,
+                Height = 200,
 
-                Padding = new Padding(40, 20, 40, 20),
-
-                BackColor = Color.White
+                Padding = new Padding(40, 20, 40, 20)
 
             };
 
-             tlpRates.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tlpRates.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
 
-             tlpRates.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tlpRates.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
 
+            tlpRates.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
 
+            tlpRates.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
 
-             string[] types = { "Student", "Faculty", "Staff", "Guest" };
+            tlpRates.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
 
-             string[] rates = { "$5 / day", "$3 / day", "$4 / day", "$10 / day" }; 
+            tlpRates.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
 
-             
+            string[] types = { "Student:", "Faculty:", "Staff:", "Guest:" };
 
-             for(int i=0; i<4; i++)
+            string[] rates = { "$5/day", "$3/day", "$4/day", "$10/day" }; 
 
-             {
+            for(int i=0; i<4; i++)
 
-                 Label lT = new Label { Text = types[i], Font = new Font("Segoe UI", 10, FontStyle.Regular), AutoSize = true, ForeColor = Color.FromArgb(60,60,60), Margin = new Padding(0, 10, 0, 10) };
+            {
 
-                 Label lR = new Label { Text = rates[i], Font = new Font("Segoe UI", 10, FontStyle.Bold), AutoSize = true, ForeColor = ThemeConstants.PrimaryMaroon, TextAlign = ContentAlignment.MiddleRight, Dock = DockStyle.Right, Margin = new Padding(0, 10, 0, 10) };
+                Label lT = new Label 
 
-                 tlpRates.Controls.Add(lT, 0, i);
+                { 
 
-                 tlpRates.Controls.Add(lR, 1, i);
+                    Text = types[i], 
 
-                 
+                    Font = new Font("Segoe UI", 10, FontStyle.Regular), 
 
-                 // Separator line
+                    AutoSize = false,
 
-                 if(i < 3) {
+                    Dock = DockStyle.Fill,
 
-                     Panel line = new Panel { Height = 1, BackColor = Color.FromArgb(245,245,245), Dock = DockStyle.Bottom, Margin = new Padding(0) };
+                    ForeColor = Color.FromArgb(60,60,60),
 
-                     tlpRates.SetColumnSpan(line, 2);
+                    TextAlign = ContentAlignment.MiddleLeft
 
-                     // TableLayout doesn't support easy lines between rows like this without extra logic, 
+                };
 
-                     // so we'll just rely on spacing for now to keep it clean.
+                Label lR = new Label 
 
-                 }
+                { 
 
-             }
+                    Text = rates[i], 
 
-            
+                    Font = new Font("Segoe UI", 10, FontStyle.Bold), 
+
+                    AutoSize = false,
+
+                    Dock = DockStyle.Fill,
+
+                    ForeColor = ThemeConstants.PrimaryMaroon, 
+
+                    TextAlign = ContentAlignment.MiddleRight
+
+                };
+
+                tlpRates.Controls.Add(lT, 0, i);
+
+                tlpRates.Controls.Add(lR, 1, i);
+
+            }
 
             sectionRates.Controls.Add(tlpRates);
 
-            sectionRates.Width = Math.Max(600, flpContent.Width - 30);
+            tlpRates.BringToFront();
 
-            flpContent.Controls.Add(sectionRates);
+            pnlHeader2.BringToFront();
 
+            int ratesHeight = 70 + 200; // header + table
 
+            sectionRates.Height = ratesHeight;
 
-             // Save Button
+            sectionRates.Width = initialWidth1;
 
-            flpContent.Controls.Add(CreateSettingsSaveButton());
+            sectionRates.Location = new Point(30, configHeight + 20);
 
+            pnlSettingsContent.Controls.Add(sectionRates);
 
+            // Single Save button at the bottom - create a container panel
 
-             Action resizeAction = () => {
+            Panel pnlSaveContainer = new Panel 
 
-                 int w = flpContent.Width - 30;
+            { 
 
-                 if(w < 400) w = 400; // min width
+                Location = new Point(30, configHeight + ratesHeight + 20),
 
-                 foreach(Control c in flpContent.Controls)
+                Width = initialWidth1,
 
-                    if(c is Panel) c.Width = w;
+                Height = 80,
+
+                BackColor = Color.Transparent
 
             };
 
-            
+            Panel pnlSave = CreateSettingsSaveButton();
 
-            flpContent.Resize += (s, e) => resizeAction();
+            pnlSave.Dock = DockStyle.None;
 
-            resizeAction();
+            pnlSave.Location = new Point(pnlSaveContainer.Width - 190, 20);
+
+            pnlSave.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+
+            pnlSaveContainer.Controls.Add(pnlSave);
+
+            pnlSaveContainer.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+
+            pnlSettingsContent.Controls.Add(pnlSaveContainer);
+
+            pnlSaveContainer.Resize += (s, e) => pnlSave.Left = pnlSaveContainer.Width - 190;
+
+            // Resize handler
+
+            pnlSettingsContent.Resize += (s, e) => {
+
+                int w = pnlSettingsContent.Width - 60;
+
+                if(w < 600) w = 600;
+
+                sectionConfig.Width = w;
+
+                sectionRates.Width = w;
+
+                pnlSaveContainer.Width = w;
+
+                sectionRates.Location = new Point(30, configHeight + 20);
+
+                pnlSaveContainer.Location = new Point(30, configHeight + ratesHeight + 20);
+
+            };
 
         }
 
@@ -5355,9 +6067,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
              { 
 
-                 Location = new Point(0, 50),
-
-                 Width = 1000, 
+                 Dock = DockStyle.Top,
 
                  Height = 90,
 
@@ -5365,9 +6075,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
                  RowCount = 1,
 
-                 Padding = new Padding(10, 0, 10, 0),
-
-                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+                 Padding = new Padding(20, 10, 20, 10)
 
              };
 
@@ -5387,11 +6095,11 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             tlp.Controls.Add(CreateSettingInput("Max Books", maxBooks, 120), 0, 0);
 
-            tlp.Controls.Add(CreateSettingInput("Days Limit", days, 120), 1, 0);
+            tlp.Controls.Add(CreateSettingInput("Borrowing Days", days, 120), 1, 0);
 
-            tlp.Controls.Add(CreateSettingInput("Renewals", renewals, 120), 2, 0);
+            tlp.Controls.Add(CreateSettingInput("Renewal Limit", renewals, 120), 2, 0);
 
-            tlp.Controls.Add(CreateSettingInput("Fine ($)", fine, 120), 3, 0);
+            tlp.Controls.Add(CreateSettingInput("Fine/Day ($)", fine, 120), 3, 0);
 
             
 
@@ -5805,7 +6513,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             addBookForm.StartPosition = FormStartPosition.CenterParent;
 
-            addBookForm.BackColor = Color.White;
+            addBookForm.BackColor = Color.FromArgb(245, 240, 235); // Beige background
 
             addBookForm.ShowInTaskbar = false;
 
@@ -6171,7 +6879,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             checkOutForm.StartPosition = FormStartPosition.CenterParent;
 
-            checkOutForm.BackColor = Color.White;
+            checkOutForm.BackColor = Color.FromArgb(245, 240, 235); // Beige background
 
             checkOutForm.ShowInTaskbar = false;
 
@@ -6351,7 +7059,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             rvForm.StartPosition = FormStartPosition.CenterParent;
 
-            rvForm.BackColor = Color.White;
+            rvForm.BackColor = Color.FromArgb(245, 240, 235); // Beige background
 
             rvForm.ShowInTaskbar = false;
 
@@ -6537,7 +7245,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             fineForm.StartPosition = FormStartPosition.CenterParent;
 
-            fineForm.BackColor = Color.White;
+            fineForm.BackColor = Color.FromArgb(245, 240, 235); // Beige background
 
             fineForm.ShowInTaskbar = false;
 
@@ -7043,6 +7751,1496 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
 
 
+    }
+
+    // Dialog classes consolidated into this file
+    public class AddUserDialog : Form
+    {
+        public string FullName { get; private set; }
+        public string Email { get; private set; }
+        public string PhoneNumber { get; private set; }
+        public string Department { get; private set; }
+        public string Role { get; private set; }
+
+        private TextBox txtFullName;
+        private TextBox txtEmail;
+        private TextBox txtPhoneNumber;
+        private TextBox txtDepartment;
+        private ComboBox cmbRole;
+
+        public AddUserDialog()
+        {
+            InitializeComponent();
+            this.Text = "Add New User";
+            this.Size = new Size(500, 600);
+            this.StartPosition = FormStartPosition.CenterParent;
+            this.FormBorderStyle = FormBorderStyle.None;
+            // Soft beige background so the dialog stands out against the app
+            this.BackColor = Color.FromArgb(248, 247, 242);
+            this.Padding = new Padding(0);
+            
+            SetupDialog();
+        }
+
+        private void SetupDialog()
+        {
+            // Main container panel (match form background for a unified card look)
+            Panel mainPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Padding = new Padding(0)
+            };
+
+            // Header panel
+            Panel headerPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 80,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Padding = new Padding(30, 25, 30, 15)
+            };
+
+            Label lblTitle = new Label
+            {
+                Text = "Add New User",
+                Font = new Font("Segoe UI", 20F, FontStyle.Bold),
+                ForeColor = ThemeConstants.PrimaryMaroon,
+                Location = new Point(30, 25),
+                AutoSize = true
+            };
+
+            Label lblSubtitle = new Label
+            {
+                Text = "Create a new librarian or staff account",
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.Gray,
+                Location = new Point(30, 60),
+                AutoSize = true
+            };
+
+            // Close button
+            Button btnClose = new Button
+            {
+                Text = "✕",
+                Font = new Font("Segoe UI", 16F),
+                ForeColor = Color.Gray,
+                BackColor = Color.Transparent,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 0 },
+                Size = new Size(40, 40),
+                Location = new Point(headerPanel.Width - 50, 20),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Cursor = Cursors.Hand
+            };
+            btnClose.Click += (s, e) => this.DialogResult = DialogResult.Cancel;
+            btnClose.MouseEnter += (s, e) => btnClose.ForeColor = Color.Black;
+            btnClose.MouseLeave += (s, e) => btnClose.ForeColor = Color.Gray;
+
+            headerPanel.Controls.AddRange(new Control[] { lblTitle, lblSubtitle, btnClose });
+
+            // Content panel (same beige as background so there is no white strip)
+            Panel contentPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Padding = new Padding(30, 20, 30, 20),
+                AutoScroll = true
+            };
+
+            int yPos = 0;
+            int labelWidth = 120;
+            int inputWidth = 400;
+            int spacing = 25;
+
+            // Full Name
+            Label lblFullName = new Label
+            {
+                Text = "Full Name *",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = ThemeConstants.TextDark,
+                Location = new Point(0, yPos),
+                Size = new Size(inputWidth, 25),
+                AutoSize = false
+            };
+
+            Panel pnlFullName = new Panel
+            {
+                Location = new Point(0, yPos + 25),
+                Size = new Size(inputWidth, 40),
+                BackColor = Color.FromArgb(248, 247, 242)
+            };
+            pnlFullName.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlFullName.Width - 1, pnlFullName.Height - 1), 6))
+                using (Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+
+            txtFullName = new TextBox
+            {
+                Location = new Point(10, 8),
+                Size = new Size(inputWidth - 20, 24),
+                Font = new Font("Segoe UI", 10F),
+                BorderStyle = BorderStyle.None,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Text = ""
+            };
+            PlaceholderTextHelper.SetPlaceholder(txtFullName, "Enter full name");
+            pnlFullName.Controls.Add(txtFullName);
+
+            yPos += 25 + 40 + spacing;
+
+            // Email
+            Label lblEmail = new Label
+            {
+                Text = "Email Address *",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = ThemeConstants.TextDark,
+                Location = new Point(0, yPos),
+                Size = new Size(inputWidth, 25),
+                AutoSize = false
+            };
+
+            Panel pnlEmail = new Panel
+            {
+                Location = new Point(0, yPos + 25),
+                Size = new Size(inputWidth, 40),
+                BackColor = Color.FromArgb(248, 247, 242)
+            };
+            pnlEmail.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlEmail.Width - 1, pnlEmail.Height - 1), 6))
+                using (Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+
+            txtEmail = new TextBox
+            {
+                Location = new Point(10, 8),
+                Size = new Size(inputWidth - 20, 24),
+                Font = new Font("Segoe UI", 10F),
+                BorderStyle = BorderStyle.None,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Text = ""
+            };
+            PlaceholderTextHelper.SetPlaceholder(txtEmail, "user@library.edu");
+            pnlEmail.Controls.Add(txtEmail);
+
+            yPos += 25 + 40 + spacing;
+
+            // Phone Number
+            Label lblPhone = new Label
+            {
+                Text = "Phone Number",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = ThemeConstants.TextDark,
+                Location = new Point(0, yPos),
+                Size = new Size(inputWidth, 25),
+                AutoSize = false
+            };
+
+            Panel pnlPhone = new Panel
+            {
+                Location = new Point(0, yPos + 25),
+                Size = new Size(inputWidth, 40),
+                BackColor = Color.FromArgb(248, 247, 242)
+            };
+            pnlPhone.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlPhone.Width - 1, pnlPhone.Height - 1), 6))
+                using (Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+
+            txtPhoneNumber = new TextBox
+            {
+                Location = new Point(10, 8),
+                Size = new Size(inputWidth - 20, 24),
+                Font = new Font("Segoe UI", 10F),
+                BorderStyle = BorderStyle.None,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Text = ""
+            };
+            PlaceholderTextHelper.SetPlaceholder(txtPhoneNumber, "(555) 000-0000");
+            pnlPhone.Controls.Add(txtPhoneNumber);
+
+            yPos += 25 + 40 + spacing;
+
+            // Department
+            Label lblDepartment = new Label
+            {
+                Text = "Department",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = ThemeConstants.TextDark,
+                Location = new Point(0, yPos),
+                Size = new Size(inputWidth, 25),
+                AutoSize = false
+            };
+
+            Panel pnlDepartment = new Panel
+            {
+                Location = new Point(0, yPos + 25),
+                Size = new Size(inputWidth, 40),
+                BackColor = Color.FromArgb(248, 247, 242)
+            };
+            pnlDepartment.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlDepartment.Width - 1, pnlDepartment.Height - 1), 6))
+                using (Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+
+            txtDepartment = new TextBox
+            {
+                Location = new Point(10, 8),
+                Size = new Size(inputWidth - 20, 24),
+                Font = new Font("Segoe UI", 10F),
+                BorderStyle = BorderStyle.None,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Text = ""
+            };
+            PlaceholderTextHelper.SetPlaceholder(txtDepartment, "e.g., Circulation Desk");
+            pnlDepartment.Controls.Add(txtDepartment);
+
+            yPos += 25 + 40 + spacing;
+
+            // Role
+            Label lblRole = new Label
+            {
+                Text = "Role *",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = ThemeConstants.TextDark,
+                Location = new Point(0, yPos),
+                Size = new Size(inputWidth, 25),
+                AutoSize = false
+            };
+
+            Panel pnlRole = new Panel
+            {
+                Location = new Point(0, yPos + 25),
+                Size = new Size(inputWidth, 40),
+                BackColor = Color.FromArgb(248, 247, 242)
+            };
+            pnlRole.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlRole.Width - 1, pnlRole.Height - 1), 6))
+                using (Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+
+            cmbRole = new ComboBox
+            {
+                Location = new Point(10, 5),
+                Size = new Size(inputWidth - 20, 30),
+                Font = new Font("Segoe UI", 10F),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                BackColor = Color.FromArgb(248, 247, 242),
+                FlatStyle = FlatStyle.Flat
+            };
+            cmbRole.Items.AddRange(new string[] { "Staff", "Librarian/Admin", "Member" });
+            cmbRole.SelectedIndex = 0; // Default to "Staff"
+            pnlRole.Controls.Add(cmbRole);
+
+            contentPanel.Controls.AddRange(new Control[] 
+            { 
+                lblFullName, pnlFullName, 
+                lblEmail, pnlEmail, 
+                lblPhone, pnlPhone, 
+                lblDepartment, pnlDepartment,
+                lblRole, pnlRole
+            });
+
+            // Footer panel with buttons
+            Panel footerPanel = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 70,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Padding = new Padding(30, 15, 30, 15)
+            };
+
+            // Cancel button
+            Button btnCancel = new Button
+            {
+                Text = "Cancel",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = ThemeConstants.TextDark,
+                BackColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 1, BorderColor = Color.FromArgb(220, 220, 220) },
+                Size = new Size(100, 40),
+                Anchor = AnchorStyles.Bottom,
+                Cursor = Cursors.Hand
+            };
+            btnCancel.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnCancel.Width - 1, btnCancel.Height - 1), 6))
+                {
+                    e.Graphics.FillPath(new SolidBrush(btnCancel.BackColor), path);
+                    e.Graphics.DrawPath(new Pen(btnCancel.FlatAppearance.BorderColor, 1), path);
+                }
+                TextRenderer.DrawText(e.Graphics, btnCancel.Text, btnCancel.Font,
+                    new Rectangle(0, 0, btnCancel.Width, btnCancel.Height),
+                    btnCancel.ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+            btnCancel.Click += (s, e) => this.DialogResult = DialogResult.Cancel;
+
+            // Add User button
+            Button btnAddUser = new Button
+            {
+                Text = "👤+ Add User",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = ThemeConstants.PrimaryMaroon,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 0 },
+                Size = new Size(140, 40),
+                Anchor = AnchorStyles.Bottom,
+                Cursor = Cursors.Hand
+            };
+            btnAddUser.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnAddUser.Width - 1, btnAddUser.Height - 1), 6))
+                {
+                    e.Graphics.FillPath(new SolidBrush(btnAddUser.BackColor), path);
+                }
+                StringFormat sf = new StringFormat
+                {
+                    Alignment = StringAlignment.Center,
+                    LineAlignment = StringAlignment.Center
+                };
+                e.Graphics.DrawString(btnAddUser.Text, btnAddUser.Font, new SolidBrush(btnAddUser.ForeColor), 
+                    new RectangleF(0, 0, btnAddUser.Width, btnAddUser.Height), sf);
+            };
+            btnAddUser.MouseEnter += (s, e) => 
+            {
+                btnAddUser.BackColor = ThemeConstants.AccentMaroonHover;
+                btnAddUser.Invalidate();
+            };
+            btnAddUser.MouseLeave += (s, e) => 
+            {
+                btnAddUser.BackColor = ThemeConstants.PrimaryMaroon;
+                btnAddUser.Invalidate();
+            };
+            btnAddUser.Click += (s, e) =>
+            {
+                if (string.IsNullOrWhiteSpace(txtFullName.GetActualText()))
+                {
+                    MessageBox.Show("Full Name is required.", "Validation Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                if (string.IsNullOrWhiteSpace(txtEmail.GetActualText()))
+                {
+                    MessageBox.Show("Email Address is required.", "Validation Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                FullName = txtFullName.GetActualText();
+                Email = txtEmail.GetActualText();
+                PhoneNumber = txtPhoneNumber.GetActualText();
+                Department = txtDepartment.GetActualText();
+                Role = cmbRole.SelectedItem?.ToString() ?? "";
+                this.DialogResult = DialogResult.OK;
+            };
+
+            footerPanel.Controls.AddRange(new Control[] { btnCancel, btnAddUser });
+
+            // Center inputs horizontally within the content panel on resize
+            contentPanel.Resize += (s, e) =>
+            {
+                int centerX = (contentPanel.ClientSize.Width - inputWidth) / 2;
+                if (centerX < 0) centerX = 0;
+
+                lblFullName.Left = centerX;
+                pnlFullName.Left = centerX;
+
+                lblEmail.Left = centerX;
+                pnlEmail.Left = centerX;
+
+                lblPhone.Left = centerX;
+                pnlPhone.Left = centerX;
+
+                lblDepartment.Left = centerX;
+                pnlDepartment.Left = centerX;
+
+                lblRole.Left = centerX;
+                pnlRole.Left = centerX;
+            };
+
+            // Center the buttons as a group at the bottom
+            footerPanel.Resize += (s, e) =>
+            {
+                int totalWidth = btnCancel.Width + 10 + btnAddUser.Width;
+                int startX = (footerPanel.ClientSize.Width - totalWidth) / 2;
+                if (startX < 0) startX = 0;
+
+                btnCancel.Left = startX;
+                btnCancel.Top = 15;
+
+                btnAddUser.Left = startX + btnCancel.Width + 10;
+                btnAddUser.Top = 15;
+            };
+
+            mainPanel.Controls.Add(headerPanel);
+            mainPanel.Controls.Add(contentPanel);
+            mainPanel.Controls.Add(footerPanel);
+
+            this.Controls.Add(mainPanel);
+        }
+
+        private GraphicsPath CreateRoundedRectangle(Rectangle rect, int radius)
+        {
+            GraphicsPath path = new GraphicsPath();
+            path.AddArc(rect.X, rect.Y, radius * 2, radius * 2, 180, 90);
+            path.AddArc(rect.Right - radius * 2, rect.Y, radius * 2, radius * 2, 270, 90);
+            path.AddArc(rect.Right - radius * 2, rect.Bottom - radius * 2, radius * 2, radius * 2, 0, 90);
+            path.AddArc(rect.X, rect.Bottom - radius * 2, radius * 2, radius * 2, 90, 90);
+            path.CloseAllFigures();
+            return path;
+        }
+
+        private void InitializeComponent()
+        {
+            this.SuspendLayout();
+            this.ResumeLayout(false);
+        }
+    }
+
+    public class AssignRoleDialog : Form
+    {
+        public string SelectedRole { get; private set; }
+
+        private ComboBox cmbRole;
+
+        public AssignRoleDialog(string userName, string currentRole = "Librarian/Admin")
+        {
+            InitializeComponent();
+            this.Text = "Assign Role";
+            this.Size = new Size(500, 450);
+            this.StartPosition = FormStartPosition.CenterParent;
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.BackColor = Color.FromArgb(248, 247, 242);
+            this.Padding = new Padding(0);
+            
+            SetupDialog(userName, currentRole);
+        }
+
+        private void SetupDialog(string userName, string currentRole)
+        {
+            // Main container panel
+            Panel mainPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.White,
+                Padding = new Padding(0),
+                Margin = new Padding(0)
+            };
+
+            // Header panel
+            Panel headerPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 80,
+                BackColor = ThemeConstants.PrimaryMaroon,
+                Padding = new Padding(30, 25, 30, 15)
+            };
+
+            Label lblTitle = new Label
+            {
+                Text = "Assign Role",
+                Font = new Font("Segoe UI", 20F, FontStyle.Bold),
+                ForeColor = Color.White,
+                Location = new Point(30, 25),
+                AutoSize = true
+            };
+
+            Label lblSubtitle = new Label
+            {
+                Text = $"Change the role for {userName}",
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.FromArgb(240, 240, 240),
+                Location = new Point(30, 60),
+                AutoSize = true
+            };
+
+            // Close button
+            Button btnClose = new Button
+            {
+                Text = "✕",
+                Font = new Font("Segoe UI", 16F),
+                ForeColor = Color.White,
+                BackColor = Color.Transparent,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 0 },
+                Size = new Size(40, 40),
+                Location = new Point(headerPanel.Width - 50, 20),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Cursor = Cursors.Hand
+            };
+            btnClose.Click += (s, e) => this.DialogResult = DialogResult.Cancel;
+
+            headerPanel.Controls.AddRange(new Control[] { lblTitle, lblSubtitle, btnClose });
+
+            // Content panel
+            Panel contentPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(248, 247, 242), // Light beige
+                Padding = new Padding(30, 30, 30, 20)
+            };
+
+            // Select Role label
+            Label lblSelectRole = new Label
+            {
+                Text = "Select Role",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = ThemeConstants.TextDark,
+                Location = new Point(0, 0),
+                AutoSize = true
+            };
+
+            // Role dropdown
+            Panel pnlRole = new Panel
+            {
+                Location = new Point(0, 30),
+                Size = new Size(440, 40),
+                BackColor = Color.White
+            };
+            pnlRole.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlRole.Width - 1, pnlRole.Height - 1), 6))
+                using (Pen pen = new Pen(ThemeConstants.PrimaryMaroon, 2))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+
+            cmbRole = new ComboBox
+            {
+                Location = new Point(10, 5),
+                Size = new Size(420, 30),
+                Font = new Font("Segoe UI", 10F),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                BackColor = Color.White,
+                FlatStyle = FlatStyle.Flat
+            };
+            cmbRole.Items.AddRange(new string[] { "Librarian/Admin", "Staff", "Member" });
+            cmbRole.SelectedItem = currentRole;
+            if (cmbRole.SelectedIndex == -1) cmbRole.SelectedIndex = 0;
+            pnlRole.Controls.Add(cmbRole);
+
+            // Role Permissions label
+            Label lblPermissions = new Label
+            {
+                Text = "Role Permissions:",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = ThemeConstants.TextDark,
+                Location = new Point(0, 90),
+                AutoSize = true
+            };
+
+            // Permissions list
+            Panel pnlPermissions = new Panel
+            {
+                Location = new Point(0, 120),
+                Size = new Size(440, 150),
+                BackColor = Color.Transparent
+            };
+
+            string[] permissions = new string[]
+            {
+                "• Full system access",
+                "• Manage all modules",
+                "• User management",
+                "• System settings",
+                "• Reports & analytics"
+            };
+
+            int permY = 0;
+            foreach (string perm in permissions)
+            {
+                Label lblPerm = new Label
+                {
+                    Text = perm,
+                    Font = new Font("Segoe UI", 9F),
+                    ForeColor = ThemeConstants.TextDark,
+                    Location = new Point(0, permY),
+                    AutoSize = true
+                };
+                pnlPermissions.Controls.Add(lblPerm);
+                permY += 25;
+            }
+
+            contentPanel.Controls.AddRange(new Control[] 
+            { 
+                lblSelectRole, pnlRole, 
+                lblPermissions, pnlPermissions 
+            });
+
+            // Footer panel with buttons
+            Panel footerPanel = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 70,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Padding = new Padding(30, 15, 30, 15)
+            };
+
+            // Cancel button
+            Button btnCancel = new Button
+            {
+                Text = "Cancel",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = ThemeConstants.TextDark,
+                BackColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 1, BorderColor = Color.FromArgb(200, 200, 200) },
+                Size = new Size(100, 40),
+                Location = new Point(footerPanel.Width - 240, 15),
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+                Cursor = Cursors.Hand
+            };
+            btnCancel.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnCancel.Width - 1, btnCancel.Height - 1), 6))
+                {
+                    e.Graphics.FillPath(new SolidBrush(btnCancel.BackColor), path);
+                    e.Graphics.DrawPath(new Pen(btnCancel.FlatAppearance.BorderColor, 1), path);
+                }
+                TextRenderer.DrawText(e.Graphics, btnCancel.Text, btnCancel.Font,
+                    new Rectangle(0, 0, btnCancel.Width, btnCancel.Height),
+                    btnCancel.ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+            btnCancel.Click += (s, e) => this.DialogResult = DialogResult.Cancel;
+
+            // Assign Role button
+            Button btnAssign = new Button
+            {
+                Text = "🛡 Assign Role",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = ThemeConstants.PrimaryMaroon,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 0 },
+                Size = new Size(140, 40),
+                Location = new Point(footerPanel.Width - 130, 15),
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+                Cursor = Cursors.Hand
+            };
+            btnAssign.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnAssign.Width - 1, btnAssign.Height - 1), 6))
+                {
+                    e.Graphics.FillPath(new SolidBrush(btnAssign.BackColor), path);
+                }
+                TextRenderer.DrawText(e.Graphics, btnAssign.Text, btnAssign.Font,
+                    new Rectangle(0, 0, btnAssign.Width, btnAssign.Height),
+                    btnAssign.ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+            btnAssign.Click += (s, e) =>
+            {
+                SelectedRole = cmbRole.SelectedItem?.ToString() ?? "";
+                this.DialogResult = DialogResult.OK;
+            };
+
+            footerPanel.Controls.AddRange(new Control[] { btnCancel, btnAssign });
+
+            mainPanel.Controls.Add(headerPanel);
+            mainPanel.Controls.Add(contentPanel);
+            mainPanel.Controls.Add(footerPanel);
+
+            this.Controls.Add(mainPanel);
+
+            // Add border (same style as reservation dialog)
+            this.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (Pen p = new Pen(Color.FromArgb(200, 200, 200), 1))
+                {
+                    e.Graphics.DrawRectangle(p, 0, 0, this.Width - 1, this.Height - 1);
+                }
+            };
+        }
+
+        private GraphicsPath CreateRoundedRectangle(Rectangle rect, int radius)
+        {
+            GraphicsPath path = new GraphicsPath();
+            path.AddArc(rect.X, rect.Y, radius * 2, radius * 2, 180, 90);
+            path.AddArc(rect.Right - radius * 2, rect.Y, radius * 2, radius * 2, 270, 90);
+            path.AddArc(rect.Right - radius * 2, rect.Bottom - radius * 2, radius * 2, radius * 2, 0, 90);
+            path.AddArc(rect.X, rect.Bottom - radius * 2, radius * 2, radius * 2, 90, 90);
+            path.CloseAllFigures();
+            return path;
+        }
+
+        private void InitializeComponent()
+        {
+            this.SuspendLayout();
+            this.ResumeLayout(false);
+        }
+    }
+
+    public class DeactivateUserDialog : Form
+    {
+        public bool DeactivateUser { get; private set; }
+
+        public DeactivateUserDialog(string userName)
+        {
+            InitializeComponent();
+            this.Text = "Deactivate User";
+            this.Size = new Size(500, 200);
+            this.StartPosition = FormStartPosition.CenterParent;
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.BackColor = Color.FromArgb(248, 247, 242);
+            this.Padding = new Padding(0);
+            
+            SetupDialog(userName);
+        }
+
+        private void SetupDialog(string userName)
+        {
+            // Main container panel
+            Panel mainPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(248, 247, 242), // Light off-white
+                Padding = new Padding(0),
+                Margin = new Padding(0)
+            };
+
+            // Content panel
+            Panel contentPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Padding = new Padding(30, 30, 30, 20)
+            };
+
+            // Title
+            Label lblTitle = new Label
+            {
+                Text = "Deactivate User",
+                Font = new Font("Segoe UI", 18F, FontStyle.Bold),
+                ForeColor = ThemeConstants.TextDark,
+                Location = new Point(0, 0),
+                AutoSize = true
+            };
+
+            // Message
+            Label lblMessage = new Label
+            {
+                Text = $"Are you sure you want to deactivate {userName}'s account? They will no longer be able to access the system.",
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = ThemeConstants.TextDark,
+                Location = new Point(0, 40),
+                Size = new Size(440, 50),
+                AutoSize = false
+            };
+
+            contentPanel.Controls.AddRange(new Control[] { lblTitle, lblMessage });
+
+            // Footer panel with buttons
+            Panel footerPanel = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 70,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Padding = new Padding(30, 15, 30, 15)
+            };
+
+            // Cancel button
+            Button btnCancel = new Button
+            {
+                Text = "Cancel",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = ThemeConstants.TextDark,
+                BackColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 1, BorderColor = Color.FromArgb(220, 220, 220) },
+                Size = new Size(100, 40),
+                Location = new Point(footerPanel.Width - 240, 15),
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+                Cursor = Cursors.Hand
+            };
+            btnCancel.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnCancel.Width - 1, btnCancel.Height - 1), 6))
+                {
+                    e.Graphics.FillPath(new SolidBrush(btnCancel.BackColor), path);
+                    e.Graphics.DrawPath(new Pen(btnCancel.FlatAppearance.BorderColor, 1), path);
+                }
+                TextRenderer.DrawText(e.Graphics, btnCancel.Text, btnCancel.Font,
+                    new Rectangle(0, 0, btnCancel.Width, btnCancel.Height),
+                    btnCancel.ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+            btnCancel.Click += (s, e) =>
+            {
+                DeactivateUser = false;
+                this.DialogResult = DialogResult.Cancel;
+            };
+
+            // Deactivate button (red)
+            Button btnDeactivate = new Button
+            {
+                Text = "Deactivate",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(220, 53, 69), // Red color
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 0 },
+                Size = new Size(120, 40),
+                Location = new Point(footerPanel.Width - 130, 15),
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+                Cursor = Cursors.Hand
+            };
+            btnDeactivate.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnDeactivate.Width - 1, btnDeactivate.Height - 1), 6))
+                {
+                    e.Graphics.FillPath(new SolidBrush(btnDeactivate.BackColor), path);
+                }
+                TextRenderer.DrawText(e.Graphics, btnDeactivate.Text, btnDeactivate.Font,
+                    new Rectangle(0, 0, btnDeactivate.Width, btnDeactivate.Height),
+                    btnDeactivate.ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+            btnDeactivate.MouseEnter += (s, e) =>
+            {
+                btnDeactivate.BackColor = Color.FromArgb(200, 35, 51);
+                btnDeactivate.Invalidate();
+            };
+            btnDeactivate.MouseLeave += (s, e) =>
+            {
+                btnDeactivate.BackColor = Color.FromArgb(220, 53, 69);
+                btnDeactivate.Invalidate();
+            };
+            btnDeactivate.Click += (s, e) =>
+            {
+                DeactivateUser = true;
+                this.DialogResult = DialogResult.OK;
+            };
+
+            footerPanel.Controls.AddRange(new Control[] { btnCancel, btnDeactivate });
+
+            mainPanel.Controls.Add(contentPanel);
+            mainPanel.Controls.Add(footerPanel);
+
+            this.Controls.Add(mainPanel);
+
+            // Add border (same style as reservation dialog)
+            this.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (Pen p = new Pen(Color.FromArgb(200, 200, 200), 1))
+                {
+                    e.Graphics.DrawRectangle(p, 0, 0, this.Width - 1, this.Height - 1);
+                }
+            };
+        }
+
+        private GraphicsPath CreateRoundedRectangle(Rectangle rect, int radius)
+        {
+            GraphicsPath path = new GraphicsPath();
+            path.AddArc(rect.X, rect.Y, radius * 2, radius * 2, 180, 90);
+            path.AddArc(rect.Right - radius * 2, rect.Y, radius * 2, radius * 2, 270, 90);
+            path.AddArc(rect.Right - radius * 2, rect.Bottom - radius * 2, radius * 2, radius * 2, 0, 90);
+            path.AddArc(rect.X, rect.Bottom - radius * 2, radius * 2, radius * 2, 90, 90);
+            path.CloseAllFigures();
+            return path;
+        }
+
+        private void InitializeComponent()
+        {
+            this.SuspendLayout();
+            this.ResumeLayout(false);
+        }
+    }
+
+    public class EditUserDialog : Form
+    {
+        public string FullName { get; private set; }
+        public string Email { get; private set; }
+        public string PhoneNumber { get; private set; }
+        public string Department { get; private set; }
+
+        private TextBox txtFullName;
+        private TextBox txtEmail;
+        private TextBox txtPhoneNumber;
+        private TextBox txtDepartment;
+
+        public EditUserDialog(string fullName = "", string email = "", string phoneNumber = "", string department = "")
+        {
+            InitializeComponent();
+            this.Text = "Edit User";
+            this.Size = new Size(500, 450);
+            this.StartPosition = FormStartPosition.CenterParent;
+            this.FormBorderStyle = FormBorderStyle.None;
+            // Match AddUserDialog beige
+            this.BackColor = Color.FromArgb(248, 247, 242);
+            this.Padding = new Padding(0);
+            
+            SetupDialog(fullName, email, phoneNumber, department);
+        }
+
+        private void SetupDialog(string fullName, string email, string phoneNumber, string department)
+        {
+            // Main container panel
+            Panel mainPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Padding = new Padding(0),
+                Margin = new Padding(0)
+            };
+
+            // Header panel
+            Panel headerPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 80,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Padding = new Padding(30, 25, 30, 15)
+            };
+
+            Label lblTitle = new Label
+            {
+                Text = "Edit User",
+                Font = new Font("Segoe UI", 20F, FontStyle.Bold),
+                ForeColor = ThemeConstants.PrimaryMaroon,
+                Location = new Point(30, 25),
+                AutoSize = true
+            };
+
+            Label lblSubtitle = new Label
+            {
+                Text = "Update user information",
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.Gray,
+                Location = new Point(30, 60),
+                AutoSize = true
+            };
+
+            // Close button
+            Button btnClose = new Button
+            {
+                Text = "✕",
+                Font = new Font("Segoe UI", 16F),
+                ForeColor = Color.Gray,
+                BackColor = Color.Transparent,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 0 },
+                Size = new Size(40, 40),
+                Location = new Point(headerPanel.Width - 50, 20),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Cursor = Cursors.Hand
+            };
+            btnClose.Click += (s, e) => this.DialogResult = DialogResult.Cancel;
+
+            headerPanel.Controls.AddRange(new Control[] { lblTitle, lblSubtitle, btnClose });
+
+            // Content panel
+            Panel contentPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Padding = new Padding(30, 20, 30, 20),
+                AutoScroll = true
+            };
+
+            int yPos = 0;
+            int labelWidth = 120;
+            int inputWidth = 400;
+            int spacing = 25;
+
+            // Full Name
+            Label lblFullName = new Label
+            {
+                Text = "Full Name *",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = ThemeConstants.TextDark,
+                Location = new Point(0, yPos),
+                Size = new Size(inputWidth, 25),
+                AutoSize = false
+            };
+
+            Panel pnlFullName = new Panel
+            {
+                Location = new Point(0, yPos + 25),
+                Size = new Size(inputWidth, 40),
+                BackColor = Color.FromArgb(248, 247, 242)
+            };
+            pnlFullName.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlFullName.Width - 1, pnlFullName.Height - 1), 6))
+                using (Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+
+            txtFullName = new TextBox
+            {
+                Location = new Point(10, 8),
+                Size = new Size(inputWidth - 20, 24),
+                Font = new Font("Segoe UI", 10F),
+                BorderStyle = BorderStyle.None,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Text = fullName
+            };
+            pnlFullName.Controls.Add(txtFullName);
+
+            yPos += 25 + 40 + spacing;
+
+            // Email
+            Label lblEmail = new Label
+            {
+                Text = "Email Address *",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = ThemeConstants.TextDark,
+                Location = new Point(0, yPos),
+                Size = new Size(inputWidth, 25),
+                AutoSize = false
+            };
+
+            Panel pnlEmail = new Panel
+            {
+                Location = new Point(0, yPos + 25),
+                Size = new Size(inputWidth, 40),
+                BackColor = Color.FromArgb(248, 247, 242)
+            };
+            pnlEmail.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlEmail.Width - 1, pnlEmail.Height - 1), 6))
+                using (Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+
+            txtEmail = new TextBox
+            {
+                Location = new Point(10, 8),
+                Size = new Size(inputWidth - 20, 24),
+                Font = new Font("Segoe UI", 10F),
+                BorderStyle = BorderStyle.None,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Text = email
+            };
+            pnlEmail.Controls.Add(txtEmail);
+
+            yPos += 25 + 40 + spacing;
+
+            // Phone Number
+            Label lblPhone = new Label
+            {
+                Text = "Phone Number",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = ThemeConstants.TextDark,
+                Location = new Point(0, yPos),
+                Size = new Size(inputWidth, 25),
+                AutoSize = false
+            };
+
+            Panel pnlPhone = new Panel
+            {
+                Location = new Point(0, yPos + 25),
+                Size = new Size(inputWidth, 40),
+                BackColor = Color.FromArgb(248, 247, 242)
+            };
+            pnlPhone.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlPhone.Width - 1, pnlPhone.Height - 1), 6))
+                using (Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+
+            txtPhoneNumber = new TextBox
+            {
+                Location = new Point(10, 8),
+                Size = new Size(inputWidth - 20, 24),
+                Font = new Font("Segoe UI", 10F),
+                BorderStyle = BorderStyle.None,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Text = phoneNumber
+            };
+            pnlPhone.Controls.Add(txtPhoneNumber);
+
+            yPos += 25 + 40 + spacing;
+
+            // Department
+            Label lblDepartment = new Label
+            {
+                Text = "Department",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = ThemeConstants.TextDark,
+                Location = new Point(0, yPos),
+                Size = new Size(inputWidth, 25),
+                AutoSize = false
+            };
+
+            Panel pnlDepartment = new Panel
+            {
+                Location = new Point(0, yPos + 25),
+                Size = new Size(inputWidth, 40),
+                BackColor = Color.FromArgb(248, 247, 242)
+            };
+            pnlDepartment.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlDepartment.Width - 1, pnlDepartment.Height - 1), 6))
+                using (Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+
+            txtDepartment = new TextBox
+            {
+                Location = new Point(10, 8),
+                Size = new Size(inputWidth - 20, 24),
+                Font = new Font("Segoe UI", 10F),
+                BorderStyle = BorderStyle.None,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Text = department
+            };
+            pnlDepartment.Controls.Add(txtDepartment);
+
+            contentPanel.Controls.AddRange(new Control[] 
+            { 
+                lblFullName, pnlFullName, 
+                lblEmail, pnlEmail, 
+                lblPhone, pnlPhone, 
+                lblDepartment, pnlDepartment 
+            });
+
+            // Footer panel with buttons
+            Panel footerPanel = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 70,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Padding = new Padding(30, 15, 30, 15)
+            };
+
+            // Cancel button
+            Button btnCancel = new Button
+            {
+                Text = "Cancel",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = ThemeConstants.TextDark,
+                BackColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 1, BorderColor = Color.FromArgb(220, 220, 220) },
+                Size = new Size(100, 40),
+                Anchor = AnchorStyles.Bottom,
+                Cursor = Cursors.Hand
+            };
+            btnCancel.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnCancel.Width - 1, btnCancel.Height - 1), 6))
+                {
+                    e.Graphics.FillPath(new SolidBrush(btnCancel.BackColor), path);
+                    e.Graphics.DrawPath(new Pen(btnCancel.FlatAppearance.BorderColor, 1), path);
+                }
+                TextRenderer.DrawText(e.Graphics, btnCancel.Text, btnCancel.Font,
+                    new Rectangle(0, 0, btnCancel.Width, btnCancel.Height),
+                    btnCancel.ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+            btnCancel.Click += (s, e) => this.DialogResult = DialogResult.Cancel;
+
+            // Save Changes button
+            Button btnSave = new Button
+            {
+                Text = "✏ Save Changes",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = ThemeConstants.PrimaryMaroon,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 0 },
+                Size = new Size(140, 40),
+                Anchor = AnchorStyles.Bottom,
+                Cursor = Cursors.Hand
+            };
+            btnSave.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnSave.Width - 1, btnSave.Height - 1), 6))
+                {
+                    e.Graphics.FillPath(new SolidBrush(btnSave.BackColor), path);
+                }
+                TextRenderer.DrawText(e.Graphics, btnSave.Text, btnSave.Font,
+                    new Rectangle(0, 0, btnSave.Width, btnSave.Height),
+                    btnSave.ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+            btnSave.Click += (s, e) =>
+            {
+                if (string.IsNullOrWhiteSpace(txtFullName.Text) || string.IsNullOrWhiteSpace(txtEmail.Text))
+                {
+                    MessageBox.Show("Full Name and Email Address are required fields.", "Validation Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                FullName = txtFullName.Text;
+                Email = txtEmail.Text;
+                PhoneNumber = txtPhoneNumber.Text;
+                Department = txtDepartment.Text;
+                this.DialogResult = DialogResult.OK;
+            };
+
+            footerPanel.Controls.AddRange(new Control[] { btnCancel, btnSave });
+
+            // Center inputs horizontally
+            contentPanel.Resize += (s, e) =>
+            {
+                int centerX = (contentPanel.ClientSize.Width - inputWidth) / 2;
+                if (centerX < 0) centerX = 0;
+
+                lblFullName.Left = centerX;
+                pnlFullName.Left = centerX;
+
+                lblEmail.Left = centerX;
+                pnlEmail.Left = centerX;
+
+                lblPhone.Left = centerX;
+                pnlPhone.Left = centerX;
+
+                lblDepartment.Left = centerX;
+                pnlDepartment.Left = centerX;
+            };
+
+            // Center buttons group
+            footerPanel.Resize += (s, e) =>
+            {
+                int totalWidth = btnCancel.Width + 10 + btnSave.Width;
+                int startX = (footerPanel.ClientSize.Width - totalWidth) / 2;
+                if (startX < 0) startX = 0;
+
+                btnCancel.Left = startX;
+                btnCancel.Top = 15;
+
+                btnSave.Left = startX + btnCancel.Width + 10;
+                btnSave.Top = 15;
+            };
+
+            mainPanel.Controls.Add(headerPanel);
+            mainPanel.Controls.Add(contentPanel);
+            mainPanel.Controls.Add(footerPanel);
+
+            this.Controls.Add(mainPanel);
+        }
+
+        private GraphicsPath CreateRoundedRectangle(Rectangle rect, int radius)
+        {
+            GraphicsPath path = new GraphicsPath();
+            path.AddArc(rect.X, rect.Y, radius * 2, radius * 2, 180, 90);
+            path.AddArc(rect.Right - radius * 2, rect.Y, radius * 2, radius * 2, 270, 90);
+            path.AddArc(rect.Right - radius * 2, rect.Bottom - radius * 2, radius * 2, radius * 2, 0, 90);
+            path.AddArc(rect.X, rect.Bottom - radius * 2, radius * 2, radius * 2, 90, 90);
+            path.CloseAllFigures();
+            return path;
+        }
+
+        private void InitializeComponent()
+        {
+            this.SuspendLayout();
+            this.ResumeLayout(false);
+        }
+    }
+
+    public class UserResetPasswordDialog : Form
+    {
+        public bool SendResetLink { get; private set; }
+
+        public UserResetPasswordDialog(string email)
+        {
+            InitializeComponent();
+            this.Text = "Reset Password";
+            this.Size = new Size(500, 250);
+            this.StartPosition = FormStartPosition.CenterParent;
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.BackColor = Color.FromArgb(248, 247, 242);
+            this.Padding = new Padding(0);
+            
+            SetupDialog(email);
+        }
+
+        private void SetupDialog(string email)
+        {
+            // Main container panel
+            Panel mainPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Padding = new Padding(0),
+                Margin = new Padding(0)
+            };
+
+            // Header panel
+            Panel headerPanel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 60,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Padding = new Padding(30, 20, 30, 10)
+            };
+
+            Label lblTitle = new Label
+            {
+                Text = "Reset Password",
+                Font = new Font("Segoe UI", 20F, FontStyle.Bold),
+                ForeColor = ThemeConstants.PrimaryMaroon,
+                Location = new Point(30, 20),
+                AutoSize = true
+            };
+
+            headerPanel.Controls.Add(lblTitle);
+
+            // Content panel
+            Panel contentPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Padding = new Padding(30, 20, 30, 20)
+            };
+
+            Label lblMessage = new Label
+            {
+                Text = $"A password reset link will be sent to {email}. The user will be required to create a new password.",
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = ThemeConstants.TextDark,
+                Location = new Point(0, 0),
+                Size = new Size(440, 60),
+                AutoSize = false
+            };
+
+            contentPanel.Controls.Add(lblMessage);
+
+            // Footer panel with buttons
+            Panel footerPanel = new Panel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 70,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Padding = new Padding(30, 15, 30, 15)
+            };
+
+            // Cancel button
+            Button btnCancel = new Button
+            {
+                Text = "Cancel",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = ThemeConstants.TextDark,
+                BackColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 1, BorderColor = Color.FromArgb(220, 220, 220) },
+                Size = new Size(100, 40),
+                Location = new Point(footerPanel.Width - 240, 15),
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+                Cursor = Cursors.Hand
+            };
+            btnCancel.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnCancel.Width - 1, btnCancel.Height - 1), 6))
+                {
+                    e.Graphics.FillPath(new SolidBrush(btnCancel.BackColor), path);
+                    e.Graphics.DrawPath(new Pen(btnCancel.FlatAppearance.BorderColor, 1), path);
+                }
+                TextRenderer.DrawText(e.Graphics, btnCancel.Text, btnCancel.Font,
+                    new Rectangle(0, 0, btnCancel.Width, btnCancel.Height),
+                    btnCancel.ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+            btnCancel.Click += (s, e) =>
+            {
+                SendResetLink = false;
+                this.DialogResult = DialogResult.Cancel;
+            };
+
+            // Send Reset Link button
+            Button btnSend = new Button
+            {
+                Text = "Send Reset Link",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = ThemeConstants.PrimaryMaroon,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 0 },
+                Size = new Size(140, 40),
+                Location = new Point(footerPanel.Width - 130, 15),
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+                Cursor = Cursors.Hand
+            };
+            btnSend.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnSend.Width - 1, btnSend.Height - 1), 6))
+                {
+                    e.Graphics.FillPath(new SolidBrush(btnSend.BackColor), path);
+                }
+                TextRenderer.DrawText(e.Graphics, btnSend.Text, btnSend.Font,
+                    new Rectangle(0, 0, btnSend.Width, btnSend.Height),
+                    btnSend.ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+            btnSend.Click += (s, e) =>
+            {
+                SendResetLink = true;
+                this.DialogResult = DialogResult.OK;
+            };
+
+            footerPanel.Controls.AddRange(new Control[] { btnCancel, btnSend });
+
+            mainPanel.Controls.Add(headerPanel);
+            mainPanel.Controls.Add(contentPanel);
+            mainPanel.Controls.Add(footerPanel);
+
+            this.Controls.Add(mainPanel);
+        }
+
+        private GraphicsPath CreateRoundedRectangle(Rectangle rect, int radius)
+        {
+            GraphicsPath path = new GraphicsPath();
+            path.AddArc(rect.X, rect.Y, radius * 2, radius * 2, 180, 90);
+            path.AddArc(rect.Right - radius * 2, rect.Y, radius * 2, radius * 2, 270, 90);
+            path.AddArc(rect.Right - radius * 2, rect.Bottom - radius * 2, radius * 2, radius * 2, 0, 90);
+            path.AddArc(rect.X, rect.Bottom - radius * 2, radius * 2, radius * 2, 90, 90);
+            path.CloseAllFigures();
+            return path;
+        }
+
+        private void InitializeComponent()
+        {
+            this.SuspendLayout();
+            this.ResumeLayout(false);
+        }
     }
 
 }
