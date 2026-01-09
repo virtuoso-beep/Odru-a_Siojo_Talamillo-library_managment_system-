@@ -5411,7 +5411,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             // Style columns
             foreach (DataGridViewColumn col in dgvUserManagement.Columns)
             {
-                col.DefaultCellStyle.Padding = new Padding(15, 10, 15, 10);
+                col.DefaultCellStyle.Padding = new Padding(15, 100, 15, 10);
                 col.HeaderCell.Style.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
                 col.HeaderCell.Style.BackColor = Color.FromArgb(248, 249, 250);
                 col.HeaderCell.Style.ForeColor = ThemeConstants.TextDark;
@@ -5562,7 +5562,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             // Style rows
             foreach (DataGridViewRow row in dgvUserManagement.Rows)
             {
-                row.Height = 60;
+                row.Height = 160;
                 
                 // Style Role column (pink pill)
                 if (row.Cells["Role"].Value != null)
