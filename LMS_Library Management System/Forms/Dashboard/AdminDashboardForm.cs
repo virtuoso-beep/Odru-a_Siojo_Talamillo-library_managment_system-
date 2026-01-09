@@ -9,6 +9,8 @@ using System.Text.RegularExpressions;
 using LMS_Library_Management_System.Forms.Authentication;
 using LMS_Library_Management_System.Helper;
 using static LMS_Library_Management_System.Helper.PlaceholderTextHelper;
+using LMS_Library_Management_System.Service;
+using LMS_Library_Management_System.Models;
 
 using System.Windows.Forms.DataVisualization.Charting;
 
@@ -55,6 +57,8 @@ namespace LMS_Library_Management_System.Forms.Dashboard
         private List<Control> _originalMainContentControls = new List<Control>();
         private bool _isLoadingMembersData = false;
         private bool _isProcessingAction = false;
+        private Service.UserManagementService _userManagementService;
+        private UserRole _currentUserManagementRole = UserRole.Administrator;
         public AdminDashboardForm()
         {
             InitializeComponent();
@@ -62,6 +66,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.WindowState = FormWindowState.Maximized;
             this.Size = new Size(1400, 700);
             this.MinimumSize = new Size(1200, 600);
+            _userManagementService = new Service.UserManagementService();
             InitializeDashboard();
         }
 
@@ -968,6 +973,14 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             // Row 3
             AddLabel("Phone", 30, currentY);
             TextBox txtPhone = AddInput("+1 555-0123", 30, currentY, 490);
+            // Allow only numeric input for phone number (no letters or symbols)
+            txtPhone.KeyPress += (s, e) =>
+            {
+                if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+                {
+                    e.Handled = true;
+                }
+            };
             currentY += gap;
 
             // Row 4
@@ -1243,10 +1256,8 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 // TODO: Load actual member data from database
                 // Mock data for now
                 string memberName = "John Smith";
-                string memberType = "Student";
                 string email = "john.smith@university.edu";
                 string phone = "+1 555-0101";
-                string status = "Active";
                 string registeredDate = "Jan 15, 2024";
                 string expiryDate = "Jan 15, 2025";
                 string address = "123 Campus Drive, University City";
@@ -1906,9 +1917,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                         Padding = new Padding(30, 20, 30, 20)
                     };
                     
-                    int yPos = 0;
                     int fieldHeight = 70;
-                    int spacing = 10;
                     
                     // Helper function to create input field
                     Func<string, string, Control> CreateInputField = (label, value) =>
@@ -5412,8 +5421,14 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             dgvUserManagement.CellPainting += DgvUserManagement_CellPainting;
             dgvUserManagement.CellFormatting += DgvUserManagement_CellFormatting;
             
-            // Add sample data
-            AddSampleUserData();
+            // Load users data
+            LoadUsersData();
+            
+            // Wire up search textbox
+            if (txtSearchUsers != null)
+            {
+                txtSearchUsers.TextChanged += (s, e) => LoadUsersData();
+            }
             
             pnlTableContainer.Controls.Add(lblTableTitle);
             pnlTableContainer.Controls.Add(lblTableDescription);
@@ -5497,33 +5512,52 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 }
             }
             
+            // Update current role
+            _currentUserManagementRole = tabName == "Librarians" ? UserRole.Administrator : UserRole.Staff;
+            
             // Refresh data
-            dgvUserManagement.Rows.Clear();
-            AddSampleUserData();
+            LoadUsersData();
         }
 
-        private void AddSampleUserData()
+        private void LoadUsersData()
         {
-            // Sample data matching the image - Actions column left empty for custom painting
-            dgvUserManagement.Rows.Add(
-                "System Administrator",
-                "admin@library.edu",
-                "IT Department",
-                "Librarian/Admin",
-                "Active",
-                "Jan 8, 2026",
+            try
+            {
+            dgvUserManagement.Rows.Clear();
+                
+                // Get users from database
+                var users = _userManagementService.GetUsersByRole(_currentUserManagementRole);
+                
+                // Apply search filter if any
+                string searchText = txtSearchUsers?.Text ?? "";
+                if (!string.IsNullOrWhiteSpace(searchText) && searchText != "Search users...")
+                {
+                    users = users.Where(u => 
+                        u.FullName.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        u.Email.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0
+                    ).ToList();
+                }
+                
+                // Add users to grid
+                foreach (var user in users)
+                {
+                    string roleDisplay = user.Role == UserRole.Administrator ? "Librarian/Admin" : "Staff";
+                    string statusDisplay = user.IsActive ? "Active" : "Inactive";
+                    string lastLoginDisplay = user.LastLogin ?? "Never";
+                    
+                    int rowIndex = dgvUserManagement.Rows.Add(
+                        user.FullName,
+                        user.Email,
+                        user.Department ?? "N/A",
+                        roleDisplay,
+                        statusDisplay,
+                        lastLoginDisplay,
                 "" // Actions column - will be painted
             );
-            
-            dgvUserManagement.Rows.Add(
-                "Sarah Johnson",
-                "head.librarian@library.edu",
-                "Library Administration",
-                "Librarian/Admin",
-                "Active",
-                "Jan 7, 2026",
-                "" // Actions column - will be painted
-            );
+                    
+                    // Store UserId in row tag for later reference
+                    dgvUserManagement.Rows[rowIndex].Tag = user.UserId;
+                }
             
             // Style rows
             foreach (DataGridViewRow row in dgvUserManagement.Rows)
@@ -5543,6 +5577,12 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                     row.Cells["Status"].Style.ForeColor = Color.FromArgb(34, 197, 94); // Green
                     row.Cells["Status"].Style.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
                 }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading users: {ex.Message}", "Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -5607,6 +5647,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             if (e.ColumnIndex != dgvUserManagement.Columns["Actions"].Index) return;
             
             DataGridViewRow row = dgvUserManagement.Rows[e.RowIndex];
+            int userId = row.Tag != null ? (int)row.Tag : 0;
             string name = row.Cells["Name"].Value?.ToString() ?? "";
             string email = row.Cells["Email"].Value?.ToString() ?? "";
             string department = row.Cells["Department"].Value?.ToString() ?? "";
@@ -5626,101 +5667,256 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             if (relativeX >= startX && relativeX < startX + iconSize)
             {
                 // Edit User (first icon)
-                ShowEditUserDialog(name, email, "", department);
+                ShowEditUserDialog(userId, name, email, "", department);
             }
             else if (relativeX >= startX + iconSize + spacing && relativeX < startX + (iconSize + spacing) * 2)
             {
                 // Reset Password (second icon)
-                ShowResetPasswordDialog(email);
+                ShowResetPasswordDialog(userId, email);
             }
             else if (relativeX >= startX + (iconSize + spacing) * 2 && relativeX < startX + (iconSize + spacing) * 3)
             {
                 // Assign Role (third icon)
-                ShowAssignRoleDialog(name, role);
+                ShowAssignRoleDialog(userId, name, role);
             }
             else if (relativeX >= startX + (iconSize + spacing) * 3 && relativeX < startX + (iconSize + spacing) * 4)
             {
                 // Deactivate User (fourth icon)
-                ShowDeactivateUserDialog(name);
+                ShowDeactivateUserDialog(userId, name);
             }
         }
 
-        private void ShowEditUserDialog(string name, string email, string phone, string department)
+        private void ShowEditUserDialog(int userId, string name, string email, string phone, string department)
         {
-            using (EditUserDialog dialog = new EditUserDialog(name, email, phone, department))
+            try
+            {
+                // Get user info from database
+                var user = _userManagementService.GetUserById(userId);
+                if (user == null)
+                {
+                    MessageBox.Show("User not found.", "Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                
+                using (EditUserDialog dialog = new EditUserDialog(user.FullName, user.Email, phone, department))
             {
                 dialog.Owner = this;
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
-                    // Update the user data
+                        // Update user in database
+                        string[] nameParts = dialog.FullName.Split(new[] { ' ' }, 2);
+                        string firstName = nameParts.Length > 0 ? nameParts[0] : "";
+                        string lastName = nameParts.Length > 1 ? nameParts[1] : "";
+                        
+                        if (string.IsNullOrWhiteSpace(firstName))
+                        {
+                            MessageBox.Show("First name is required.", "Validation Error", 
+                                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            return;
+                        }
+                        
+                        bool success = _userManagementService.UpdateUser(userId, dialog.Email, firstName, lastName);
+                        
+                        if (success)
+                        {
                     MessageBox.Show($"User '{dialog.FullName}' has been updated successfully.", "Success", 
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    // Refresh the grid
-                    dgvUserManagement.Rows.Clear();
-                    AddSampleUserData();
+                            LoadUsersData();
+                        }
+                        else
+                        {
+                            MessageBox.Show("Failed to update user. Please try again.", "Error", 
+                                MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error updating user: {ex.Message}", "Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        private void ShowResetPasswordDialog(string email)
+        private void ShowResetPasswordDialog(int userId, string email)
+        {
+            try
         {
             using (UserResetPasswordDialog dialog = new UserResetPasswordDialog(email))
             {
                 dialog.Owner = this;
                 if (dialog.ShowDialog() == DialogResult.OK && dialog.SendResetLink)
                 {
-                    MessageBox.Show($"Password reset link has been sent to {email}.", "Success", 
+                        // Generate a temporary password (in production, send reset link via email)
+                        string tempPassword = GenerateTemporaryPassword();
+                        
+                        bool success = _userManagementService.UpdateUserPassword(email, tempPassword);
+                        
+                        if (success)
+                        {
+                            MessageBox.Show($"Password has been reset. Temporary password: {tempPassword}\n\nPlease inform the user to change it on first login.", "Success", 
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
+                        else
+                        {
+                            MessageBox.Show("Failed to reset password. Please try again.", "Error", 
+                                MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error resetting password: {ex.Message}", "Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        private void ShowAssignRoleDialog(string userName, string currentRole)
+        private void ShowAssignRoleDialog(int userId, string userName, string currentRole)
+        {
+            try
         {
             using (AssignRoleDialog dialog = new AssignRoleDialog(userName, currentRole))
             {
                 dialog.Owner = this;
                 if (dialog.ShowDialog() == DialogResult.OK)
+                    {
+                        // Convert role string to UserRole enum
+                        UserRole newRole = UserRole.Staff;
+                        if (dialog.SelectedRole == "Librarian/Admin")
+                            newRole = UserRole.Administrator;
+                        else if (dialog.SelectedRole == "Staff")
+                            newRole = UserRole.Staff;
+                        else if (dialog.SelectedRole == "Member")
+                            newRole = UserRole.Member;
+                        
+                        bool success = _userManagementService.UpdateUserRole(userId, newRole);
+                        
+                        if (success)
                 {
                     MessageBox.Show($"Role '{dialog.SelectedRole}' has been assigned to {userName}.", "Success", 
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    // Refresh the grid
-                    dgvUserManagement.Rows.Clear();
-                    AddSampleUserData();
+                            LoadUsersData();
+                        }
+                        else
+                        {
+                            MessageBox.Show("Failed to update role. Please try again.", "Error", 
+                                MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error assigning role: {ex.Message}", "Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        private void ShowDeactivateUserDialog(string userName)
+        private void ShowDeactivateUserDialog(int userId, string userName)
+        {
+            try
         {
             using (DeactivateUserDialog dialog = new DeactivateUserDialog(userName))
             {
                 dialog.Owner = this;
                 if (dialog.ShowDialog() == DialogResult.OK && dialog.DeactivateUser)
+                    {
+                        bool success = _userManagementService.DeactivateUser(userId);
+                        
+                        if (success)
                 {
                     MessageBox.Show($"User '{userName}' has been deactivated.", "Success", 
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    // Refresh the grid
-                    dgvUserManagement.Rows.Clear();
-                    AddSampleUserData();
+                            LoadUsersData();
+                        }
+                        else
+                        {
+                            MessageBox.Show("Failed to deactivate user. Please try again.", "Error", 
+                                MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error deactivating user: {ex.Message}", "Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private void ShowAddUserDialog()
+        {
+            try
         {
             using (AddUserDialog dialog = new AddUserDialog())
             {
                 dialog.Owner = this;
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
-                    MessageBox.Show($"User '{dialog.FullName}' has been added successfully.", "Success", 
+                        // Convert role string to UserRole enum
+                        UserRole role = UserRole.Staff;
+                        if (dialog.Role == "Librarian/Admin")
+                            role = UserRole.Administrator;
+                        else if (dialog.Role == "Staff")
+                            role = UserRole.Staff;
+                        else if (dialog.Role == "Member")
+                            role = UserRole.Member;
+                        
+                        // Split full name
+                        string[] nameParts = dialog.FullName.Split(new[] { ' ' }, 2);
+                        string firstName = nameParts.Length > 0 ? nameParts[0] : "";
+                        string lastName = nameParts.Length > 1 ? nameParts[1] : "";
+                        
+                        if (string.IsNullOrWhiteSpace(firstName))
+                        {
+                            MessageBox.Show("First name is required.", "Validation Error", 
+                                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            return;
+                        }
+                        
+                        // Generate default password (in production, send via email)
+                        string defaultPassword = GenerateTemporaryPassword();
+                        
+                        // Check if user already exists
+                        if (_userManagementService.UserExists(dialog.Email))
+                        {
+                            MessageBox.Show("A user with this email already exists.", "Error", 
+                                MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return;
+                        }
+                        
+                        bool success = _userManagementService.CreateUser(dialog.Email, defaultPassword, firstName, lastName, role);
+                        
+                        if (success)
+                        {
+                            MessageBox.Show($"User '{dialog.FullName}' has been added successfully.\n\nDefault password: {defaultPassword}\n\nPlease inform the user to change it on first login.", "Success", 
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    // Refresh the grid
-                    dgvUserManagement.Rows.Clear();
-                    AddSampleUserData();
+                            LoadUsersData();
+                        }
+                        else
+                        {
+                            MessageBox.Show("Failed to create user. Please try again.", "Error", 
+                                MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
                 }
             }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error adding user: {ex.Message}", "Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private string GenerateTemporaryPassword()
+        {
+            // Generate a random 8-character password
+            const string chars = "ABCDEFGHJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
+            var random = new Random();
+            return new string(Enumerable.Repeat(chars, 8)
+                .Select(s => s[random.Next(s.Length)]).ToArray());
         }
 
 
@@ -7765,14 +7961,14 @@ namespace LMS_Library_Management_System.Forms.Dashboard
         private TextBox txtFullName;
         private TextBox txtEmail;
         private TextBox txtPhoneNumber;
-        private TextBox txtDepartment;
+        private ComboBox cmbDepartment;
         private ComboBox cmbRole;
 
         public AddUserDialog()
         {
             InitializeComponent();
             this.Text = "Add New User";
-            this.Size = new Size(500, 600);
+            this.Size = new Size(500, 650); // Increased height to accommodate all fields including Full Name
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.None;
             // Soft beige background so the dialog stands out against the app
@@ -7844,16 +8040,17 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             {
                 Dock = DockStyle.Fill,
                 BackColor = Color.FromArgb(248, 247, 242),
-                Padding = new Padding(30, 20, 30, 20),
-                AutoScroll = true
+                Padding = new Padding(30, 10, 30, 20),
+                AutoScroll = true,
+                AutoScrollPosition = new Point(0, 0) // Ensure we start at the top
             };
 
-            int yPos = 0;
-            int labelWidth = 120;
+            // Start with top spacing to ensure Full Name is visible and push other fields down
+            int yPos = 15; // Small top margin to ensure Full Name field is visible
             int inputWidth = 400;
             int spacing = 25;
 
-            // Full Name
+            // Full Name - FIRST FIELD (must be visible at the top)
             Label lblFullName = new Label
             {
                 Text = "Full Name *",
@@ -7861,14 +8058,16 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 ForeColor = ThemeConstants.TextDark,
                 Location = new Point(0, yPos),
                 Size = new Size(inputWidth, 25),
-                AutoSize = false
+                AutoSize = false,
+                Visible = true
             };
 
             Panel pnlFullName = new Panel
             {
                 Location = new Point(0, yPos + 25),
                 Size = new Size(inputWidth, 40),
-                BackColor = Color.FromArgb(248, 247, 242)
+                BackColor = Color.FromArgb(248, 247, 242),
+                Visible = true
             };
             pnlFullName.Paint += (s, e) =>
             {
@@ -7969,9 +8168,23 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 Font = new Font("Segoe UI", 10F),
                 BorderStyle = BorderStyle.None,
                 BackColor = Color.FromArgb(248, 247, 242),
-                Text = ""
+                Text = "",
+                MaxLength = 11
             };
-            PlaceholderTextHelper.SetPlaceholder(txtPhoneNumber, "(555) 000-0000");
+            // Allow only numeric input for phone number (no letters or symbols) and limit to 11 digits
+            txtPhoneNumber.KeyPress += (s, e) =>
+            {
+                if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+                {
+                    e.Handled = true;
+                }
+                // Prevent typing if already 11 digits (excluding control characters)
+                if (char.IsDigit(e.KeyChar) && txtPhoneNumber.Text.Length >= 11)
+                {
+                    e.Handled = true;
+                }
+            };
+            PlaceholderTextHelper.SetPlaceholder(txtPhoneNumber, "Enter 11-digit number");
             pnlPhone.Controls.Add(txtPhoneNumber);
 
             yPos += 25 + 40 + spacing;
@@ -8003,17 +8216,44 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 }
             };
 
-            txtDepartment = new TextBox
+            cmbDepartment = new ComboBox
             {
-                Location = new Point(10, 8),
-                Size = new Size(inputWidth - 20, 24),
+                Location = new Point(10, 5),
+                Size = new Size(inputWidth - 20, 30),
                 Font = new Font("Segoe UI", 10F),
-                BorderStyle = BorderStyle.None,
+                DropDownStyle = ComboBoxStyle.DropDownList,
                 BackColor = Color.FromArgb(248, 247, 242),
-                Text = ""
+                FlatStyle = FlatStyle.Flat
             };
-            PlaceholderTextHelper.SetPlaceholder(txtDepartment, "e.g., Circulation Desk");
-            pnlDepartment.Controls.Add(txtDepartment);
+            // Add placeholder as first item
+            cmbDepartment.Items.Add("Choose department");
+            cmbDepartment.Items.AddRange(new string[] 
+            { 
+                "Computing Education Department",
+                "Department of Engineering Education",
+                "Department of Teacher Education",
+                "Department of Arts and Sciences Education",
+                "Department of Business Administration Education",
+                "Department of Hospitality Education",
+                "JHS Department"
+            });
+            cmbDepartment.SelectedIndex = 0; // Select placeholder by default
+            cmbDepartment.ForeColor = Color.Gray; // Gray color for placeholder
+            
+            // Change color when a real department is selected
+            cmbDepartment.SelectedIndexChanged += (s, e) =>
+            {
+                if (cmbDepartment.SelectedIndex == 0)
+                {
+                    cmbDepartment.ForeColor = Color.Gray;
+                }
+                else
+                {
+                    cmbDepartment.ForeColor = Color.Black;
+                }
+            };
+            
+            pnlDepartment.Controls.Add(cmbDepartment);
 
             yPos += 25 + 40 + spacing;
 
@@ -8057,14 +8297,20 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             cmbRole.SelectedIndex = 0; // Default to "Staff"
             pnlRole.Controls.Add(cmbRole);
 
-            contentPanel.Controls.AddRange(new Control[] 
-            { 
-                lblFullName, pnlFullName, 
-                lblEmail, pnlEmail, 
-                lblPhone, pnlPhone, 
-                lblDepartment, pnlDepartment,
-                lblRole, pnlRole
-            });
+            // Add controls to contentPanel - Full Name must be first
+            contentPanel.Controls.Add(lblFullName);
+            contentPanel.Controls.Add(pnlFullName);
+            lblFullName.BringToFront();
+            pnlFullName.BringToFront();
+            
+            contentPanel.Controls.Add(lblEmail);
+            contentPanel.Controls.Add(pnlEmail);
+            contentPanel.Controls.Add(lblPhone);
+            contentPanel.Controls.Add(pnlPhone);
+            contentPanel.Controls.Add(lblDepartment);
+            contentPanel.Controls.Add(pnlDepartment);
+            contentPanel.Controls.Add(lblRole);
+            contentPanel.Controls.Add(pnlRole);
 
             // Footer panel with buttons
             Panel footerPanel = new Panel
@@ -8142,22 +8388,66 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             };
             btnAddUser.Click += (s, e) =>
             {
-                if (string.IsNullOrWhiteSpace(txtFullName.GetActualText()))
+                // Validate Full Name
+                string fullName = txtFullName.GetActualText()?.Trim() ?? "";
+                if (string.IsNullOrWhiteSpace(fullName))
                 {
                     MessageBox.Show("Full Name is required.", "Validation Error", 
                         MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtFullName.Focus();
                     return;
                 }
-                if (string.IsNullOrWhiteSpace(txtEmail.GetActualText()))
+
+                // Validate Email
+                string email = txtEmail.GetActualText()?.Trim() ?? "";
+                if (string.IsNullOrWhiteSpace(email))
                 {
                     MessageBox.Show("Email Address is required.", "Validation Error", 
                         MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtEmail.Focus();
                     return;
                 }
-                FullName = txtFullName.GetActualText();
-                Email = txtEmail.GetActualText();
-                PhoneNumber = txtPhoneNumber.GetActualText();
-                Department = txtDepartment.GetActualText();
+
+                // Validate Phone Number
+                string phoneNumber = txtPhoneNumber.GetActualText()?.Trim() ?? "";
+                if (string.IsNullOrWhiteSpace(phoneNumber))
+                {
+                    MessageBox.Show("Phone Number is required.", "Validation Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtPhoneNumber.Focus();
+                    return;
+                }
+                if (phoneNumber.Length != 11)
+                {
+                    MessageBox.Show("Phone Number must be exactly 11 digits.", "Validation Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtPhoneNumber.Focus();
+                    return;
+                }
+
+                // Validate Department
+                if (cmbDepartment.SelectedIndex <= 0 || cmbDepartment.SelectedIndex == -1)
+                {
+                    MessageBox.Show("Please select a department.", "Validation Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    cmbDepartment.Focus();
+                    return;
+                }
+
+                // Validate Role
+                if (cmbRole.SelectedIndex == -1 || cmbRole.SelectedItem == null)
+                {
+                    MessageBox.Show("Please select a role.", "Validation Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    cmbRole.Focus();
+                    return;
+                }
+
+                // All validations passed - set values and close dialog
+                FullName = fullName;
+                Email = email;
+                PhoneNumber = phoneNumber;
+                Department = cmbDepartment.SelectedItem?.ToString() ?? "";
                 Role = cmbRole.SelectedItem?.ToString() ?? "";
                 this.DialogResult = DialogResult.OK;
             };
@@ -8170,8 +8460,11 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 int centerX = (contentPanel.ClientSize.Width - inputWidth) / 2;
                 if (centerX < 0) centerX = 0;
 
+                // Ensure Full Name is at the top and visible
                 lblFullName.Left = centerX;
+                lblFullName.Top = 5; // Keep at top with small margin
                 pnlFullName.Left = centerX;
+                pnlFullName.Top = 5 + 25; // Label height + margin
 
                 lblEmail.Left = centerX;
                 pnlEmail.Left = centerX;
@@ -8205,6 +8498,29 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             mainPanel.Controls.Add(footerPanel);
 
             this.Controls.Add(mainPanel);
+            
+            // Ensure Full Name field is visible when dialog loads
+            this.Load += (s, e) =>
+            {
+                if (lblFullName != null && pnlFullName != null)
+                {
+                    // Reset scroll position to top
+                    contentPanel.AutoScrollPosition = new Point(0, 0);
+                    
+                    // Ensure Full Name controls are visible
+                    lblFullName.Visible = true;
+                    pnlFullName.Visible = true;
+                    lblFullName.BringToFront();
+                    pnlFullName.BringToFront();
+                    
+                    // Scroll to show Full Name field
+                    contentPanel.ScrollControlIntoView(lblFullName);
+                    
+                    // Force refresh
+                    contentPanel.Invalidate();
+                    contentPanel.Update();
+                }
+            };
         }
 
         private GraphicsPath CreateRoundedRectangle(Rectangle rect, int radius)
@@ -8771,7 +9087,6 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             };
 
             int yPos = 0;
-            int labelWidth = 120;
             int inputWidth = 400;
             int spacing = 25;
 
@@ -8890,6 +9205,14 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 BorderStyle = BorderStyle.None,
                 BackColor = Color.FromArgb(248, 247, 242),
                 Text = phoneNumber
+            };
+            // Allow only numeric input for phone number (no letters or symbols)
+            txtPhoneNumber.KeyPress += (s, e) =>
+            {
+                if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+                {
+                    e.Handled = true;
+                }
             };
             pnlPhone.Controls.Add(txtPhoneNumber);
 

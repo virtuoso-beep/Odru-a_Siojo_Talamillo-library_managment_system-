@@ -926,6 +926,14 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             // Row 3
             AddLabel("Phone", 30, currentY);
             TextBox txtPhone = AddInput("+1 555-0123", 30, currentY, 490);
+            // Allow only numeric input for phone number (no letters or symbols)
+            txtPhone.KeyPress += (s, e) =>
+            {
+                if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+                {
+                    e.Handled = true;
+                }
+            };
             currentY += gap;
 
             // Row 4
