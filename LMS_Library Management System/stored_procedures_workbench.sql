@@ -198,3 +198,131 @@ END$$
 
 DELIMITER ;
 
+-- =============================================
+-- Stored Procedure: sp_GetUsersByRole
+-- Description: Gets all users by role (for Admin user management)
+-- =============================================
+DROP PROCEDURE IF EXISTS sp_GetUsersByRole;
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_GetUsersByRole(
+    IN p_Role INT
+)
+BEGIN
+    SELECT 
+        UserId,
+        Email,
+        FirstName,
+        LastName,
+        CONCAT(FirstName, ' ', LastName) AS FullName,
+        Role,
+        IsActive,
+        CreatedDate
+    FROM Users
+    WHERE Role = p_Role AND IsActive = 1
+    ORDER BY CreatedDate DESC;
+END$$
+
+DELIMITER ;
+
+-- =============================================
+-- Stored Procedure: sp_UpdateUser
+-- Description: Updates user information (name, email)
+-- Returns: Number of rows affected
+-- =============================================
+DROP PROCEDURE IF EXISTS sp_UpdateUser;
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_UpdateUser(
+    IN p_UserId INT,
+    IN p_Email VARCHAR(255),
+    IN p_FirstName VARCHAR(100),
+    IN p_LastName VARCHAR(100)
+)
+BEGIN
+    UPDATE Users 
+    SET Email = p_Email,
+        FirstName = p_FirstName,
+        LastName = p_LastName
+    WHERE UserId = p_UserId AND IsActive = 1;
+    
+    SELECT ROW_COUNT() AS RowsAffected;
+END$$
+
+DELIMITER ;
+
+-- =============================================
+-- Stored Procedure: sp_DeactivateUser
+-- Description: Deactivates a user account
+-- Returns: Number of rows affected
+-- =============================================
+DROP PROCEDURE IF EXISTS sp_DeactivateUser;
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_DeactivateUser(
+    IN p_UserId INT
+)
+BEGIN
+    UPDATE Users 
+    SET IsActive = FALSE
+    WHERE UserId = p_UserId;
+    
+    SELECT ROW_COUNT() AS RowsAffected;
+END$$
+
+DELIMITER ;
+
+-- =============================================
+-- Stored Procedure: sp_UpdateUserRole
+-- Description: Updates user role
+-- Returns: Number of rows affected
+-- =============================================
+DROP PROCEDURE IF EXISTS sp_UpdateUserRole;
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_UpdateUserRole(
+    IN p_UserId INT,
+    IN p_Role INT
+)
+BEGIN
+    UPDATE Users 
+    SET Role = p_Role
+    WHERE UserId = p_UserId AND IsActive = 1;
+    
+    SELECT ROW_COUNT() AS RowsAffected;
+END$$
+
+DELIMITER ;
+
+-- =============================================
+-- Stored Procedure: sp_GetUserById
+-- Description: Gets user by UserId
+-- =============================================
+DROP PROCEDURE IF EXISTS sp_GetUserById;
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_GetUserById(
+    IN p_UserId INT
+)
+BEGIN
+    SELECT 
+        UserId,
+        Email,
+        PasswordHash,
+        FirstName,
+        LastName,
+        CONCAT(FirstName, ' ', LastName) AS FullName,
+        Role,
+        IsActive,
+        CreatedDate
+    FROM Users
+    WHERE UserId = p_UserId;
+END$$
+
+DELIMITER ;
+
