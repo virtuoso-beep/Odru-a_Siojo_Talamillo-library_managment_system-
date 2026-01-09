@@ -7968,7 +7968,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
         {
             InitializeComponent();
             this.Text = "Add New User";
-            this.Size = new Size(500, 650); // Increased height to accommodate all fields including Full Name
+            this.Size = new Size(500, 680); // Increased height to accommodate all fields including Full Name with proper spacing
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.None;
             // Soft beige background so the dialog stands out against the app
@@ -8040,13 +8040,13 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             {
                 Dock = DockStyle.Fill,
                 BackColor = Color.FromArgb(248, 247, 242),
-                Padding = new Padding(30, 10, 30, 20),
+                Padding = new Padding(30, 10, 30, 20), // Small top padding for Full Name visibility
                 AutoScroll = true,
                 AutoScrollPosition = new Point(0, 0) // Ensure we start at the top
             };
 
-            // Start with top spacing to ensure Full Name is visible and push other fields down
-            int yPos = 15; // Small top margin to ensure Full Name field is visible
+            // Start at the top with small margin to ensure Full Name is clearly visible
+            int yPos = 0; // Start at top of contentPanel client area (padding already applied)
             int inputWidth = 400;
             int spacing = 25;
 
@@ -8297,12 +8297,12 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             cmbRole.SelectedIndex = 0; // Default to "Staff"
             pnlRole.Controls.Add(cmbRole);
 
-            // Add controls to contentPanel - Full Name must be first
+            // Add controls to contentPanel - Full Name MUST be first and at the top
+            // Add Full Name controls FIRST
             contentPanel.Controls.Add(lblFullName);
             contentPanel.Controls.Add(pnlFullName);
-            lblFullName.BringToFront();
-            pnlFullName.BringToFront();
             
+            // Add all other controls
             contentPanel.Controls.Add(lblEmail);
             contentPanel.Controls.Add(pnlEmail);
             contentPanel.Controls.Add(lblPhone);
@@ -8311,6 +8311,17 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             contentPanel.Controls.Add(pnlDepartment);
             contentPanel.Controls.Add(lblRole);
             contentPanel.Controls.Add(pnlRole);
+            
+            // CRITICAL: Bring Full Name to front to ensure it's visible
+            lblFullName.BringToFront();
+            pnlFullName.BringToFront();
+            
+            // Explicitly set positions to ensure Full Name is at top
+            lblFullName.Location = new Point(0, 0);
+            pnlFullName.Location = new Point(0, 25);
+            
+            // Force refresh
+            contentPanel.Invalidate();
 
             // Footer panel with buttons
             Panel footerPanel = new Panel
@@ -8460,11 +8471,11 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 int centerX = (contentPanel.ClientSize.Width - inputWidth) / 2;
                 if (centerX < 0) centerX = 0;
 
-                // Ensure Full Name is at the top and visible
+                // Ensure Full Name is at the absolute top and visible
                 lblFullName.Left = centerX;
-                lblFullName.Top = 5; // Keep at top with small margin
+                lblFullName.Top = 0; // At top of contentPanel client area (padding already applied)
                 pnlFullName.Left = centerX;
-                pnlFullName.Top = 5 + 25; // Label height + margin
+                pnlFullName.Top = 25; // Label height (25px) - Full Name must be FIRST
 
                 lblEmail.Left = centerX;
                 pnlEmail.Left = centerX;
@@ -8519,6 +8530,20 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                     // Force refresh
                     contentPanel.Invalidate();
                     contentPanel.Update();
+                }
+            };
+            
+            // Also ensure Full Name is visible when form is shown
+            this.Shown += (s, e) =>
+            {
+                if (lblFullName != null && pnlFullName != null && contentPanel != null)
+                {
+                    // Reset scroll to top
+                    contentPanel.AutoScrollPosition = new Point(0, 0);
+                    // Ensure Full Name is at the top
+                    contentPanel.ScrollControlIntoView(lblFullName);
+                    // Refresh
+                    contentPanel.Invalidate();
                 }
             };
         }
