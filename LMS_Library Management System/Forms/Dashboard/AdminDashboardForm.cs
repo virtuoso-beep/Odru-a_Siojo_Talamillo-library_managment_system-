@@ -7953,12 +7953,14 @@ namespace LMS_Library_Management_System.Forms.Dashboard
     public class AddUserDialog : Form
     {
         public string FullName { get; private set; }
+        public string UserInput { get; private set; }
         public string Email { get; private set; }
         public string PhoneNumber { get; private set; }
         public string Department { get; private set; }
         public string Role { get; private set; }
 
         private TextBox txtFullName;
+        private TextBox txtUserInput;
         private TextBox txtEmail;
         private TextBox txtPhoneNumber;
         private ComboBox cmbDepartment;
@@ -8040,11 +8042,11 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             {
                 Dock = DockStyle.Fill,
                 BackColor = Color.FromArgb(248, 247, 242),
-                Padding = new Padding(30, 40, 30, 20),
+                Padding = new Padding(30, 20, 30, 20),
                 AutoScroll = true
             };
 
-            int yPos = 100; // Start lower to add more margin from top
+            int yPos = 20; // Start lower to add more margin from top
             int labelWidth = 120;
             int inputWidth = 400;
             int spacing = 25;
@@ -8089,6 +8091,47 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             };
             PlaceholderTextHelper.SetPlaceholder(txtFullName, "Enter full name");
             pnlFullName.Controls.Add(txtFullName);
+
+            yPos += 25 + 40 + spacing;
+
+            // Last Name
+            Label lblUserInput = new Label
+            {
+                Text = "Last Name",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = ThemeConstants.TextDark,
+                Location = new Point(0, yPos),
+                Size = new Size(inputWidth, 25),
+                AutoSize = false
+            };
+
+            Panel pnlUserInput = new Panel
+            {
+                Location = new Point(0, yPos + 25),
+                Size = new Size(inputWidth, 40),
+                BackColor = Color.FromArgb(248, 247, 242)
+            };
+            pnlUserInput.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlUserInput.Width - 1, pnlUserInput.Height - 1), 6))
+                using (Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+
+            txtUserInput = new TextBox
+            {
+                Location = new Point(10, 8),
+                Size = new Size(inputWidth - 20, 24),
+                Font = new Font("Segoe UI", 10F),
+                BorderStyle = BorderStyle.None,
+                BackColor = Color.FromArgb(248, 247, 242),
+                Text = ""
+            };
+            PlaceholderTextHelper.SetPlaceholder(txtUserInput, "Enter last name");
+            pnlUserInput.Controls.Add(txtUserInput);
 
             yPos += 25 + 40 + spacing;
 
@@ -8301,6 +8344,10 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             contentPanel.Controls.Add(lblFullName);
             contentPanel.Controls.Add(pnlFullName);
             
+            // Add User Input controls
+            contentPanel.Controls.Add(lblUserInput);
+            contentPanel.Controls.Add(pnlUserInput);
+            
             // Add all other controls
             contentPanel.Controls.Add(lblEmail);
             contentPanel.Controls.Add(pnlEmail);
@@ -8408,6 +8455,9 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                     return;
                 }
 
+                // Get User Input
+                string userInput = txtUserInput.GetActualText()?.Trim() ?? "";
+
                 // Validate Email
                 string email = txtEmail.GetActualText()?.Trim() ?? "";
                 if (string.IsNullOrWhiteSpace(email))
@@ -8455,6 +8505,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
                 // All validations passed - set values and close dialog
                 FullName = fullName;
+                UserInput = userInput;
                 Email = email;
                 PhoneNumber = phoneNumber;
                 Department = cmbDepartment.SelectedItem?.ToString() ?? "";
@@ -8475,6 +8526,9 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 lblFullName.Top = 0; // At top of contentPanel client area (padding already applied)
                 pnlFullName.Left = centerX;
                 pnlFullName.Top = 25; // Label height (25px) - Full Name must be FIRST
+
+                lblUserInput.Left = centerX;
+                pnlUserInput.Left = centerX;
 
                 lblEmail.Left = centerX;
                 pnlEmail.Left = centerX;
