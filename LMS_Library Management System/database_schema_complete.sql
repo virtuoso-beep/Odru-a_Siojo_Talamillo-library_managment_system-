@@ -1,10 +1,106 @@
 -- =============================================
--- Library Management System - Stored Procedures
+-- Library Management System - Complete Database Schema
 -- Database: LMS_DB
--- MySQL Workbench Compatible Version
+-- MySQL Version
 -- =============================================
 
+-- Create Database
+CREATE DATABASE IF NOT EXISTS LMS_DB;
 USE LMS_DB;
+
+-- =============================================
+-- TABLE: Users
+-- Description: Stores user accounts (Admin, Staff, Members)
+-- =============================================
+CREATE TABLE IF NOT EXISTS Users (
+    UserId INT PRIMARY KEY AUTO_INCREMENT,
+    Email VARCHAR(255) UNIQUE NOT NULL,
+    PasswordHash VARCHAR(255) NOT NULL,
+    FirstName VARCHAR(100) NOT NULL,
+    LastName VARCHAR(100) NOT NULL,
+    Role INT NOT NULL COMMENT '1=Administrator, 2=Staff, 3=Member',
+    IsActive BOOLEAN DEFAULT TRUE,
+    CreatedDate DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =============================================
+-- TABLE: Members
+-- Description: Stores member-specific information
+-- =============================================
+CREATE TABLE IF NOT EXISTS Members (
+    MemberId INT PRIMARY KEY AUTO_INCREMENT,
+    UserId INT NOT NULL,
+    MemberNumber VARCHAR(20) UNIQUE NOT NULL,
+    MemberType VARCHAR(50) NOT NULL,
+    Status INT DEFAULT 1 COMMENT '1=Active, 0=Inactive',
+    RegistrationDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+    Phone VARCHAR(20),
+    Address TEXT,
+    IdNumber VARCHAR(20),
+    DateOfBirth DATE,
+    Gender VARCHAR(10),
+    Department VARCHAR(100),
+    EmergencyContactName VARCHAR(100),
+    EmergencyContactPhone VARCHAR(20),
+    MembershipExpiryDate DATE,
+    FOREIGN KEY (UserId) REFERENCES Users(UserId) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =============================================
+-- TABLE: Books
+-- Description: Stores book catalog information
+-- =============================================
+CREATE TABLE IF NOT EXISTS Books (
+    BookId INT PRIMARY KEY AUTO_INCREMENT,
+    ISBN VARCHAR(20) UNIQUE,
+    Title VARCHAR(255) NOT NULL,
+    Author VARCHAR(255) NOT NULL,
+    Publisher VARCHAR(255),
+    PublicationYear INT,
+    Category VARCHAR(100),
+    TotalCopies INT DEFAULT 1,
+    AvailableCopies INT DEFAULT 1,
+    Description TEXT,
+    CreatedDate DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =============================================
+-- TABLE: Borrowings
+-- Description: Tracks book borrowing transactions
+-- =============================================
+CREATE TABLE IF NOT EXISTS Borrowings (
+    BorrowingId INT PRIMARY KEY AUTO_INCREMENT,
+    MemberId INT NOT NULL,
+    BookId INT NOT NULL,
+    BorrowDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+    DueDate DATETIME NOT NULL,
+    ReturnDate DATETIME NULL,
+    Status VARCHAR(20) DEFAULT 'Borrowed' COMMENT 'Borrowed, Returned, Overdue',
+    FineAmount DECIMAL(10,2) DEFAULT 0,
+    FOREIGN KEY (MemberId) REFERENCES Members(MemberId),
+    FOREIGN KEY (BookId) REFERENCES Books(BookId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =============================================
+-- TABLE: Fines
+-- Description: Tracks fines for overdue books
+-- =============================================
+CREATE TABLE IF NOT EXISTS Fines (
+    FineId INT PRIMARY KEY AUTO_INCREMENT,
+    BorrowingId INT NOT NULL,
+    MemberId INT NOT NULL,
+    Amount DECIMAL(10,2) NOT NULL,
+    Reason VARCHAR(255),
+    Status VARCHAR(20) DEFAULT 'Unpaid' COMMENT 'Unpaid, Paid',
+    CreatedDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PaidDate DATETIME NULL,
+    FOREIGN KEY (BorrowingId) REFERENCES Borrowings(BorrowingId),
+    FOREIGN KEY (MemberId) REFERENCES Members(MemberId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =============================================
+-- STORED PROCEDURES
+-- =============================================
 
 -- =============================================
 -- Stored Procedure: sp_AuthenticateUser
@@ -325,4 +421,17 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+-- =============================================
+-- DATABASE CONNECTION INFORMATION
+-- =============================================
+-- Connection String (from App.config):
+-- Server=localhost;Port=3306;Database=LMS_DB;Uid=root;Pwd=Admin123!;CharSet=utf8;
+--
+-- Default Credentials:
+-- - Username: root
+-- - Password: Admin123!
+-- - Database: LMS_DB
+-- - Port: 3306
+-- =============================================
 
