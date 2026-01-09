@@ -7844,11 +7844,11 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             {
                 Dock = DockStyle.Fill,
                 BackColor = Color.FromArgb(248, 247, 242),
-                Padding = new Padding(30, 20, 30, 20),
+                Padding = new Padding(30, 40, 30, 20),
                 AutoScroll = true
             };
 
-            int yPos = 0;
+            int yPos = 100; // Start lower to add more margin from top
             int labelWidth = 120;
             int inputWidth = 400;
             int spacing = 25;
