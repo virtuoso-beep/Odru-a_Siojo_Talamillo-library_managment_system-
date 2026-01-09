@@ -8047,7 +8047,6 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             };
 
             int yPos = 20; // Start lower to add more margin from top
-            int labelWidth = 120;
             int inputWidth = 400;
             int spacing = 25;
 
@@ -8094,10 +8093,10 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             yPos += 25 + 40 + spacing;
 
-            // Last Name
+            // Full Name
             Label lblUserInput = new Label
             {
-                Text = "Last Name",
+                Text = "Full Name",
                 Font = new Font("Segoe UI", 10F, FontStyle.Regular),
                 ForeColor = ThemeConstants.TextDark,
                 Location = new Point(0, yPos),
@@ -8130,7 +8129,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 BackColor = Color.FromArgb(248, 247, 242),
                 Text = ""
             };
-            PlaceholderTextHelper.SetPlaceholder(txtUserInput, "Enter last name");
+            PlaceholderTextHelper.SetPlaceholder(txtUserInput, "Enter full name");
             pnlUserInput.Controls.Add(txtUserInput);
 
             yPos += 25 + 40 + spacing;
@@ -8171,7 +8170,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 BackColor = Color.FromArgb(248, 247, 242),
                 Text = ""
             };
-            PlaceholderTextHelper.SetPlaceholder(txtEmail, "user@library.edu");
+            PlaceholderTextHelper.SetPlaceholder(txtEmail, "user@library.com");
             pnlEmail.Controls.Add(txtEmail);
 
             yPos += 25 + 40 + spacing;
@@ -8226,7 +8225,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                     e.Handled = true;
                 }
             };
-            PlaceholderTextHelper.SetPlaceholder(txtPhoneNumber, "Enter 11-digit number");
+            PlaceholderTextHelper.SetPlaceholder(txtPhoneNumber, "09XXXXXXXXX");
             pnlPhone.Controls.Add(txtPhoneNumber);
 
             yPos += 25 + 40 + spacing;
@@ -8335,7 +8334,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 BackColor = Color.FromArgb(248, 247, 242),
                 FlatStyle = FlatStyle.Flat
             };
-            cmbRole.Items.AddRange(new string[] { "Staff", "Librarian/Admin", "Member" });
+            cmbRole.Items.AddRange(new string[] { "Staff", "Librarian/Admin" });
             cmbRole.SelectedIndex = 0; // Default to "Staff"
             pnlRole.Controls.Add(cmbRole);
 
@@ -8445,20 +8444,31 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             };
             btnAddUser.Click += (s, e) =>
             {
-                // Validate Full Name
-                string fullName = txtFullName.GetActualText()?.Trim() ?? "";
+                // Validate Full Name - check txtUserInput (the visible Full Name field)
+                string fullName = txtUserInput.GetActualText()?.Trim() ?? "";
                 if (string.IsNullOrWhiteSpace(fullName))
                 {
                     MessageBox.Show("Full Name is required.", "Validation Error", 
                         MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    txtFullName.Focus();
+                    txtUserInput.Focus();
+                    return;
+                }
+                
+                // Validate that Full Name contains at least two words (first and last name)
+                string[] nameParts = fullName.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                if (nameParts.Length < 2)
+                {
+                    MessageBox.Show("Full Name must contain at least two words (first name and last name).", "Validation Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtUserInput.Focus();
                     return;
                 }
 
-                // Get User Input
-                string userInput = txtUserInput.GetActualText()?.Trim() ?? "";
+                // Get the original Full Name field value (if it exists) for backward compatibility
+                string originalFullName = txtFullName.GetActualText()?.Trim() ?? "";
+                string userInput = fullName; // Use the validated full name
 
-                // Validate Email
+                // Validate Email - just check format, not .edu requirement
                 string email = txtEmail.GetActualText()?.Trim() ?? "";
                 if (string.IsNullOrWhiteSpace(email))
                 {
@@ -8467,8 +8477,27 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                     txtEmail.Focus();
                     return;
                 }
+                // Validate email format using MailAddress
+                try
+                {
+                    var addr = new System.Net.Mail.MailAddress(email);
+                    if (addr.Address != email || !email.Contains("@"))
+                    {
+                        MessageBox.Show("Please enter a valid email address format.", "Validation Error", 
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        txtEmail.Focus();
+                        return;
+                    }
+                }
+                catch
+                {
+                    MessageBox.Show("Please enter a valid email address format.", "Validation Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtEmail.Focus();
+                    return;
+                }
 
-                // Validate Phone Number
+                // Validate Phone Number - must start with "09" and be 11 digits
                 string phoneNumber = txtPhoneNumber.GetActualText()?.Trim() ?? "";
                 if (string.IsNullOrWhiteSpace(phoneNumber))
                 {
@@ -8480,6 +8509,13 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 if (phoneNumber.Length != 11)
                 {
                     MessageBox.Show("Phone Number must be exactly 11 digits.", "Validation Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtPhoneNumber.Focus();
+                    return;
+                }
+                if (!phoneNumber.StartsWith("09"))
+                {
+                    MessageBox.Show("Phone Number must start with '09'.", "Validation Error", 
                         MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     txtPhoneNumber.Focus();
                     return;
