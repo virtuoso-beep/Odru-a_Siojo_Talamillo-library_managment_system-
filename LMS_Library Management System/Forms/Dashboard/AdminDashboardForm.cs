@@ -16,20 +16,6 @@ using System.Windows.Forms.DataVisualization.Charting;
 
 namespace LMS_Library_Management_System.Forms.Dashboard
 {
-    // Helper class for member data (shared between Admin and Staff dashboards)
-    public class MemberInfo
-    {
-        public string MemberId { get; set; }
-        public string Name { get; set; }
-        public string PhoneNumber { get; set; }
-        public string Type { get; set; }
-        public string Email { get; set; }
-        public string Status { get; set; }
-        public int BooksBorrowed { get; set; }
-        public int BooksLimit { get; set; }
-        public decimal Fines { get; set; }
-    }
-
     public partial class AdminDashboardForm : Form
     {
         // Dynamic view panels
@@ -53,6 +39,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
         private Button btnUserTabStaff;
         private DataGridView dgvUserManagement;
         private TextBox txtSearchUsers;
+        private Button btnSearchUsers;
         private Button btnAddUser;
         private List<Control> _originalMainContentControls = new List<Control>();
         private bool _isLoadingMembersData = false;
@@ -527,6 +514,75 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             LoadMembersData();
         }
 
+        private void BtnSearchMembers_Click(object sender, EventArgs e)
+        {
+            LoadMembersData();
+        }
+
+        private void BtnSearchUsers_Click(object sender, EventArgs e)
+        {
+            LoadUsersData();
+        }
+
+        private void TxtSearchUsers_TextChanged(object sender, EventArgs e)
+        {
+            if (txtSearchUsers.Text == "🔍 Search users...") return;
+            LoadUsersData();
+        }
+
+        // Helper method to create consistent search bars across all tabs
+        private (Panel panel, TextBox textBox, Button button) CreateConsistentSearchBar(string placeholder, int searchBoxWidth = 920)
+        {
+            Panel searchPanel = new Panel
+            {
+                Location = new Point(30, 20),
+                Size = new Size(searchBoxWidth + 230, 50), // Search box + button + filters
+                BackColor = Color.Transparent
+            };
+
+            TextBox searchBox = new TextBox
+            {
+                Location = new Point(0, 8),
+                Size = new Size(searchBoxWidth, 34),
+                Font = new Font("Segoe UI", 10F),
+                Text = placeholder,
+                ForeColor = Color.Gray
+            };
+
+            searchBox.Enter += (s, e) => {
+                if (((TextBox)s).Text == placeholder)
+                {
+                    ((TextBox)s).Text = "";
+                    ((TextBox)s).ForeColor = Color.Black;
+                }
+            };
+
+            searchBox.Leave += (s, e) => {
+                if (string.IsNullOrWhiteSpace(((TextBox)s).Text))
+                {
+                    ((TextBox)s).Text = placeholder;
+                    ((TextBox)s).ForeColor = Color.Gray;
+                }
+            };
+
+            Button searchButton = new Button
+            {
+                Text = "🔍 Search",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = ThemeConstants.PrimaryMaroon,
+                FlatStyle = FlatStyle.Flat,
+                Size = new Size(100, 34),
+                Location = new Point(searchBoxWidth + 10, 8)
+            };
+            searchButton.FlatAppearance.BorderSize = 0;
+
+            searchPanel.Controls.Add(searchBox);
+            searchPanel.Controls.Add(searchButton);
+
+            return (searchPanel, searchBox, searchButton);
+        }
+
         private void LoadMembersData()
         {
             if (_isLoadingMembersData) return;
@@ -538,23 +594,44 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 if (dgvMembers.Columns.Count == 0)
                 {
                     dgvMembers.Columns.Add("MemberId", "Member ID");
-                    dgvMembers.Columns.Add("Name", "Name");
-                    dgvMembers.Columns.Add("Type", "Type");
+                    dgvMembers.Columns.Add("FirstName", "First Name");
+                    dgvMembers.Columns.Add("LastName", "Last Name");
                     dgvMembers.Columns.Add("Email", "Email");
+                    dgvMembers.Columns.Add("Phone", "Phone");
+                    dgvMembers.Columns.Add("Address", "Address");
+                    dgvMembers.Columns.Add("Department", "Department");
+                    dgvMembers.Columns.Add("Type", "Type");
                     dgvMembers.Columns.Add("Status", "Status");
-                    dgvMembers.Columns.Add("Books", "Books");
-                    dgvMembers.Columns.Add("Fines", "Fines");
                     dgvMembers.Columns.Add("Actions", "Actions");
                     
-                    dgvMembers.Columns["MemberId"].Width = 130;
-                    dgvMembers.Columns["Name"].Width = 200;
-                    dgvMembers.Columns["Type"].Width = 100;
+                    dgvMembers.Columns["MemberId"].Width = 140;
+                    dgvMembers.Columns["FirstName"].Width = 110;
+                    dgvMembers.Columns["LastName"].Width = 110;
                     dgvMembers.Columns["Email"].Width = 220;
+                    dgvMembers.Columns["Phone"].Width = 120;
+                    dgvMembers.Columns["Address"].Width = 150;
+                    dgvMembers.Columns["Department"].Width = 200;
+                    dgvMembers.Columns["Type"].Width = 100;
                     dgvMembers.Columns["Status"].Width = 100;
-                    dgvMembers.Columns["Books"].Width = 80;
-                    dgvMembers.Columns["Fines"].Width = 80;
-                    dgvMembers.Columns["Actions"].Width = 100;
-                    dgvMembers.RowTemplate.Height = 60; // Taller rows for multi-line text
+                    dgvMembers.Columns["Actions"].Width = 120;
+                    dgvMembers.RowTemplate.Height = 50;
+                    
+                    // Ensure proper alignment
+                    dgvMembers.Columns["MemberId"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                    dgvMembers.Columns["FirstName"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                    dgvMembers.Columns["LastName"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                    dgvMembers.Columns["Email"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                    dgvMembers.Columns["Phone"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                    dgvMembers.Columns["Address"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                    dgvMembers.Columns["Department"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                    dgvMembers.Columns["Type"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                    dgvMembers.Columns["Status"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                    dgvMembers.Columns["Actions"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                    
+                    // Set header alignment
+                    dgvMembers.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                    dgvMembers.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+                    dgvMembers.ColumnHeadersHeight = 45;
                 }
                 
                 string searchText = txtSearchMembers.Text;
@@ -565,28 +642,48 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 string statusFilter = cmbStatusFilter.SelectedItem?.ToString() ?? "All Status";
                 string typeFilter = cmbTypeFilter.SelectedItem?.ToString() ?? "All Types";
                 
-                // Mock data for demonstration
-                var mockMembers = new List<MemberInfo>
+                // Get members from database
+                var memberService = new Service.MemberService();
+                var dbMembers = memberService.GetAllMembers();
+                
+                // Get all statistics in one optimized batch query
+                var allStatistics = memberService.GetAllMembersStatistics();
+                
+                // Convert to MemberInfo for display with real statistics from database
+                var allMembers = dbMembers.Select(m => 
                 {
-                    new MemberInfo { MemberId = "MEM-2024-0001", Name = "John Smith", PhoneNumber = "+1 555-0101", Type = "Student", Email = "john.smith@university.edu", Status = "Active", BooksBorrowed = 3, BooksLimit = 5, Fines = 0.00m },
-                    new MemberInfo { MemberId = "MEM-2024-0002", Name = "Emily Johnson", PhoneNumber = "+1 555-0102", Type = "Faculty", Email = "emily.johnson@university.edu", Status = "Active", BooksBorrowed = 7, BooksLimit = 10, Fines = 0.00m },
-                    new MemberInfo { MemberId = "MEM-2024-0003", Name = "Michael Brown", PhoneNumber = "+1 555-0103", Type = "Staff", Email = "michael.brown@university.edu", Status = "Active", BooksBorrowed = 2, BooksLimit = 7, Fines = 15.00m },
-                    new MemberInfo { MemberId = "MEM-2024-0004", Name = "Sarah Davis", PhoneNumber = "+1 555-0104", Type = "Guest", Email = "sarah.davis@email.com", Status = "Active", BooksBorrowed = 1, BooksLimit = 2, Fines = 0.00m },
-                    new MemberInfo { MemberId = "MEM-2024-0005", Name = "David Wilson", PhoneNumber = "+1 555-0105", Type = "Student", Email = "david.wilson@university.edu", Status = "Suspended", BooksBorrowed = 0, BooksLimit = 5, Fines = 150.00m },
-                    new MemberInfo { MemberId = "MEM-2024-0006", Name = "Diana Prince", PhoneNumber = "+1 555-0106", Type = "Faculty", Email = "diana.prince@email.com", Status = "Active", BooksBorrowed = 4, BooksLimit = 10, Fines = 0.00m },
-                    new MemberInfo { MemberId = "MEM-2024-0007", Name = "Edward Lee", PhoneNumber = "+1 555-0107", Type = "Guest", Email = "edward.lee@email.com", Status = "Expired", BooksBorrowed = 1, BooksLimit = 3, Fines = 10.00m },
-                    new MemberInfo { MemberId = "MEM-2024-0008", Name = "Fiona Chen", PhoneNumber = "+1 555-0108", Type = "Student", Email = "fiona.chen@email.com", Status = "Active", BooksBorrowed = 0, BooksLimit = 5, Fines = 0.00m }
-                };
+                    // Get real statistics from batch query (much faster than individual queries)
+                    var stats = allStatistics.ContainsKey(m.MemberNumber) 
+                        ? allStatistics[m.MemberNumber] 
+                        : (0, 0.00m);
+                    
+                    return new MemberInfo
+                    {
+                        MemberId = m.MemberNumber,
+                        FirstName = m.FirstName,
+                        LastName = m.LastName,
+                        Name = m.FullName,
+                        PhoneNumber = m.Phone ?? "",
+                        Address = m.Address ?? "",
+                        Department = m.Department ?? "",
+                        Type = m.MemberType,
+                        Email = m.Email,
+                        Status = m.StatusText,
+                        BooksBorrowed = stats.Item1, // Real data from database (BooksBorrowed)
+                        BooksLimit = GetBookLimit(m.MemberType),
+                        Fines = stats.Item2 // Real data from database (UnpaidFines)
+                    };
+                }).ToList();
                 
                 // Apply filters
-                IEnumerable<MemberInfo> filteredMembers = mockMembers;
+                IEnumerable<MemberInfo> filteredMembers = allMembers;
                 if (!string.IsNullOrEmpty(searchText))
                 {
                     string searchLower = searchText.ToLower();
                     filteredMembers = filteredMembers.Where(m => 
-                        m.MemberId.ToLower().StartsWith(searchLower) ||
-                        m.Name.ToLower().StartsWith(searchLower) ||
-                        m.Email.ToLower().StartsWith(searchLower));
+                        m.MemberId.ToLower().Contains(searchLower) ||
+                        m.Name.ToLower().Contains(searchLower) ||
+                        m.Email.ToLower().Contains(searchLower));
                 }
                 if (statusFilter != "All Status")
                 {
@@ -598,7 +695,6 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 }
                 
                 // Calculate statistics
-                var allMembers = mockMembers;
                 lblTotalMembers.Text = allMembers.Count.ToString();
                 
                 // Statistics with labels
@@ -612,12 +708,14 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 {
                     int rowIndex = dgvMembers.Rows.Add(
                         member.MemberId,
-                        member.Name, // Name column will hold Name, but painted with phone
-                        member.Type,
+                        member.FirstName,
+                        member.LastName,
                         member.Email,
+                        member.PhoneNumber,
+                        member.Address,
+                        member.Department,
+                        member.Type,
                         member.Status,
-                        $"{member.BooksBorrowed}/{member.BooksLimit}",
-                        $"${member.Fines:F0}", // Format without cents as per image, or F2 if desired
                         "" // Actions column left empty for custom painting
                     );
                     
@@ -642,6 +740,18 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             finally
             {
                 _isLoadingMembersData = false;
+            }
+        }
+
+        private int GetBookLimit(string memberType)
+        {
+            switch (memberType)
+            {
+                case "Student": return 5;
+                case "Faculty": return 10;
+                case "Staff": return 7;
+                case "Guest": return 2;
+                default: return 3;
             }
         }
 
@@ -817,15 +927,37 @@ namespace LMS_Library_Management_System.Forms.Dashboard
              else if (dgvMembers.Columns[e.ColumnIndex].Name == "Actions")
              {
                  e.PaintBackground(e.CellBounds, true);
-                 // Draw Icons
+                 // Draw Icons - View (👁), Edit (✏), Delete (🗑)
                  TextRenderer.DrawText(e.Graphics, "👁", new Font("Segoe UI Symbol", 12F), 
                      new Rectangle(e.CellBounds.X + 10, e.CellBounds.Y, 30, e.CellBounds.Height), Color.Gray, 
                      TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
                      
                  TextRenderer.DrawText(e.Graphics, "✏", new Font("Segoe UI Symbol", 12F), 
-                     new Rectangle(e.CellBounds.X + 50, e.CellBounds.Y, 30, e.CellBounds.Height), Color.Gray, 
+                     new Rectangle(e.CellBounds.X + 45, e.CellBounds.Y, 30, e.CellBounds.Height), Color.FromArgb(0, 120, 215), 
+                     TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                     
+                 TextRenderer.DrawText(e.Graphics, "🗑", new Font("Segoe UI Symbol", 12F), 
+                     new Rectangle(e.CellBounds.X + 80, e.CellBounds.Y, 30, e.CellBounds.Height), Color.FromArgb(200, 50, 50), 
                      TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
                  e.Handled = true;
+             }
+        }
+
+        private void TxtSearchMembers_Enter(object sender, EventArgs e)
+        {
+            if (txtSearchMembers.Text == "🔍 Search members...")
+            {
+                txtSearchMembers.Text = "";
+                txtSearchMembers.ForeColor = Color.Black;
+            }
+        }
+
+        private void TxtSearchMembers_Leave(object sender, EventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtSearchMembers.Text))
+            {
+                txtSearchMembers.Text = "🔍 Search members...";
+                txtSearchMembers.ForeColor = Color.Gray;
              }
         }
 
@@ -858,7 +990,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
         {
             // Form Setup
             Form registerForm = new Form();
-            registerForm.Size = new Size(550, 720);
+            registerForm.Size = new Size(550, 780);
             registerForm.FormBorderStyle = FormBorderStyle.None; // Custom chrome
             registerForm.StartPosition = FormStartPosition.CenterParent;
             registerForm.BackColor = Color.FromArgb(245, 240, 235); // Beige background
@@ -967,16 +1099,23 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             // Row 2
             AddLabel("Email", 30, currentY);
-            TextBox txtEmail = AddInput("john.doe@example.com", 30, currentY, 490);
+            // Initial placeholder will be set based on default member type (Student)
+            TextBox txtEmail = AddInput("user@umindanao.edu.ph", 30, currentY, 490);
             currentY += gap;
 
             // Row 3
             AddLabel("Phone", 30, currentY);
-            TextBox txtPhone = AddInput("+1 555-0123", 30, currentY, 490);
-            // Allow only numeric input for phone number (no letters or symbols)
+            TextBox txtPhone = AddInput("09XXXXXXXXX", 30, currentY, 490);
+            txtPhone.MaxLength = 11;
+            // Allow only numeric input for phone number (no letters or symbols) and limit to 11 digits
             txtPhone.KeyPress += (s, e) =>
             {
                 if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+                {
+                    e.Handled = true;
+                }
+                // Prevent typing if already 11 digits (excluding control characters)
+                if (char.IsDigit(e.KeyChar) && txtPhone.GetActualText().Length >= 11)
                 {
                     e.Handled = true;
                 }
@@ -985,10 +1124,55 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             // Row 4
             AddLabel("Address", 30, currentY);
-            TextBox txtAddress = AddInput("123 Main Street", 30, currentY, 490);
+            TextBox txtAddress = AddInput("please enter address", 30, currentY, 490);
             currentY += gap;
 
-            // Row 5 - ComboBox
+            // Row 5 - Department Dropdown
+            AddLabel("Department", 30, currentY);
+            Panel pnlDepartment = new Panel();
+            pnlDepartment.Location = new Point(30, currentY + 25);
+            pnlDepartment.Size = new Size(490, 42);
+            pnlDepartment.BackColor = Color.White;
+            
+            ComboBox cmbDepartment = new ComboBox();
+            cmbDepartment.FlatStyle = FlatStyle.Flat;
+            cmbDepartment.Font = new Font("Segoe UI", 11F);
+            cmbDepartment.Items.Add("Choose department");
+            cmbDepartment.Items.AddRange(new string[] 
+            { 
+                "Computing Education Department",
+                "Department of Engineering Education",
+                "Department of Teacher Education",
+                "Department of Arts and Sciences Education",
+                "Department of Business Administration Education",
+                "Department of Hospitality Education",
+                "JHS Department"
+            });
+            cmbDepartment.SelectedIndex = 0;
+            cmbDepartment.Location = new Point(10, 8);
+            cmbDepartment.Width = 470;
+            cmbDepartment.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbDepartment.ForeColor = Color.Gray;
+            
+            cmbDepartment.SelectedIndexChanged += (s, e) =>
+            {
+                cmbDepartment.ForeColor = cmbDepartment.SelectedIndex == 0 ? Color.Gray : Color.Black;
+            };
+            
+            pnlDepartment.Controls.Add(cmbDepartment);
+            registerForm.Controls.Add(pnlDepartment);
+            
+            pnlDepartment.Paint += (s, e) => {
+                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                 using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlDepartment.Width - 3, pnlDepartment.Height - 3), 8))
+                 using(Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1))
+                 {
+                     e.Graphics.DrawPath(pen, path);
+                 }
+            };
+            currentY += gap;
+
+            // Row 6 - Member Type ComboBox
             AddLabel("Member Type", 30, currentY);
             Panel pnlCombo = new Panel();
             pnlCombo.Location = new Point(30, currentY + 25);
@@ -1007,6 +1191,47 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             pnlCombo.Controls.Add(cmbMemberType);
             registerForm.Controls.Add(pnlCombo);
             
+            // Update email placeholder based on member type
+            cmbMemberType.SelectedIndexChanged += (s, e) =>
+            {
+                string selectedType = cmbMemberType.SelectedItem?.ToString() ?? "";
+                string currentText = txtEmail.GetActualText();
+                string currentDisplayText = txtEmail.Text;
+                
+                // Only update placeholder if the field is empty or showing placeholder
+                if (string.IsNullOrWhiteSpace(currentText))
+                {
+                    string newPlaceholder = (selectedType == "Student" || selectedType == "Faculty") 
+                        ? "user@umindanao.edu.ph" 
+                        : "example@library.com";
+                    
+                    // Check if currently showing a placeholder
+                    if (currentDisplayText == "user@umindanao.edu.ph" || 
+                        currentDisplayText == "example@library.com" ||
+                        string.IsNullOrWhiteSpace(currentDisplayText))
+                    {
+                        // Update the placeholder directly
+                        txtEmail.Text = newPlaceholder;
+                        txtEmail.ForeColor = Color.Gray;
+                        
+                        // Update the stored placeholder data
+                        if (txtEmail.Tag is PlaceholderData data)
+                        {
+                            txtEmail.Tag = new PlaceholderData
+                            {
+                                PlaceholderText = newPlaceholder,
+                                PlaceholderColor = data.PlaceholderColor,
+                                OriginalForeColor = data.OriginalForeColor
+                            };
+                        }
+                        else
+                        {
+                            txtEmail.SetPlaceholder(newPlaceholder);
+                        }
+                    }
+                }
+            };
+            
             pnlCombo.Paint += (s, e) => {
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
                  using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlCombo.Width - 3, pnlCombo.Height - 3), 8))
@@ -1020,7 +1245,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             Button btnCancel = new Button();
             btnCancel.Text = "Cancel";
             btnCancel.Size = new Size(100, 38);
-            btnCancel.Location = new Point(250, 640);
+            btnCancel.Location = new Point(250, 700);
             btnCancel.FlatStyle = FlatStyle.Flat;
             btnCancel.BackColor = Color.White;
             btnCancel.ForeColor = Color.Black;
@@ -1039,7 +1264,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             Button btnRegister = new Button();
             btnRegister.Text = "Register Member";
             btnRegister.Size = new Size(160, 38);
-            btnRegister.Location = new Point(360, 640);
+            btnRegister.Location = new Point(360, 700);
             btnRegister.FlatStyle = FlatStyle.Flat;
             btnRegister.BackColor = Color.Maroon;
             btnRegister.ForeColor = Color.White;
@@ -1067,22 +1292,95 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             // Logic
             btnRegister.Click += (s, args) =>
             {
-                if (string.IsNullOrWhiteSpace(txtFirstName.GetActualText()) || string.IsNullOrWhiteSpace(txtLastName.GetActualText()))
+                // Get form values
+                string firstName = txtFirstName.GetActualText()?.Trim() ?? "";
+                string lastName = txtLastName.GetActualText()?.Trim() ?? "";
+                string email = txtEmail.GetActualText()?.Trim() ?? "";
+                string phone = txtPhone.GetActualText()?.Trim() ?? "";
+                string address = txtAddress.GetActualText()?.Trim() ?? "";
+                string department = cmbDepartment.SelectedIndex > 0 ? cmbDepartment.SelectedItem?.ToString() : null;
+                string memberType = cmbMemberType.SelectedItem?.ToString() ?? "";
+
+                // Validate First Name and Last Name
+                if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
                 {
-                    MessageBox.Show("Please enter valid names.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-                if (string.IsNullOrWhiteSpace(txtEmail.GetActualText()))
-                {
-                    MessageBox.Show("Please enter an email.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("Please enter valid first name and last name.", "Validation Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtFirstName.Focus();
                     return;
                 }
 
-                // Mock Success
-                MessageBox.Show($"Member {txtFirstName.GetActualText()} {txtLastName.GetActualText()} registered successfully!", 
+                // Validate Email
+                if (string.IsNullOrWhiteSpace(email))
+                {
+                    MessageBox.Show("Email is required.", "Validation Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtEmail.Focus();
+                    return;
+                }
+
+                // Validate email format based on member type
+                var memberService = new Service.MemberService();
+                if (!memberService.IsValidMemberEmail(email, memberType))
+                {
+                if (memberType == "Student" || memberType == "Faculty")
+                {
+                        MessageBox.Show($"Email must be a valid @umindanao.edu.ph email address for {memberType} members.", 
+                            "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+                else
+                {
+                        MessageBox.Show($"Please enter a valid email address for {memberType} members (e.g., example@library.com).", 
+                            "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
+                        txtEmail.Focus();
+                        return;
+                    }
+
+                // Validate Phone Number (must be 11 digits starting with 09)
+                if (!string.IsNullOrWhiteSpace(phone))
+                {
+                    if (!memberService.IsValidPhoneNumber(phone))
+                {
+                        MessageBox.Show("Phone number must be exactly 11 digits starting with '09' (e.g., 09XXXXXXXXX).", 
+                            "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtPhone.Focus();
+                    return;
+                }
+                }
+
+                // Validate Member Type
+                if (string.IsNullOrWhiteSpace(memberType))
+                {
+                    MessageBox.Show("Please select a member type.", "Validation Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    cmbMemberType.Focus();
+                    return;
+                }
+
+                // Create member in database
+                try
+                {
+                    int memberId = memberService.CreateMember(email, firstName, lastName, memberType, phone, address, department);
+                    
+                    if (memberId > 0)
+                    {
+                MessageBox.Show($"Member {firstName} {lastName} registered successfully!", 
                     "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 registerForm.DialogResult = DialogResult.OK;
                 registerForm.Close();
+                    }
+                    else
+                    {
+                        MessageBox.Show("Failed to register member. The email may already be registered.", 
+                            "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error registering member: {ex.Message}", 
+                        "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             };
 
             if (registerForm.ShowDialog(this) == DialogResult.OK)
@@ -1216,15 +1514,20 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 Rectangle cellRect = dgv.GetCellDisplayRectangle(e.ColumnIndex, e.RowIndex, false);
                 Point clickPoint = dgv.PointToClient(Control.MousePosition);
                 int relativeX = clickPoint.X - cellRect.X;
-                int cellWidth = cellRect.Width;
-                int halfWidth = cellWidth / 2;
-                if (relativeX < halfWidth)
+                
+                // Divide into 3 sections: View (0-33), Edit (33-66), Delete (66-100)
+                int thirdWidth = cellRect.Width / 3;
+                if (relativeX < thirdWidth)
                 {
                     ViewMember(memberId);
                 }
-                else
+                else if (relativeX < thirdWidth * 2)
                 {
                     EditMember(memberId);
+                }
+                else
+                {
+                    DeleteMember(memberId);
                 }
             }
         }
@@ -1253,18 +1556,36 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             {
                 _isProcessingAction = true;
                 
-                // TODO: Load actual member data from database
-                // Mock data for now
-                string memberName = "John Smith";
-                string email = "john.smith@university.edu";
-                string phone = "+1 555-0101";
-                string registeredDate = "Jan 15, 2024";
-                string expiryDate = "Jan 15, 2025";
-                string address = "123 Campus Drive, University City";
-                int currentBooks = 3;
-                int maxBooks = 5;
-                int totalBorrowed = 15;
-                decimal unpaidFines = 0;
+                // Load actual member data from database
+                var memberService = new Service.MemberService();
+                var memberData = memberService.GetMemberByNumber(memberId);
+                
+                if (memberData == null)
+                {
+                    MessageBox.Show("Member not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                
+                // Get member statistics
+                var stats = memberService.GetMemberStatistics(memberData.MemberId, memberData.MemberType);
+                
+                // Get borrowing history
+                var borrowingHistory = memberService.GetMemberBorrowingHistory(memberData.MemberId);
+                
+                // Format data for display
+                string memberName = memberData.FullName;
+                string email = memberData.Email;
+                string phone = memberData.Phone ?? "Not provided";
+                string registeredDate = memberData.RegistrationDate.ToString("MMM dd, yyyy");
+                string expiryDate = stats.MembershipExpiry?.ToString("MMM dd, yyyy") ?? "N/A";
+                string address = memberData.Address ?? "Not provided";
+                string status = memberData.StatusText;
+                string memberType = memberData.MemberType;
+                string department = memberData.Department ?? "Not specified";
+                int currentBooks = stats.CurrentBooksCount;
+                int maxBooks = stats.MaxBooks;
+                int totalBorrowed = stats.TotalBorrowed;
+                decimal unpaidFines = stats.UnpaidFines;
                 
                 using (Form viewForm = new Form())
                 {
@@ -1370,41 +1691,77 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                     avatarSection.Controls.Add(avatarPanel);
                     
                     // Status tags
-                    Panel tagActive = new Panel
-                    {
-                        Size = new Size(60, 24),
-                        Location = new Point(100, 0),
-                        BackColor = Color.FromArgb(220, 252, 231)
-                    };
-                    tagActive.Paint += (s, e) =>
-                    {
-                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 59, 23), 12))
-                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(220, 252, 231)))
-                            e.Graphics.FillPath(brush, path);
-                        using (Font font = new Font("Segoe UI", 8F, FontStyle.Bold))
-                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(34, 197, 94)))
-                            e.Graphics.DrawString("Active", font, brush, 8, 5);
-                    };
-                    avatarSection.Controls.Add(tagActive);
+                    // Status badge
+                    Color statusBgColor = status == "Active" ? Color.FromArgb(220, 252, 231) : 
+                                         status == "Suspended" ? Color.FromArgb(254, 226, 226) : 
+                                         Color.FromArgb(255, 245, 230);
+                    Color statusTextColor = status == "Active" ? Color.FromArgb(34, 197, 94) : 
+                                           status == "Suspended" ? Color.FromArgb(239, 68, 68) : 
+                                           Color.FromArgb(200, 120, 0);
                     
-                    Panel tagStudent = new Panel
+                    Panel tagStatus = new Panel
                     {
-                        Size = new Size(70, 24),
-                        Location = new Point(170, 0),
-                        BackColor = Color.FromArgb(219, 234, 254)
+                        Size = new Size(80, 24),
+                        Location = new Point(100, 0),
+                        BackColor = statusBgColor
                     };
-                    tagStudent.Paint += (s, e) =>
+                    
+                    string capturedStatus = status;
+                    Color capturedStatusBg = statusBgColor;
+                    Color capturedStatusText = statusTextColor;
+                    
+                    tagStatus.Paint += (s, e) =>
                     {
                         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 69, 23), 12))
-                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(219, 234, 254)))
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 79, 23), 12))
+                        using (SolidBrush brush = new SolidBrush(capturedStatusBg))
                             e.Graphics.FillPath(brush, path);
                         using (Font font = new Font("Segoe UI", 8F, FontStyle.Bold))
-                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(59, 130, 246)))
-                            e.Graphics.DrawString("Student", font, brush, 8, 5);
+                        using (SolidBrush brush = new SolidBrush(capturedStatusText))
+                        {
+                            SizeF textSize = e.Graphics.MeasureString(capturedStatus, font);
+                            float x = (80 - textSize.Width) / 2;
+                            e.Graphics.DrawString(capturedStatus, font, brush, x, 5);
+                        }
                     };
-                    avatarSection.Controls.Add(tagStudent);
+                    avatarSection.Controls.Add(tagStatus);
+                    
+                    // Member type badge
+                    Color typeBgColor = memberType == "Student" ? Color.FromArgb(219, 234, 254) : 
+                                       memberType == "Faculty" ? Color.FromArgb(254, 226, 226) : 
+                                       memberType == "Staff" ? Color.FromArgb(220, 252, 231) : 
+                                       Color.FromArgb(255, 245, 230);
+                    Color typeTextColor = memberType == "Student" ? Color.FromArgb(59, 130, 246) : 
+                                         memberType == "Faculty" ? Color.FromArgb(200, 50, 50) : 
+                                         memberType == "Staff" ? Color.FromArgb(0, 150, 50) : 
+                                         Color.FromArgb(200, 120, 0);
+                    
+                    Panel tagMemberType = new Panel
+                    {
+                        Size = new Size(75, 24),
+                        Location = new Point(190, 0),
+                        BackColor = typeBgColor
+                    };
+                    
+                    string capturedType = memberType;
+                    Color capturedTypeBg = typeBgColor;
+                    Color capturedTypeText = typeTextColor;
+                    
+                    tagMemberType.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 74, 23), 12))
+                        using (SolidBrush brush = new SolidBrush(capturedTypeBg))
+                            e.Graphics.FillPath(brush, path);
+                        using (Font font = new Font("Segoe UI", 8F, FontStyle.Bold))
+                        using (SolidBrush brush = new SolidBrush(capturedTypeText))
+                        {
+                            SizeF textSize = e.Graphics.MeasureString(capturedType, font);
+                            float x = (75 - textSize.Width) / 2;
+                            e.Graphics.DrawString(capturedType, font, brush, x, 5);
+                        }
+                    };
+                    avatarSection.Controls.Add(tagMemberType);
                     
                     // Contact info
                     Label lblEmail = new Label
@@ -1590,8 +1947,11 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                     };
                     historySection.Controls.Add(lblHistoryTitle);
                     
-                    // History items
-                    Panel historyItem1 = new Panel
+                    // Display real borrowing history from database
+                    int historyCount = 0;
+                    foreach (var borrowing in borrowingHistory.Take(5)) // Show last 5 borrowings
+                    {
+                        Panel historyItem = new Panel
                     {
                         Height = 50,
                         Dock = DockStyle.Top,
@@ -1599,93 +1959,97 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                         Padding = new Padding(20, 10, 20, 0)
                     };
                     
-                    Label lblBook1 = new Label
+                        Label lblBook = new Label
                     {
-                        Text = "1984",
+                            Text = borrowing.BookTitle,
                         Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                         ForeColor = Color.FromArgb(40, 40, 40),
                         Location = new Point(0, 5),
-                        AutoSize = true
+                            AutoSize = true,
+                            MaximumSize = new Size(400, 0)
                     };
-                    historyItem1.Controls.Add(lblBook1);
+                        historyItem.Controls.Add(lblBook);
                     
-                    Label lblDate1 = new Label
+                        Label lblDate = new Label
                     {
-                        Text = "Nov 20, 2024",
+                            Text = borrowing.BorrowDate.ToString("MMM dd, yyyy"),
                         Font = new Font("Segoe UI", 9F),
                         ForeColor = Color.Gray,
                         Location = new Point(0, 25),
                         AutoSize = true
                     };
-                    historyItem1.Controls.Add(lblDate1);
+                        historyItem.Controls.Add(lblDate);
                     
-                    Panel tagOverdue = new Panel
+                        // Status tag
+                        string borrowStatusText = borrowing.Status;
+                        Color borrowBgColor = Color.FromArgb(243, 244, 246);
+                        Color borrowTextColor = Color.FromArgb(107, 114, 128);
+                        
+                        // Determine if overdue
+                        if (borrowing.Status == "Borrowed" && borrowing.DueDate < DateTime.Now)
+                        {
+                            borrowStatusText = "Overdue";
+                            borrowBgColor = Color.FromArgb(254, 226, 226);
+                            borrowTextColor = Color.FromArgb(239, 68, 68);
+                        }
+                        else if (borrowing.Status == "Returned")
+                        {
+                            borrowStatusText = "Returned";
+                            borrowBgColor = Color.FromArgb(243, 244, 246);
+                            borrowTextColor = Color.FromArgb(107, 114, 128);
+                        }
+                        else if (borrowing.Status == "Borrowed")
+                        {
+                            borrowStatusText = "Borrowed";
+                            borrowBgColor = Color.FromArgb(219, 234, 254);
+                            borrowTextColor = Color.FromArgb(37, 99, 235);
+                        }
+                        
+                        Panel tagBorrowStatus = new Panel
                     {
-                        Size = new Size(70, 22),
-                        Location = new Point(historyItem1.Width - 90, 14),
+                            Size = new Size(75, 22),
+                            Location = new Point(historyItem.Width - 95, 14),
                         Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                        BackColor = Color.FromArgb(254, 226, 226)
-                    };
-                    tagOverdue.Paint += (s, e) =>
+                            BackColor = borrowBgColor
+                        };
+                        
+                        Color capturedBorrowBg = borrowBgColor;
+                        Color capturedBorrowText = borrowTextColor;
+                        string capturedBorrowStatus = borrowStatusText;
+                        
+                        tagBorrowStatus.Paint += (s, e) =>
                     {
                         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 69, 21), 11))
-                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(254, 226, 226)))
+                            using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 74, 21), 11))
+                            using (SolidBrush brush = new SolidBrush(capturedBorrowBg))
                             e.Graphics.FillPath(brush, path);
                         using (Font font = new Font("Segoe UI", 8F, FontStyle.Bold))
-                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(239, 68, 68)))
-                            e.Graphics.DrawString("Overdue", font, brush, 8, 4);
+                            using (SolidBrush brush = new SolidBrush(capturedBorrowText))
+                            {
+                                SizeF textSize = e.Graphics.MeasureString(capturedBorrowStatus, font);
+                                float x = (75 - textSize.Width) / 2;
+                                e.Graphics.DrawString(capturedBorrowStatus, font, brush, x, 4);
+                            }
                     };
-                    historyItem1.Controls.Add(tagOverdue);
-                    historySection.Controls.Add(historyItem1);
+                        historyItem.Controls.Add(tagBorrowStatus);
+                        historySection.Controls.Add(historyItem);
+                        
+                        historyCount++;
+                    }
                     
-                    Panel historyItem2 = new Panel
+                    // If no borrowing history
+                    if (historyCount == 0)
                     {
-                        Height = 50,
-                        Dock = DockStyle.Top,
-                        BackColor = Color.Transparent,
-                        Padding = new Padding(20, 10, 20, 0)
-                    };
-                    
-                    Label lblBook2 = new Label
+                        Label lblNoBorrowings = new Label
                     {
-                        Text = "Outliers",
-                        Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                        ForeColor = Color.FromArgb(40, 40, 40),
-                        Location = new Point(0, 5),
-                        AutoSize = true
-                    };
-                    historyItem2.Controls.Add(lblBook2);
-                    
-                    Label lblDate2 = new Label
-                    {
-                        Text = "Nov 1, 2024",
-                        Font = new Font("Segoe UI", 9F),
+                            Text = "No borrowing history yet",
+                            Font = new Font("Segoe UI", 10F, FontStyle.Italic),
                         ForeColor = Color.Gray,
-                        Location = new Point(0, 25),
+                            Location = new Point(20, 60),
                         AutoSize = true
                     };
-                    historyItem2.Controls.Add(lblDate2);
-                    
-                    Panel tagReturned = new Panel
-                    {
-                        Size = new Size(70, 22),
-                        Location = new Point(historyItem2.Width - 90, 14),
-                        Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                        BackColor = Color.FromArgb(243, 244, 246)
-                    };
-                    tagReturned.Paint += (s, e) =>
-                    {
-                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 69, 21), 11))
-                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(243, 244, 246)))
-                            e.Graphics.FillPath(brush, path);
-                        using (Font font = new Font("Segoe UI", 8F, FontStyle.Bold))
-                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(107, 114, 128)))
-                            e.Graphics.DrawString("Returned", font, brush, 8, 4);
-                    };
-                    historyItem2.Controls.Add(tagReturned);
-                    historySection.Controls.Add(historyItem2);
+                        historySection.Controls.Add(lblNoBorrowings);
+                    }
                     
                     contentPanel.Controls.Add(historySection);
                     
@@ -1715,26 +2079,49 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                     };
                     actionsSection.Controls.Add(lblActionsTitle);
                     
+                    // Dynamic suspend/activate button based on current status
+                    string suspendBtnText = status == "Suspended" ? "Activate Member" : "Suspend Member";
+                    Color suspendBtnBg = status == "Suspended" ? Color.FromArgb(220, 252, 231) : Color.FromArgb(254, 226, 226);
+                    Color suspendBtnForeColor = status == "Suspended" ? Color.FromArgb(22, 163, 74) : Color.FromArgb(239, 68, 68);
+                    
                     Button btnSuspend = new Button
                     {
-                        Text = "Suspend Member",
+                        Text = suspendBtnText,
                         Size = new Size(150, 35),
                         Location = new Point(20, 50),
                         FlatStyle = FlatStyle.Flat,
-                        BackColor = Color.FromArgb(243, 244, 246),
-                        ForeColor = Color.FromArgb(40, 40, 40),
-                        Font = new Font("Segoe UI", 9F),
+                        BackColor = suspendBtnBg,
+                        ForeColor = suspendBtnForeColor,
+                        Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                         Cursor = Cursors.Hand
                     };
                     btnSuspend.FlatAppearance.BorderSize = 0;
+                    
+                    Color capturedSuspendBg = suspendBtnBg;
+                    Color capturedSuspendText = suspendBtnForeColor;
+                    string capturedSuspendBtnText = suspendBtnText;
+                    
                     btnSuspend.Paint += (s, e) =>
                     {
                         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
                         using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnSuspend.Width - 1, btnSuspend.Height - 1), 6))
-                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(243, 244, 246)))
+                        using (SolidBrush brush = new SolidBrush(capturedSuspendBg))
                             e.Graphics.FillPath(brush, path);
-                        TextRenderer.DrawText(e.Graphics, btnSuspend.Text, btnSuspend.Font, new Rectangle(0, 0, btnSuspend.Width, btnSuspend.Height), Color.FromArgb(40, 40, 40), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                        TextRenderer.DrawText(e.Graphics, capturedSuspendBtnText, btnSuspend.Font, new Rectangle(0, 0, btnSuspend.Width, btnSuspend.Height), capturedSuspendText, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
                     };
+                    
+                    btnSuspend.Click += (s, e) =>
+                    {
+                        _isProcessingAction = false; // Reset flag to allow SuspendMember to execute
+                        SuspendMember(memberId);
+                        // Refresh the view after suspension
+                        viewForm.Close();
+                        if (!string.IsNullOrEmpty(memberId))
+                        {
+                            ViewMember(memberId);
+                        }
+                    };
+                    
                     actionsSection.Controls.Add(btnSuspend);
                     
                     contentPanel.Controls.Add(actionsSection);
@@ -1793,9 +2180,14 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                     };
                     btnEdit.Click += (s, e) =>
                     {
-                        viewForm.DialogResult = DialogResult.OK;
-                        viewForm.Close();
+                        _isProcessingAction = false; // Reset flag to allow EditMember to execute
                         EditMember(memberId);
+                        // Refresh the view after editing
+                        viewForm.Close();
+                        if (!string.IsNullOrEmpty(memberId))
+                        {
+                            ViewMember(memberId);
+                        }
                     };
                     footerPanel.Controls.Add(btnEdit);
                     
@@ -1834,19 +2226,29 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             {
                 _isProcessingAction = true;
                 
-                // TODO: Load actual member data from database
-                // Mock data for now
-                string firstName = "John";
-                string lastName = "Smith";
-                string email = "john.smith@university.edu";
-                string phone = "+1 555-0101";
-                string address = "123 Campus Drive, University City";
-                string status = "Active";
+                // Load actual member data from database
+                var memberService = new Service.MemberService();
+                var memberData = memberService.GetMemberByNumber(memberId);
+                
+                if (memberData == null)
+                {
+                    MessageBox.Show("Member not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                
+                string firstName = memberData.FirstName;
+                string lastName = memberData.LastName;
+                string email = memberData.Email;
+                string phone = memberData.Phone ?? "";
+                string address = memberData.Address ?? "";
+                string department = memberData.Department ?? "";
+                string memberType = memberData.MemberType;
+                string status = memberData.StatusText;
                 
                 using (Form editForm = new Form())
                 {
                     editForm.Text = "";
-                    editForm.Size = new Size(550, 650);
+                    editForm.Size = new Size(700, 800);
                     editForm.StartPosition = FormStartPosition.CenterParent;
                     editForm.FormBorderStyle = FormBorderStyle.None;
                     editForm.BackColor = Color.FromArgb(245, 240, 235); // Beige background
@@ -2093,10 +2495,14 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                     Panel pnlEmail = CreateInputField("Email", email) as Panel;
                     Panel pnlPhone = CreateInputField("Phone", phone) as Panel;
                     Panel pnlAddress = CreateInputField("Address", address) as Panel;
-                    Panel pnlStatus = CreateDropdownField("Status", new[] { "Active", "Suspended", "Expired", "Inactive" }, status) as Panel;
+                    Panel pnlDepartment = CreateDropdownField("Department", new[] { "Choose department", "Computing Education Department", "Department of Engineering Education", "Department of Teacher Education", "Department of Arts and Sciences Education", "Department of Business Administration Education", "Department of Hospitality Education", "JHS Department" }, string.IsNullOrEmpty(department) ? "Choose department" : department) as Panel;
+                    Panel pnlMemberType = CreateDropdownField("Member Type", new[] { "Student", "Faculty", "Staff", "Guest" }, memberType) as Panel;
+                    Panel pnlStatus = CreateDropdownField("Status", new[] { "Active", "Expired", "Inactive" }, status) as Panel;
                     
                     // Add fields in reverse order for proper docking
                     contentPanel.Controls.Add(pnlStatus);
+                    contentPanel.Controls.Add(pnlMemberType);
+                    contentPanel.Controls.Add(pnlDepartment);
                     contentPanel.Controls.Add(pnlAddress);
                     contentPanel.Controls.Add(pnlPhone);
                     contentPanel.Controls.Add(pnlEmail);
@@ -2124,20 +2530,23 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                         DialogResult = DialogResult.Cancel
                     };
                     btnCancel.FlatAppearance.BorderSize = 0;
+                    btnCancel.Location = new Point(420, 15);
                     btnCancel.Paint += (s, e) =>
                     {
                         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
                         using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnCancel.Width - 1, btnCancel.Height - 1), 6))
-                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(245, 240, 235)))
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(243, 244, 246)))
                             e.Graphics.FillPath(brush, path);
-                        TextRenderer.DrawText(e.Graphics, btnCancel.Text, btnCancel.Font, new Rectangle(0, 0, btnCancel.Width, btnCancel.Height), Color.FromArgb(80, 40, 20), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                        TextRenderer.DrawText(e.Graphics, btnCancel.Text, btnCancel.Font, new Rectangle(0, 0, btnCancel.Width, btnCancel.Height), Color.FromArgb(40, 40, 40), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
                     };
+                    footerPanel.Controls.Add(btnCancel);
                     
                     Button btnSave = new Button
                     {
                         Text = "Save Changes",
                         Size = new Size(130, 40),
-                        Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                        Location = new Point(530, 15),
+                        Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
                         FlatStyle = FlatStyle.Flat,
                         BackColor = ThemeConstants.PrimaryMaroon,
                         ForeColor = Color.White,
@@ -2156,16 +2565,81 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                     };
                     btnSave.Click += (s, e) =>
                     {
+                        // Get all field values
                         TextBox txtFirstName = pnlFirstName.Controls.OfType<Panel>().First().Controls.OfType<TextBox>().First();
                         TextBox txtLastName = pnlLastName.Controls.OfType<Panel>().First().Controls.OfType<TextBox>().First();
+                        TextBox txtEmail = pnlEmail.Controls.OfType<Panel>().First().Controls.OfType<TextBox>().First();
+                        TextBox txtPhone = pnlPhone.Controls.OfType<Panel>().First().Controls.OfType<TextBox>().First();
+                        TextBox txtAddress = pnlAddress.Controls.OfType<Panel>().First().Controls.OfType<TextBox>().First();
+                        ComboBox cmbDepartment = pnlDepartment.Controls.OfType<Panel>().First().Controls.OfType<ComboBox>().First();
+                        ComboBox cmbMemberType = pnlMemberType.Controls.OfType<Panel>().First().Controls.OfType<ComboBox>().First();
+                        ComboBox cmbStatus = pnlStatus.Controls.OfType<Panel>().First().Controls.OfType<ComboBox>().First();
                         
+                        // Validation
                         if (string.IsNullOrWhiteSpace(txtFirstName.Text) || string.IsNullOrWhiteSpace(txtLastName.Text))
                         {
                             MessageBox.Show("First Name and Last Name are required.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                             return;
                         }
                         
+                        string editEmail = txtEmail.Text.Trim();
+                        string editMemberType = cmbMemberType.SelectedItem?.ToString();
+                        
+                        // Validate Email
+                        if (!memberService.IsValidMemberEmail(editEmail, editMemberType))
+                        {
+                            if (editMemberType == "Student" || editMemberType == "Faculty")
+                            {
+                                MessageBox.Show($"Email must be a valid @umindanao.edu.ph address for {editMemberType} members.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            }
+                            else
+                            {
+                                MessageBox.Show("Please enter a valid email address.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            }
+                            return;
+                        }
+                        
+                        // Validate Phone
+                        string editPhone = txtPhone.Text.Trim();
+                        if (!string.IsNullOrEmpty(editPhone) && !memberService.IsValidPhoneNumber(editPhone))
+                        {
+                            MessageBox.Show("Phone number must be 11 digits starting with 09.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            return;
+                        }
+                        
+                        // Get department
+                        string editDepartment = cmbDepartment.SelectedIndex > 0 ? cmbDepartment.SelectedItem?.ToString() : null;
+                        
+                        // Get status value
+                        int statusValue = 1; // Active by default
+                        string statusText = cmbStatus.SelectedItem?.ToString() ?? "Active";
+                        if (statusText == "Inactive") statusValue = 0;
+                        else if (statusText == "Active") statusValue = 1;
+                        else if (statusText == "Expired") statusValue = 3;
+                        
+                        // Update member in database
+                        bool success = memberService.UpdateMember(
+                            memberId,
+                            txtFirstName.Text.Trim(),
+                            txtLastName.Text.Trim(),
+                            editEmail,
+                            editPhone,
+                            txtAddress.Text.Trim(),
+                            editDepartment,
+                            editMemberType,
+                            statusValue
+                        );
+                        
+                        if (success)
+                        {
+                            MessageBox.Show("Member information updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            LoadMembersData();
                         editForm.DialogResult = DialogResult.OK;
+                        }
+                        else
+                        {
+                            MessageBox.Show("Failed to update member information. Please try again.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
                     };
                     
                     footerPanel.Controls.Add(btnCancel);
@@ -2191,26 +2665,28 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                     editForm.Paint += (s, e) =>
                     {
                         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        
+                        // Draw shadow layers
+                        for (int i = 0; i < 5; i++)
+                        {
+                            int offset = i * 2;
+                            int alpha = 30 - (i * 5);
+                            using (GraphicsPath shadowPath = CreateRoundedRectangle(
+                                new Rectangle(offset, offset, editForm.Width - 1 - offset, editForm.Height - 1 - offset), 12))
+                            using (Pen shadowPen = new Pen(Color.FromArgb(alpha, 0, 0, 0), 1))
+                                e.Graphics.DrawPath(shadowPen, shadowPath);
+                        }
+                        
+                        // Draw main border
                         using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, editForm.Width - 1, editForm.Height - 1), 12))
-                        using (Pen pen = new Pen(Color.FromArgb(200, 200, 200), 1))
+                        using (Pen pen = new Pen(Color.FromArgb(180, 180, 180), 2))
                             e.Graphics.DrawPath(pen, path);
                     };
                     
                     editForm.Controls.Add(mainPanel);
                     
-                    if (editForm.ShowDialog() == DialogResult.OK)
-                    {
-                        TextBox txtFirstName = pnlFirstName.Controls.OfType<Panel>().First().Controls.OfType<TextBox>().First();
-                        TextBox txtLastName = pnlLastName.Controls.OfType<Panel>().First().Controls.OfType<TextBox>().First();
-                        TextBox txtEmail = pnlEmail.Controls.OfType<Panel>().First().Controls.OfType<TextBox>().First();
-                        TextBox txtPhone = pnlPhone.Controls.OfType<Panel>().First().Controls.OfType<TextBox>().First();
-                        TextBox txtAddress = pnlAddress.Controls.OfType<Panel>().First().Controls.OfType<TextBox>().First();
-                        ComboBox cmbStatus = pnlStatus.Controls.OfType<Panel>().First().Controls.OfType<ComboBox>().First();
-                        
-                        // TODO: Update database
-                        MessageBox.Show($"Member {txtFirstName.Text} {txtLastName.Text} has been updated successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        LoadMembersData();
-                    }
+                    // Dialog will handle save in btnSave.Click event
+                    editForm.ShowDialog();
                 }
             }
             catch (Exception ex)
@@ -2224,22 +2700,293 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             }
         }
 
+        private void SuspendMember(string memberId)
+        {
+            if (_isProcessingAction) return;
+            try
+            {
+                _isProcessingAction = true;
+                
+                // Load member data
+                var memberService = new Service.MemberService();
+                var memberData = memberService.GetMemberByNumber(memberId);
+                
+                if (memberData == null)
+                {
+                    MessageBox.Show("Member not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                
+                string currentStatus = memberData.StatusText;
+                string newStatus = currentStatus == "Suspended" ? "Active" : "Suspended";
+                string action = currentStatus == "Suspended" ? "activate" : "suspend";
+                
+                // If suspending, show dialog for reason and duration
+                if (newStatus == "Suspended")
+                {
+                    using (Form suspendForm = new Form())
+                    {
+                        suspendForm.Text = "Suspend Member";
+                        suspendForm.Size = new Size(500, 350);
+                        suspendForm.StartPosition = FormStartPosition.CenterParent;
+                        suspendForm.FormBorderStyle = FormBorderStyle.FixedDialog;
+                        suspendForm.MaximizeBox = false;
+                        suspendForm.MinimizeBox = false;
+                        suspendForm.BackColor = Color.FromArgb(245, 240, 235);
+                        
+                        Label lblTitle = new Label
+                        {
+                            Text = $"Suspend {memberData.FirstName} {memberData.LastName}",
+                            Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                            ForeColor = ThemeConstants.PrimaryMaroon,
+                            Location = new Point(20, 20),
+                            AutoSize = true
+                        };
+                        suspendForm.Controls.Add(lblTitle);
+                        
+                        Label lblReason = new Label
+                        {
+                            Text = "Reason for Suspension:",
+                            Font = new Font("Segoe UI", 10F),
+                            Location = new Point(20, 60),
+                            AutoSize = true
+                        };
+                        suspendForm.Controls.Add(lblReason);
+                        
+                        TextBox txtReason = new TextBox
+                        {
+                            Location = new Point(20, 85),
+                            Size = new Size(440, 80),
+                            Multiline = true,
+                            Font = new Font("Segoe UI", 10F),
+                            ScrollBars = ScrollBars.Vertical
+                        };
+                        suspendForm.Controls.Add(txtReason);
+                        
+                        Label lblDuration = new Label
+                        {
+                            Text = "Suspension Duration (days):",
+                            Font = new Font("Segoe UI", 10F),
+                            Location = new Point(20, 180),
+                            AutoSize = true
+                        };
+                        suspendForm.Controls.Add(lblDuration);
+                        
+                        NumericUpDown numDuration = new NumericUpDown
+                        {
+                            Location = new Point(20, 205),
+                            Size = new Size(150, 25),
+                            Minimum = 1,
+                            Maximum = 365,
+                            Value = 30,
+                            Font = new Font("Segoe UI", 10F)
+                        };
+                        suspendForm.Controls.Add(numDuration);
+                        
+                        Label lblDays = new Label
+                        {
+                            Text = "days (Leave blank for indefinite)",
+                            Font = new Font("Segoe UI", 9F, FontStyle.Italic),
+                            ForeColor = Color.Gray,
+                            Location = new Point(180, 208),
+                            AutoSize = true
+                        };
+                        suspendForm.Controls.Add(lblDays);
+                        
+                        Button btnCancel = new Button
+                        {
+                            Text = "Cancel",
+                            Size = new Size(100, 35),
+                            Location = new Point(250, 260),
+                            DialogResult = DialogResult.Cancel,
+                            Font = new Font("Segoe UI", 9F)
+                        };
+                        suspendForm.Controls.Add(btnCancel);
+                        
+                        Button btnSuspend = new Button
+                        {
+                            Text = "Suspend",
+                            Size = new Size(100, 35),
+                            Location = new Point(360, 260),
+                            BackColor = ThemeConstants.PrimaryMaroon,
+                            ForeColor = Color.White,
+                            FlatStyle = FlatStyle.Flat,
+                            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                            DialogResult = DialogResult.OK
+                        };
+                        btnSuspend.FlatAppearance.BorderSize = 0;
+                        suspendForm.Controls.Add(btnSuspend);
+                        
+                        suspendForm.AcceptButton = btnSuspend;
+                        suspendForm.CancelButton = btnCancel;
+                        
+                        if (suspendForm.ShowDialog() == DialogResult.OK)
+                        {
+                            string reason = txtReason.Text.Trim();
+                            if (string.IsNullOrEmpty(reason))
+                            {
+                                MessageBox.Show("Please provide a reason for suspension.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                return;
+                            }
+                            
+                            int duration = (int)numDuration.Value;
+                        
+                            // TODO: Store reason and duration in database
+                            // For now, just update the status
+                            int statusValue = 2; // Suspended
+                            
+                            bool success = memberService.UpdateMember(
+                                memberId,
+                                memberData.FirstName,
+                                memberData.LastName,
+                                memberData.Email,
+                                memberData.Phone,
+                                memberData.Address,
+                                memberData.Department,
+                                memberData.MemberType,
+                                statusValue
+                            );
+                            
+                            if (success)
+                            {
+                                MessageBox.Show($"Member has been suspended for {duration} days.\nReason: {reason}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        LoadMembersData();
+                            }
+                            else
+                            {
+                                MessageBox.Show("Failed to suspend member. Please try again.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // Activating - simple confirmation
+                    DialogResult result = MessageBox.Show(
+                        $"Are you sure you want to activate {memberData.FirstName} {memberData.LastName}?",
+                        "Activate Member",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question);
+                    
+                    if (result == DialogResult.Yes)
+                    {
+                        int statusValue = 1; // Active
+                        
+                        bool success = memberService.UpdateMember(
+                            memberId,
+                            memberData.FirstName,
+                            memberData.LastName,
+                            memberData.Email,
+                            memberData.Phone,
+                            memberData.Address,
+                            memberData.Department,
+                            memberData.MemberType,
+                            statusValue
+                        );
+                        
+                        if (success)
+                        {
+                            MessageBox.Show("Member has been activated successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            LoadMembersData();
+                        }
+                        else
+                        {
+                            MessageBox.Show("Failed to activate member. Please try again.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to update member status: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _isProcessingAction = false;
+            }
+        }
+
         private void DeleteMember(string memberId)
         {
             if (_isProcessingAction) return;
             try
             {
                 _isProcessingAction = true;
+                
+                // Load member data to display name in confirmation
+                var memberService = new Service.MemberService();
+                var memberData = memberService.GetMemberByNumber(memberId);
+                
+                if (memberData == null)
+                {
+                    MessageBox.Show("Member not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                
+                // Confirmation dialog
                 DialogResult result = MessageBox.Show(
-                    $"Are you sure you want to delete member {memberId}?",
-                    "Confirm Delete",
+                    $"Are you sure you want to delete this member?\n\n" +
+                    $"Name: {memberData.FirstName} {memberData.LastName}\n" +
+                    $"Member ID: {memberId}\n" +
+                    $"Email: {memberData.Email}\n\n" +
+                    $"This action cannot be undone and will permanently remove all member data from the database.",
+                    "Confirm Delete Member",
                     MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question);
+                    MessageBoxIcon.Warning);
+                
                 if (result == DialogResult.Yes)
                 {
-                    // TODO: Delete member from database
+                    try
+                    {
+                        // Delete member from database
+                        bool success = memberService.DeleteMember(memberId);
+                        
+                        if (success)
+                        {
+                            MessageBox.Show(
+                                $"✅ Member Deleted Successfully\n\n" +
+                                $"Name: {memberData.FirstName} {memberData.LastName}\n" +
+                                $"Member ID: {memberId}\n\n" +
+                                $"All member data has been permanently removed from the database.", 
+                                "Member Deleted", 
+                                MessageBoxButtons.OK, 
+                                MessageBoxIcon.Information);
                     LoadMembersData();
-                    MessageBox.Show("Member deleted successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        else
+                        {
+                            MessageBox.Show(
+                                "❌ Failed to delete member.\n\n" +
+                                "The member was not found in the database.", 
+                                "Delete Failed", 
+                                MessageBoxButtons.OK, 
+                                MessageBoxIcon.Error);
+                        }
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        // Foreign key constraint error - member has dependencies
+                        MessageBox.Show(
+                            $"❌ Cannot Delete Member\n\n" +
+                            $"This member cannot be deleted because they have:\n" +
+                            $"• Active book borrowings\n" +
+                            $"• Pending fines or fees\n" +
+                            $"• Other related records\n\n" +
+                            $"Please resolve these dependencies first, then try again.\n\n" +
+                            $"Technical details: {ex.Message}", 
+                            "Delete Failed - Dependencies Exist", 
+                            MessageBoxButtons.OK, 
+                            MessageBoxIcon.Warning);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(
+                            $"❌ Error Deleting Member\n\n" +
+                            $"An unexpected error occurred:\n{ex.Message}", 
+                            "Delete Failed", 
+                            MessageBoxButtons.OK, 
+                            MessageBoxIcon.Error);
+                    }
                 }
             }
             catch (Exception ex)
@@ -2302,71 +3049,31 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             Panel cardTotalCopies = CreateCatalogStatCard("📚", "0", "Total Copies", Color.FromArgb(33, 150, 243), new Point(400, 0));
             Panel cardCategories = CreateCatalogStatCard("🔖", "0", "Categories", Color.FromArgb(255, 152, 0), new Point(600, 0));
             statsPanel.Controls.AddRange(new Control[] { cardTotalTitles, cardAvailableCopies, cardTotalCopies, cardCategories });
-            Panel searchPanel = new Panel
-            {
-                Location = new Point(30, 240),
-                Size = new Size(pnlMainContent.Width - 60, 70),
-                BackColor = Color.White,
-                BorderStyle = BorderStyle.None
-            };
-            searchPanel.Paint += (s, e) =>
-            {
-                using (var shadowBrush = new SolidBrush(Color.FromArgb(15, 0, 0, 0)))
-                {
-                    e.Graphics.FillRectangle(shadowBrush, 3, 3, searchPanel.Width - 3, searchPanel.Height - 3);
-                }
-                using (var bgBrush = new SolidBrush(Color.FromArgb(252, 252, 252)))
-                {
-                    e.Graphics.FillRectangle(bgBrush, 0, 0, searchPanel.Width, searchPanel.Height);
-                }
-                using (var borderPen = new Pen(Color.FromArgb(220, 220, 220), 1))
-                {
-                    e.Graphics.DrawRectangle(borderPen, 0, 0, searchPanel.Width - 1, searchPanel.Height - 1);
-                }
-            };
-            Panel searchContainer = new Panel
-            {
-                Location = new Point(20, 15),
-                Size = new Size(320, 40),
-                BackColor = Color.FromArgb(245, 245, 245),
-                BorderStyle = BorderStyle.None
-            };
-            Label lblSearchIcon = new Label
-            {
-                Text = "🔍",
-                Location = new Point(10, 8),
-                Size = new Size(25, 24),
-                Font = new Font("Segoe UI", 12F),
-                ForeColor = Color.FromArgb(150, 150, 150),
-                TextAlign = ContentAlignment.MiddleCenter,
-                BackColor = Color.Transparent
-            };
-            TextBox txtSearchBooks = new TextBox
-            {
-                Location = new Point(40, 8),
-                Size = new Size(270, 24),
-                Font = new Font("Segoe UI", 10F),
-                ForeColor = Color.Gray,
-                BorderStyle = BorderStyle.None,
-                BackColor = Color.FromArgb(245, 245, 245)
-            };
-            txtSearchBooks.SetPlaceholder("Search by title, author, or ISBN...");
+            var searchBarComponents = CreateConsistentSearchBar("🔍 Search by title, author, or ISBN...", 700);
+            Panel searchPanel = searchBarComponents.panel;
+            TextBox txtSearchBooks = searchBarComponents.textBox;
+            Button btnSearchBooks = searchBarComponents.button;
+            searchPanel.Location = new Point(30, 240);
+            
             Label lblCategoryFilter = new Label
             {
                 Text = "Category:",
-                Location = new Point(340, 18),
+                Location = new Point(820, 18),
                 Size = new Size(80, 25),
                 Font = new Font("Segoe UI", 10F)
             };
+            searchPanel.Controls.Add(lblCategoryFilter);
+            
             ComboBox cmbCategoryFilter = new ComboBox
             {
-                Location = new Point(420, 15),
+                Location = new Point(910, 15),
                 Size = new Size(150, 30),
                 Font = new Font("Segoe UI", 10F),
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
             cmbCategoryFilter.Items.Add("All Categories");
             cmbCategoryFilter.SelectedIndex = 0;
+            searchPanel.Controls.Add(cmbCategoryFilter);
             DataGridView dgvBooks = new DataGridView
             {
                 Location = new Point(30, 320),
@@ -2427,8 +3134,6 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             dgvBooks.Columns["TotalCopies"].Width = 70;
             dgvBooks.Columns["AvailableCopies"].Width = 80;
             dgvBooks.Columns["BookId"].Visible = false;
-            searchContainer.Controls.AddRange(new Control[] { lblSearchIcon, txtSearchBooks });
-            searchPanel.Controls.AddRange(new Control[] { searchContainer, lblCategoryFilter, cmbCategoryFilter });
             pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnAddBookHeader, statsPanel, searchPanel, dgvBooks });
         }
 
@@ -2466,73 +3171,31 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             Panel cardOverdue = CreateCatalogStatCard("⚠️", "0", "Overdue", Color.FromArgb(244, 67, 54), new Point(200, 0));
             Panel cardReturnedToday = CreateCatalogStatCard("✓", "0", "Returned Today", Color.FromArgb(76, 175, 80), new Point(400, 0));
             statsPanel.Controls.AddRange(new Control[] { cardCurrentlyBorrowed, cardOverdue, cardReturnedToday });
-            Panel searchPanel = new Panel
-            {
-                Location = new Point(30, 250),
-                Size = new Size(pnlMainContent.Width - 60, 70),
-                BackColor = Color.White,
-                BorderStyle = BorderStyle.None
-            };
-            searchPanel.Paint += (s, e) =>
-            {
-                using (var shadowBrush = new SolidBrush(Color.FromArgb(15, 0, 0, 0)))
-                {
-                    e.Graphics.FillRectangle(shadowBrush, 3, 3, searchPanel.Width - 3, searchPanel.Height - 3);
-                }
-                using (var bgBrush = new SolidBrush(Color.FromArgb(252, 252, 252)))
-                {
-                    e.Graphics.FillRectangle(bgBrush, 0, 0, searchPanel.Width, searchPanel.Height);
-                }
-                using (var borderPen = new Pen(Color.FromArgb(220, 220, 220), 1))
-                {
-                    e.Graphics.DrawRectangle(borderPen, 0, 0, searchPanel.Width - 1, searchPanel.Height - 1);
-                }
-            };
-            Panel searchContainer = new Panel
-            {
-                Location = new Point(20, 15),
-                Size = new Size(320, 40),
-                BackColor = Color.FromArgb(245, 245, 245),
-                BorderStyle = BorderStyle.None
-            };
-            TextBox txtSearchBorrowings = new TextBox
-            {
-                Location = new Point(40, 8),
-                Size = new Size(260, 24),
-                Font = new Font("Segoe UI", 10F),
-                BorderStyle = BorderStyle.None,
-                BackColor = Color.FromArgb(245, 245, 245)
-            };
-            txtSearchBorrowings.SetPlaceholder("Search transactions...");
+            var searchBarComponents = CreateConsistentSearchBar("🔍 Search transactions...", 800);
+            Panel searchPanel = searchBarComponents.panel;
+            TextBox txtSearchBorrowings = searchBarComponents.textBox;
+            Button btnSearchBorrowings = searchBarComponents.button;
+            searchPanel.Location = new Point(30, 250);
+            
             Label lblStatusFilter = new Label
             {
                 Text = "Status:",
-                Location = new Point(searchPanel.Width - 200, 18),
+                Location = new Point(920, 18),
                 Size = new Size(60, 25),
-                Font = new Font("Segoe UI", 10F),
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
+                Font = new Font("Segoe UI", 10F)
             };
+            searchPanel.Controls.Add(lblStatusFilter);
+            
             ComboBox cmbStatusFilter = new ComboBox
             {
-                Location = new Point(searchPanel.Width - 140, 15),
-                Size = new Size(120, 30),
+                Location = new Point(990, 15),
+                Size = new Size(140, 30),
                 Font = new Font("Segoe UI", 10F),
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
+                DropDownStyle = ComboBoxStyle.DropDownList
             };
             cmbStatusFilter.Items.AddRange(new[] { "All Status", "Active", "Returned", "Overdue" });
             cmbStatusFilter.SelectedIndex = 0;
-            Label searchIcon = new Label
-            {
-                Text = "🔍",
-                Font = new Font("Segoe UI", 12F),
-                Location = new Point(10, 10),
-                Size = new Size(25, 20),
-                ForeColor = Color.FromArgb(150, 150, 150),
-                TextAlign = ContentAlignment.MiddleCenter
-            };
-            searchContainer.Controls.Add(searchIcon);
-            searchContainer.Controls.Add(txtSearchBorrowings);
+            searchPanel.Controls.Add(cmbStatusFilter);
             Button btnCheckout = new Button
             {
                 Text = "Check Out",
@@ -2609,8 +3272,6 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             dgvBorrowings.Columns["Status"].Width = 100;
             dgvBorrowings.Columns["Fine"].Width = 80;
             dgvBorrowings.Columns["BorrowingId"].Visible = false;
-            searchContainer.Controls.AddRange(new Control[] { searchIcon, txtSearchBorrowings });
-            searchPanel.Controls.AddRange(new Control[] { searchContainer, lblStatusFilter, cmbStatusFilter });
             pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnCheckout, btnReturn, statsPanel, searchPanel, dgvBorrowings });
         }
 
@@ -2663,54 +3324,11 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             Panel cardFulfilled = CreateCatalogStatCard("✓", "0", "Fulfilled", Color.FromArgb(33, 150, 243), new Point(400, 0));
             Panel cardExpired = CreateCatalogStatCard("✗", "0", "Expired", Color.FromArgb(158, 158, 158), new Point(600, 0));
             statsPanel.Controls.AddRange(new Control[] { cardPending, cardReady, cardFulfilled, cardExpired });
-            Panel searchPanel = new Panel
-            {
-                Location = new Point(30, 190),
-                Size = new Size(pnlMainContent.Width - 60, 70),
-                BackColor = Color.White,
-                BorderStyle = BorderStyle.None
-            };
-            searchPanel.Paint += (s, e) =>
-            {
-                using (var shadowBrush = new SolidBrush(Color.FromArgb(15, 0, 0, 0)))
-                {
-                    e.Graphics.FillRectangle(shadowBrush, 3, 3, searchPanel.Width - 3, searchPanel.Height - 3);
-                }
-                using (var bgBrush = new SolidBrush(Color.FromArgb(252, 252, 252)))
-                {
-                    e.Graphics.FillRectangle(bgBrush, 0, 0, searchPanel.Width, searchPanel.Height);
-                }
-                using (var borderPen = new Pen(Color.FromArgb(220, 220, 220), 1))
-                {
-                    e.Graphics.DrawRectangle(borderPen, 0, 0, searchPanel.Width - 1, searchPanel.Height - 1);
-                }
-            };
-            Panel searchContainer = new Panel
-            {
-                Location = new Point(20, 15),
-                Size = new Size(320, 40),
-                BackColor = Color.FromArgb(245, 245, 245),
-                BorderStyle = BorderStyle.None
-            };
-            Label searchIcon = new Label
-            {
-                Text = "🔍",
-                Font = new Font("Segoe UI", 12F),
-                Location = new Point(10, 10),
-                Size = new Size(25, 20),
-                ForeColor = Color.FromArgb(150, 150, 150),
-                TextAlign = ContentAlignment.MiddleCenter
-            };
-            TextBox txtSearchReservations = new TextBox
-            {
-                Location = new Point(40, 8),
-                Size = new Size(260, 24),
-                Font = new Font("Segoe UI", 10F),
-                BorderStyle = BorderStyle.None,
-                BackColor = Color.FromArgb(245, 245, 245)
-            };
-            txtSearchReservations.SetPlaceholder("Search reservations...");
-            searchContainer.Controls.AddRange(new Control[] { searchIcon, txtSearchReservations });
+            var searchBarComponents = CreateConsistentSearchBar("🔍 Search reservations...", 920);
+            Panel searchPanel = searchBarComponents.panel;
+            TextBox txtSearchReservations = searchBarComponents.textBox;
+            Button btnSearchReservations = searchBarComponents.button;
+            searchPanel.Location = new Point(30, 190);
             DataGridView dgvReservations = new DataGridView
             {
                 Location = new Point(30, 280),
@@ -2735,7 +3353,6 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             dgvReservations.Columns["ReservationDate"].Width = 150;
             dgvReservations.Columns["Status"].Width = 120;
             dgvReservations.Columns["ReservationId"].Visible = false;
-            searchPanel.Controls.Add(searchContainer);
             pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnNewReservation, statsPanel, searchPanel, dgvReservations });
         }
 
@@ -2788,55 +3405,11 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             Panel cardWaived = CreateCatalogStatCard("✗", "₱0.00", "Waived", Color.FromArgb(33, 150, 243), new Point(400, 0));
             Panel cardPendingCases = CreateCatalogStatCard("₱", "0", "Pending Cases", Color.FromArgb(255, 193, 7), new Point(600, 0));
             statsPanel.Controls.AddRange(new Control[] { cardPendingFines, cardCollected, cardWaived, cardPendingCases });
-            Panel searchPanel = new Panel
-            {
-                Location = new Point(30, 250),
-                Size = new Size(pnlMainContent.Width - 60, 70),
-                BackColor = Color.White,
-                BorderStyle = BorderStyle.None
-            };
-            searchPanel.Paint += (s, e) =>
-            {
-                using (var shadowBrush = new SolidBrush(Color.FromArgb(15, 0, 0, 0)))
-                {
-                    e.Graphics.FillRectangle(shadowBrush, 3, 3, searchPanel.Width - 3, searchPanel.Height - 3);
-                }
-                using (var bgBrush = new SolidBrush(Color.FromArgb(252, 252, 252)))
-                {
-                    e.Graphics.FillRectangle(bgBrush, 0, 0, searchPanel.Width, searchPanel.Height);
-                }
-                using (var borderPen = new Pen(Color.FromArgb(220, 220, 220), 1))
-                {
-                    e.Graphics.DrawRectangle(borderPen, 0, 0, searchPanel.Width - 1, searchPanel.Height - 1);
-                }
-            };
-            Panel searchContainer = new Panel
-            {
-                Location = new Point(20, 15),
-                Size = new Size(320, 40),
-                BackColor = Color.FromArgb(245, 245, 245),
-                BorderStyle = BorderStyle.None
-            };
-            Label searchIcon = new Label
-            {
-                Text = "🔍",
-                Font = new Font("Segoe UI", 12F),
-                Location = new Point(10, 10),
-                Size = new Size(25, 20),
-                ForeColor = Color.FromArgb(150, 150, 150),
-                TextAlign = ContentAlignment.MiddleCenter
-            };
-            searchContainer.Controls.Add(searchIcon);
-            TextBox txtSearchFines = new TextBox
-            {
-                Location = new Point(40, 8),
-                Size = new Size(260, 24),
-                Font = new Font("Segoe UI", 10F),
-                BorderStyle = BorderStyle.None,
-                BackColor = Color.FromArgb(245, 245, 245)
-            };
-            txtSearchFines.SetPlaceholder("Search fines...");
-            searchContainer.Controls.Add(txtSearchFines);
+            var searchBarComponents = CreateConsistentSearchBar("🔍 Search fines...", 920);
+            Panel searchPanel = searchBarComponents.panel;
+            TextBox txtSearchFines = searchBarComponents.textBox;
+            Button btnSearchFines = searchBarComponents.button;
+            searchPanel.Location = new Point(30, 250);
             DataGridView dgvFines = new DataGridView
             {
                 Location = new Point(30, 340),
@@ -2863,7 +3436,6 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             dgvFines.Columns["Status"].Width = 120;
             dgvFines.Columns["DueDate"].Width = 120;
             dgvFines.Columns["FineId"].Visible = false;
-            searchPanel.Controls.Add(searchContainer);
             pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnAddFine, statsPanel, searchPanel, dgvFines });
         }
 
@@ -2918,54 +3490,11 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             Panel cardDamaged = CreateCatalogStatCard("⚠", "0", "Damaged", Color.FromArgb(255, 193, 7), new Point(250, 80));
             Panel cardLost = CreateCatalogStatCard("❌", "0", "Lost", Color.FromArgb(244, 67, 54), new Point(500, 80));
             statsPanel.Controls.AddRange(new Control[] { cardTotalTitles, cardTotalCopies, cardAvailable, cardBorrowed, cardDamaged, cardLost });
-            Panel searchPanel = new Panel
-            {
-                Location = new Point(30, 330),
-                Size = new Size(pnlMainContent.Width - 60, 70),
-                BackColor = Color.White,
-                BorderStyle = BorderStyle.None
-            };
-            searchPanel.Paint += (s, e) =>
-            {
-                using (var shadowBrush = new SolidBrush(Color.FromArgb(15, 0, 0, 0)))
-                {
-                    e.Graphics.FillRectangle(shadowBrush, 3, 3, searchPanel.Width - 3, searchPanel.Height - 3);
-                }
-                using (var bgBrush = new SolidBrush(Color.White))
-                {
-                    e.Graphics.FillRectangle(bgBrush, 0, 0, searchPanel.Width, searchPanel.Height);
-                }
-                using (var borderPen = new Pen(Color.FromArgb(220, 220, 220), 1))
-                {
-                    e.Graphics.DrawRectangle(borderPen, 0, 0, searchPanel.Width - 1, searchPanel.Height - 1);
-                }
-            };
-            Panel searchContainer = new Panel
-            {
-                Location = new Point(20, 15),
-                Size = new Size(320, 40),
-                BackColor = Color.FromArgb(245, 245, 245),
-                BorderStyle = BorderStyle.None
-            };
-            Label searchIcon = new Label
-            {
-                Text = "🔍",
-                Font = new Font("Segoe UI", 12F),
-                Location = new Point(10, 10),
-                Size = new Size(25, 20),
-                ForeColor = Color.FromArgb(150, 150, 150),
-                TextAlign = ContentAlignment.MiddleCenter
-            };
-            TextBox txtSearchInventory = new TextBox
-            {
-                Location = new Point(40, 8),
-                Size = new Size(260, 24),
-                Font = new Font("Segoe UI", 10F),
-                BorderStyle = BorderStyle.None,
-                BackColor = Color.FromArgb(245, 245, 245)
-            };
-            txtSearchInventory.SetPlaceholder("Search inventory...");
-            searchContainer.Controls.AddRange(new Control[] { searchIcon, txtSearchInventory });
+            var searchBarComponents = CreateConsistentSearchBar("🔍 Search inventory...", 920);
+            Panel searchPanel = searchBarComponents.panel;
+            TextBox txtSearchInventory = searchBarComponents.textBox;
+            Button btnSearchInventory = searchBarComponents.button;
+            searchPanel.Location = new Point(30, 330);
             DataGridView dgvInventory = new DataGridView
             {
                 Location = new Point(30, 420),
@@ -2989,7 +3518,6 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             dgvInventory.Columns["Location"].Width = 200;
             dgvInventory.Columns["Condition"].Width = 120;
             dgvInventory.Columns["Status"].Width = 120;
-            searchPanel.Controls.Add(searchContainer);
             pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnExportInventory, statsPanel, searchPanel, dgvInventory });
         }
 
@@ -5204,36 +5732,17 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 Padding = new Padding(30, 15, 30, 15)
             };
             
-            // Search textbox with icon
-            Panel pnlSearchContainer = new Panel
-            {
-                Location = new Point(30, 15),
-                Size = new Size(600, 40),
-                BackColor = Color.FromArgb(248, 249, 250),
-                Padding = new Padding(15, 0, 15, 0)
-            };
-            
-            Label lblSearchIcon = new Label
-            {
-                Text = "🔍",
-                Font = new Font("Segoe UI", 14F),
-                Location = new Point(15, 8),
-                AutoSize = true,
-                BackColor = Color.Transparent
-            };
-            
+            // Search textbox
             txtSearchUsers = new TextBox
             {
-                Location = new Point(50, 5),
-                Size = new Size(535, 30),
+                Location = new Point(30, 20),
+                Size = new Size(700, 34),
                 Font = new Font("Segoe UI", 10F),
-                BorderStyle = BorderStyle.None,
-                BackColor = Color.FromArgb(248, 249, 250),
-                Text = "Search users..."
+                Text = "🔍 Search users..."
             };
             
             txtSearchUsers.Enter += (s, e) => {
-                if (txtSearchUsers.Text == "Search users...")
+                if (txtSearchUsers.Text == "🔍 Search users...")
                 {
                     txtSearchUsers.Text = "";
                     txtSearchUsers.ForeColor = Color.Black;
@@ -5243,24 +5752,27 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             txtSearchUsers.Leave += (s, e) => {
                 if (string.IsNullOrWhiteSpace(txtSearchUsers.Text))
                 {
-                    txtSearchUsers.Text = "Search users...";
+                    txtSearchUsers.Text = "🔍 Search users...";
                     txtSearchUsers.ForeColor = Color.Gray;
                 }
             };
             
             txtSearchUsers.ForeColor = Color.Gray;
+            txtSearchUsers.TextChanged += TxtSearchUsers_TextChanged;
             
-            pnlSearchContainer.Controls.Add(lblSearchIcon);
-            pnlSearchContainer.Controls.Add(txtSearchUsers);
-            pnlSearchContainer.Paint += (s, e) =>
+            // Search button
+            btnSearchUsers = new Button
             {
-                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlSearchContainer.Width - 1, pnlSearchContainer.Height - 1), 6))
-                using (Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1))
-                {
-                    e.Graphics.DrawPath(pen, path);
-                }
+                Text = "🔍 Search",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = ThemeConstants.PrimaryMaroon,
+                FlatStyle = FlatStyle.Flat,
+                FlatAppearance = { BorderSize = 0 },
+                Size = new Size(100, 34),
+                Location = new Point(740, 20)
             };
+            btnSearchUsers.Click += BtnSearchUsers_Click;
             
             // Add User button
             btnAddUser = new Button
@@ -5311,7 +5823,8 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             };
             btnAddUser.Click += (s, e) => ShowAddUserDialog();
             
-            pnlSearchAdd.Controls.Add(pnlSearchContainer);
+            pnlSearchAdd.Controls.Add(txtSearchUsers);
+            pnlSearchAdd.Controls.Add(btnSearchUsers);
             pnlSearchAdd.Controls.Add(btnAddUser);
             
             // Tabs panel
@@ -5559,7 +6072,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 
                 // Apply search filter if any
                 string searchText = txtSearchUsers?.Text ?? "";
-                if (!string.IsNullOrWhiteSpace(searchText) && searchText != "Search users...")
+                if (!string.IsNullOrWhiteSpace(searchText) && searchText != "🔍 Search users...")
                 {
                     users = users.Where(u => 
                         u.FullName.StartsWith(searchText, StringComparison.OrdinalIgnoreCase) ||
@@ -6947,6 +7460,50 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             };
 
+            // Helper for Numeric Inputs (Pages, Copies)
+            Func<string, int, int, int, Control> AddNumericInput = (placeholder, x, posY, w) => {
+                Panel pnl = new Panel();
+                pnl.Location = new Point(x, posY + 25);
+                pnl.Size = new Size(w, 40);
+                pnl.BackColor = Color.White;
+                pnl.Padding = new Padding(10, 8, 10, 5);
+
+                TextBox tb = new TextBox();
+                tb.BorderStyle = BorderStyle.None;
+                tb.Font = new Font("Segoe UI", 10F);
+                tb.Dock = DockStyle.Fill;
+                tb.BackColor = Color.White;
+                if(!string.IsNullOrEmpty(placeholder)) tb.SetPlaceholder(placeholder);
+
+                // Restrict to numbers only
+                tb.KeyPress += (s, e) => {
+                    if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+                    {
+                        e.Handled = true;
+                    }
+                };
+
+                pnl.Controls.Add(tb);
+                addBookForm.Controls.Add(pnl);
+
+                pnl.Paint += (s, e) => {
+                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    bool isFocused = (pnl.Tag as string == "Focused");
+                    Color borderColor = isFocused ? Color.Maroon : Color.FromArgb(220, 220, 220);
+                    float width = isFocused ? 1.5f : 1f;
+                    using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnl.Width - 3, pnl.Height - 3), 6))
+                    using(Pen pen = new Pen(borderColor, width))
+                    {
+                        e.Graphics.DrawPath(pen, path);
+                    }
+                };
+
+                tb.Enter += (s, e) => { pnl.Tag = "Focused"; pnl.Invalidate(); };
+                tb.Leave += (s, e) => { pnl.Tag = ""; pnl.Invalidate(); };
+
+                return tb;
+            };
+
 
 
             Action<string, int, int> AddLabel = (text, x, posY) => {
@@ -7003,7 +7560,21 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             ComboBox cmbCat = new ComboBox { FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 10), Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
 
-            cmbCat.Items.AddRange(new string[] { "Fiction", "Non-Fiction", "Science", "History", "Arts" });
+            cmbCat.Items.Add("Enter Category");
+            cmbCat.Items.AddRange(new string[] { "Fiction", "Non-Fiction", "Science", "Technology", "History", "Philosophy", "Arts", "Literature", "Business", "Education" });
+            cmbCat.SelectedIndex = 0;
+            cmbCat.ForeColor = Color.Gray;
+
+            cmbCat.SelectedIndexChanged += (s, e) => {
+                if (cmbCat.SelectedIndex == 0)
+                {
+                    cmbCat.ForeColor = Color.Gray;
+                }
+                else
+                {
+                    cmbCat.ForeColor = Color.Black;
+                }
+            };
 
             pnlCat.Controls.Add(cmbCat);
 
@@ -7041,19 +7612,19 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             AddLabel("Publication Year", col1, y);
 
-            AddInput("2026", col1, y, 70);
+            AddNumericInput("2026", col1, y, 70);
 
             
 
             AddLabel("Pages", col1 + 90, y);
 
-            AddInput("0", col1 + 90, y, 70);
+            AddNumericInput("0", col1 + 90, y, 70);
 
 
 
             AddLabel("Copies", col2, y);
 
-            AddInput("1", col2, y, w1);
+            AddNumericInput("1", col2, y, w1);
 
             y += 75;
 
@@ -7063,7 +7634,26 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             AddLabel("Language", col1, y);
 
-            AddInput("English", col1, y, w1);
+            // Language Combo (allows typing)
+            Panel pnlLanguage = new Panel { Location = new Point(col1, y + 25), Size = new Size(w1, 40), BackColor = Color.White };
+            ComboBox cmbLanguage = new ComboBox { FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 10), Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDown };
+            cmbLanguage.Items.AddRange(new string[] { "English", "Tagalog", "Cebuano", "Spanish" });
+            cmbLanguage.Text = "English";
+            pnlLanguage.Controls.Add(cmbLanguage);
+            addBookForm.Controls.Add(pnlLanguage);
+            pnlLanguage.Paint += (s, e) => {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                bool isFocused = (pnlLanguage.Tag as string == "Focused");
+                Color borderColor = isFocused ? Color.Maroon : Color.FromArgb(220, 220, 220);
+                float width = isFocused ? 1.5f : 1f;
+                using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlLanguage.Width - 3, pnlLanguage.Height - 3), 6))
+                using(Pen pen = new Pen(borderColor, width))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+            cmbLanguage.Enter += (s, e) => { pnlLanguage.Tag = "Focused"; pnlLanguage.Invalidate(); };
+            cmbLanguage.Leave += (s, e) => { pnlLanguage.Tag = ""; pnlLanguage.Invalidate(); };
 
             AddLabel("Location *", col2, y);
 
@@ -7083,9 +7673,21 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             ComboBox cmbType = new ComboBox { FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 10), Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
 
-            cmbType.Items.Add("Book");
-
+            cmbType.Items.Add("Enter Resource Type");
+            cmbType.Items.AddRange(new string[] { "Book", "Periodical", "Thesis", "Audio-Visual", "Ebook" });
             cmbType.SelectedIndex = 0;
+            cmbType.ForeColor = Color.Gray;
+
+            cmbType.SelectedIndexChanged += (s, e) => {
+                if (cmbType.SelectedIndex == 0)
+                {
+                    cmbType.ForeColor = Color.Gray;
+                }
+                else
+                {
+                    cmbType.ForeColor = Color.Black;
+                }
+            };
 
             pnlType.Controls.Add(cmbType);
 
@@ -8067,6 +8669,24 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
 
 
+    }
+
+    // Helper class for member data (shared between Admin and Staff dashboards)
+    public class MemberInfo
+    {
+        public string MemberId { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string Name { get; set; }
+        public string PhoneNumber { get; set; }
+        public string Address { get; set; }
+        public string Department { get; set; }
+        public string Type { get; set; }
+        public string Email { get; set; }
+        public string Status { get; set; }
+        public int BooksBorrowed { get; set; }
+        public int BooksLimit { get; set; }
+        public decimal Fines { get; set; }
     }
 
     // Dialog classes consolidated into this file

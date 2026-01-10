@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -511,7 +511,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 }
                 
                 string searchText = txtSearchMembers.Text;
-                if (searchText == "🔍 Search members..." || searchText == "Search members...")
+                if (searchText == "ðŸ” Search members..." || searchText == "Search members...")
                 {
                     searchText = "";
                 }
@@ -771,11 +771,11 @@ namespace LMS_Library_Management_System.Forms.Dashboard
              {
                  e.PaintBackground(e.CellBounds, true);
                  // Draw Icons
-                 TextRenderer.DrawText(e.Graphics, "👁", new Font("Segoe UI Symbol", 12F), 
+                 TextRenderer.DrawText(e.Graphics, "ðŸ‘", new Font("Segoe UI Symbol", 12F), 
                      new Rectangle(e.CellBounds.X + 10, e.CellBounds.Y, 30, e.CellBounds.Height), Color.Gray, 
                      TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
                      
-                 TextRenderer.DrawText(e.Graphics, "✏", new Font("Segoe UI Symbol", 12F), 
+                 TextRenderer.DrawText(e.Graphics, "âœ", new Font("Segoe UI Symbol", 12F), 
                      new Rectangle(e.CellBounds.X + 50, e.CellBounds.Y, 30, e.CellBounds.Height), Color.Gray, 
                      TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
                  e.Handled = true;
@@ -786,7 +786,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
         {
             if (_isLoadingMembersData) return;
             string text = txtSearchMembers.Text;
-            if (text == "🔍 Search members..." || text == "Search members...") return;
+            if (text == "ðŸ” Search members..." || text == "Search members...") return;
             LoadMembersData();
         }
 
@@ -828,7 +828,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             // Close Button (X)
             Label btnClose = new Label();
-            btnClose.Text = "×"; 
+            btnClose.Text = "Ã—"; 
             btnClose.Font = new Font("Arial", 18, FontStyle.Regular);
             btnClose.ForeColor = Color.Gray;
             btnClose.Location = new Point(registerForm.Width - 40, 15);
@@ -1210,58 +1210,623 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             {
                 _isProcessingAction = true;
                 
-                // TODO: Load actual member data from database
-                // For now, show a dialog with member information
+                // Load actual member data from database
+                var memberService = new Service.MemberService();
+                var memberData = memberService.GetMemberByNumber(memberId);
+                
+                if (memberData == null)
+                {
+                    MessageBox.Show("Member not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                
+                // Get member statistics
+                var stats = memberService.GetMemberStatistics(memberData.MemberId, memberData.MemberType);
+                
+                // Get borrowing history
+                var borrowingHistory = memberService.GetMemberBorrowingHistory(memberData.MemberId);
+                
+                // Format data for display
+                string memberName = memberData.FullName;
+                string email = memberData.Email;
+                string phone = memberData.Phone ?? "Not provided";
+                string registeredDate = memberData.RegistrationDate.ToString("MMM dd, yyyy");
+                string expiryDate = stats.MembershipExpiry?.ToString("MMM dd, yyyy") ?? "N/A";
+                string address = memberData.Address ?? "Not provided";
+                string status = memberData.StatusText;
+                string memberType = memberData.MemberType;
+                string department = memberData.Department ?? "Not specified";
+                int currentBooks = stats.CurrentBooksCount;
+                int maxBooks = stats.MaxBooks;
+                int totalBorrowed = stats.TotalBorrowed;
+                decimal unpaidFines = stats.UnpaidFines;
+                
                 using (Form viewForm = new Form())
                 {
-                    viewForm.Text = $"Member Details - {memberId}";
-                    viewForm.Size = new Size(500, 500);
+                    viewForm.Text = "";
+                    viewForm.Size = new Size(700, 750);
                     viewForm.StartPosition = FormStartPosition.CenterParent;
-                    viewForm.FormBorderStyle = FormBorderStyle.FixedDialog;
-                    viewForm.MaximizeBox = false;
-                    viewForm.MinimizeBox = false;
+                    viewForm.FormBorderStyle = FormBorderStyle.None;
+                    viewForm.BackColor = Color.FromArgb(245, 240, 235); // Beige background
+                    viewForm.Padding = new Padding(0);
                     
+                    // Main container panel
+                    Panel mainPanel = new Panel
+                    {
+                        Dock = DockStyle.Fill,
+                        BackColor = Color.FromArgb(245, 240, 235), // Beige background
+                        Padding = new Padding(0)
+                    };
+                    
+                    // Header panel
+                    Panel headerPanel = new Panel
+                    {
+                        Dock = DockStyle.Top,
+                        Height = 90,
+                        BackColor = Color.FromArgb(245, 240, 235), // Beige background
+                        Padding = new Padding(30, 25, 30, 15)
+                    };
+                    
+                    // Close button (X)
+                    Button btnCloseX = new Button
+                    {
+                        Text = "âœ•",
+                        Size = new Size(30, 30),
+                        Location = new Point(640, 25),
+                        Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                        FlatStyle = FlatStyle.Flat,
+                        BackColor = Color.Transparent,
+                        ForeColor = Color.Gray,
+                        Font = new Font("Segoe UI", 12F),
+                        Cursor = Cursors.Hand
+                    };
+                    btnCloseX.FlatAppearance.BorderSize = 0;
+                    btnCloseX.Click += (s, e) => viewForm.Close();
+                    headerPanel.Controls.Add(btnCloseX);
+                    
+                    // Title and ID
                     Label lblTitle = new Label
                     {
-                        Text = $"Member Information: {memberId}",
-                        Font = new Font("Segoe UI", 14F, FontStyle.Bold),
-                        ForeColor = ThemeConstants.PrimaryMaroon,
+                        Text = memberName,
+                        Font = new Font("Segoe UI", 20F, FontStyle.Bold),
+                        ForeColor = Color.FromArgb(40, 40, 40),
+                        Location = new Point(0, 0),
+                        AutoSize = true
+                    };
+                    headerPanel.Controls.Add(lblTitle);
+                    
+                    Label lblMemberId = new Label
+                    {
+                        Text = memberId,
+                        Font = new Font("Segoe UI", 10F),
+                        ForeColor = Color.Gray,
+                        Location = new Point(0, 35),
+                        AutoSize = true
+                    };
+                    headerPanel.Controls.Add(lblMemberId);
+                    
+                    // Content panel
+                    Panel contentPanel = new Panel
+                    {
+                        Dock = DockStyle.Fill,
+                        AutoScroll = true,
+                        BackColor = Color.FromArgb(245, 240, 235), // Beige background
+                        Padding = new Padding(30, 40, 30, 20)
+                    };
+                    
+                    // Avatar and info section
+                    Panel avatarSection = new Panel
+                    {
+                        Height = 120,
+                        Dock = DockStyle.Top,
+                        BackColor = Color.FromArgb(245, 240, 235) // Beige background
+                    };
+                    
+                    // Avatar circle
+                    Panel avatarPanel = new Panel
+                    {
+                        Size = new Size(80, 80),
+                        Location = new Point(0, 0),
+                        BackColor = Color.FromArgb(245, 240, 235)
+                    };
+                    avatarPanel.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 79, 79), 40))
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(245, 240, 235)))
+                            e.Graphics.FillPath(brush, path);
+                        using (Font font = new Font("Segoe UI", 24F, FontStyle.Bold))
+                        using (SolidBrush brush = new SolidBrush(ThemeConstants.PrimaryMaroon))
+                        {
+                            SizeF textSize = e.Graphics.MeasureString("JS", font);
+                            e.Graphics.DrawString("JS", font, brush, (80 - textSize.Width) / 2, (80 - textSize.Height) / 2);
+                        }
+                    };
+                    avatarSection.Controls.Add(avatarPanel);
+                    
+                    // Status tags
+                    // Status badge
+                    Color statusBgColor = status == "Active" ? Color.FromArgb(220, 252, 231) : 
+                                         status == "Suspended" ? Color.FromArgb(254, 226, 226) : 
+                                         Color.FromArgb(255, 245, 230);
+                    Color statusTextColor = status == "Active" ? Color.FromArgb(34, 197, 94) : 
+                                           status == "Suspended" ? Color.FromArgb(239, 68, 68) : 
+                                           Color.FromArgb(200, 120, 0);
+                    
+                    Panel tagStatus = new Panel
+                    {
+                        Size = new Size(80, 24),
+                        Location = new Point(100, 0),
+                        BackColor = statusBgColor
+                    };
+                    
+                    string capturedStatus = status;
+                    Color capturedStatusBg = statusBgColor;
+                    Color capturedStatusText = statusTextColor;
+                    
+                    tagStatus.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 79, 23), 12))
+                        using (SolidBrush brush = new SolidBrush(capturedStatusBg))
+                            e.Graphics.FillPath(brush, path);
+                        using (Font font = new Font("Segoe UI", 8F, FontStyle.Bold))
+                        using (SolidBrush brush = new SolidBrush(capturedStatusText))
+                        {
+                            SizeF textSize = e.Graphics.MeasureString(capturedStatus, font);
+                            float x = (80 - textSize.Width) / 2;
+                            e.Graphics.DrawString(capturedStatus, font, brush, x, 5);
+                        }
+                    };
+                    avatarSection.Controls.Add(tagStatus);
+                    
+                    // Member type badge
+                    Color typeBgColor = memberType == "Student" ? Color.FromArgb(219, 234, 254) : 
+                                       memberType == "Faculty" ? Color.FromArgb(254, 226, 226) : 
+                                       memberType == "Staff" ? Color.FromArgb(220, 252, 231) : 
+                                       Color.FromArgb(255, 245, 230);
+                    Color typeTextColor = memberType == "Student" ? Color.FromArgb(59, 130, 246) : 
+                                         memberType == "Faculty" ? Color.FromArgb(200, 50, 50) : 
+                                         memberType == "Staff" ? Color.FromArgb(0, 150, 50) : 
+                                         Color.FromArgb(200, 120, 0);
+                    
+                    Panel tagMemberType = new Panel
+                    {
+                        Size = new Size(75, 24),
+                        Location = new Point(190, 0),
+                        BackColor = typeBgColor
+                    };
+                    
+                    string capturedType = memberType;
+                    Color capturedTypeBg = typeBgColor;
+                    Color capturedTypeText = typeTextColor;
+                    
+                    tagMemberType.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 74, 23), 12))
+                        using (SolidBrush brush = new SolidBrush(capturedTypeBg))
+                            e.Graphics.FillPath(brush, path);
+                        using (Font font = new Font("Segoe UI", 8F, FontStyle.Bold))
+                        using (SolidBrush brush = new SolidBrush(capturedTypeText))
+                        {
+                            SizeF textSize = e.Graphics.MeasureString(capturedType, font);
+                            float x = (75 - textSize.Width) / 2;
+                            e.Graphics.DrawString(capturedType, font, brush, x, 5);
+                        }
+                    };
+                    avatarSection.Controls.Add(tagMemberType);
+                    
+                    // Contact info
+                    Label lblEmail = new Label
+                    {
+                        Text = email,
+                        Font = new Font("Segoe UI", 10F),
+                        ForeColor = Color.FromArgb(60, 60, 60),
+                        Location = new Point(100, 35),
+                        AutoSize = true
+                    };
+                    avatarSection.Controls.Add(lblEmail);
+                    
+                    Label lblPhone = new Label
+                    {
+                        Text = phone,
+                        Font = new Font("Segoe UI", 10F),
+                        ForeColor = Color.FromArgb(60, 60, 60),
+                        Location = new Point(100, 55),
+                        AutoSize = true
+                    };
+                    avatarSection.Controls.Add(lblPhone);
+                    
+                    contentPanel.Controls.Add(avatarSection);
+                    
+                    // Two column cards
+                    Panel cardsContainer = new Panel
+                    {
+                        Height = 180,
+                        Dock = DockStyle.Top,
+                        BackColor = Color.FromArgb(245, 240, 235), // Beige background
+                        Padding = new Padding(0, 30, 0, 0)
+                    };
+                    
+                    // Membership Details card
+                    Panel cardMembership = new Panel
+                    {
+                        Size = new Size(300, 160),
+                        Location = new Point(0, 0),
+                        BackColor = Color.FromArgb(245, 240, 235) // Beige background
+                    };
+                    cardMembership.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 299, 159), 8))
+                        using (Pen pen = new Pen(Color.FromArgb(230, 230, 230)))
+                            e.Graphics.DrawPath(pen, path);
+                    };
+                    
+                    Label lblMembershipTitle = new Label
+                    {
+                        Text = "Membership Details",
+                        Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                        ForeColor = Color.FromArgb(40, 40, 40),
                         Location = new Point(20, 20),
                         AutoSize = true
                     };
+                    cardMembership.Controls.Add(lblMembershipTitle);
                     
-                    // Mock member data - replace with actual data loading
-                    string memberInfo = $"Member ID: {memberId}\n\n" +
-                                      $"Name: [Member Name]\n" +
-                                      $"Type: [Member Type]\n" +
-                                      $"Email: [Email Address]\n" +
-                                      $"Phone: [Phone Number]\n" +
-                                      $"Status: [Status]\n" +
-                                      $"Books Borrowed: [Count]\n" +
-                                      $"Fines: ₱[Amount]\n\n" +
-                                      $"Registration Date: [Date]\n" +
-                                      $"Expiry Date: [Date]";
-                    
-                    TextBox txtInfo = new TextBox
+                    Label lblRegistered = new Label
                     {
-                        Text = memberInfo,
-                        Multiline = true,
-                        ReadOnly = true,
-                        Location = new Point(20, 60),
-                        Size = new Size(440, 350),
-                        Font = new Font("Segoe UI", 10F),
-                        ScrollBars = ScrollBars.Vertical
+                        Text = $"Registered: {registeredDate}",
+                        Font = new Font("Segoe UI", 9F),
+                        ForeColor = Color.FromArgb(100, 100, 100),
+                        Location = new Point(20, 50),
+                        AutoSize = true
+                    };
+                    cardMembership.Controls.Add(lblRegistered);
+                    
+                    Label lblExpires = new Label
+                    {
+                        Text = $"Expires: {expiryDate}",
+                        Font = new Font("Segoe UI", 9F),
+                        ForeColor = Color.FromArgb(100, 100, 100),
+                        Location = new Point(20, 75),
+                        AutoSize = true
+                    };
+                    cardMembership.Controls.Add(lblExpires);
+                    
+                    Label lblAddress = new Label
+                    {
+                        Text = $"Address: {address}",
+                        Font = new Font("Segoe UI", 9F),
+                        ForeColor = Color.FromArgb(100, 100, 100),
+                        Location = new Point(20, 100),
+                        AutoSize = true,
+                        MaximumSize = new Size(260, 0)
+                    };
+                    cardMembership.Controls.Add(lblAddress);
+                    
+                    cardsContainer.Controls.Add(cardMembership);
+                    
+                    // Borrowing Statistics card
+                    Panel cardStatistics = new Panel
+                    {
+                        Size = new Size(300, 160),
+                        Location = new Point(320, 0),
+                        BackColor = Color.FromArgb(245, 240, 235) // Beige background
+                    };
+                    cardStatistics.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 299, 159), 8))
+                        using (Pen pen = new Pen(Color.FromArgb(230, 230, 230)))
+                            e.Graphics.DrawPath(pen, path);
+                    };
+                    
+                    Label lblStatsTitle = new Label
+                    {
+                        Text = "Borrowing Statistics",
+                        Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                        ForeColor = Color.FromArgb(40, 40, 40),
+                        Location = new Point(20, 20),
+                        AutoSize = true
+                    };
+                    cardStatistics.Controls.Add(lblStatsTitle);
+                    
+                    Label lblCurrentBooks = new Label
+                    {
+                        Text = $"Current Books: {currentBooks}/{maxBooks}",
+                        Font = new Font("Segoe UI", 9F),
+                        ForeColor = Color.FromArgb(100, 100, 100),
+                        Location = new Point(20, 50),
+                        AutoSize = true
+                    };
+                    cardStatistics.Controls.Add(lblCurrentBooks);
+                    
+                    Label lblTotalBorrowed = new Label
+                    {
+                        Text = $"Total Borrowed: {totalBorrowed}",
+                        Font = new Font("Segoe UI", 9F),
+                        ForeColor = Color.FromArgb(100, 100, 100),
+                        Location = new Point(20, 75),
+                        AutoSize = true
+                    };
+                    cardStatistics.Controls.Add(lblTotalBorrowed);
+                    
+                    Label lblFines = new Label
+                    {
+                        Text = $"Unpaid Fines: ${unpaidFines:F2}",
+                        Font = new Font("Segoe UI", 9F),
+                        ForeColor = Color.FromArgb(100, 100, 100),
+                        Location = new Point(20, 100),
+                        AutoSize = true
+                    };
+                    cardStatistics.Controls.Add(lblFines);
+                    
+                    cardsContainer.Controls.Add(cardStatistics);
+                    
+                    // Resize handler for cards
+                    cardsContainer.Resize += (s, e) =>
+                    {
+                        int cardWidth = (cardsContainer.Width - 20) / 2;
+                        cardMembership.Width = cardWidth;
+                        cardStatistics.Width = cardWidth;
+                        cardStatistics.Left = cardWidth + 20;
+                    };
+                    
+                    contentPanel.Controls.Add(cardsContainer);
+                    
+                    // Borrowing History section
+                    Panel historySection = new Panel
+                    {
+                        Height = 200,
+                        Dock = DockStyle.Top,
+                        BackColor = Color.FromArgb(245, 240, 235), // Beige background
+                        Padding = new Padding(0, 30, 0, 0)
+                    };
+                    historySection.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, historySection.Width - 1, historySection.Height - 1), 8))
+                        using (Pen pen = new Pen(Color.FromArgb(230, 230, 230)))
+                            e.Graphics.DrawPath(pen, path);
+                    };
+                    
+                    Label lblHistoryTitle = new Label
+                    {
+                        Text = "ðŸ• Borrowing History",
+                        Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                        ForeColor = Color.FromArgb(40, 40, 40),
+                        Location = new Point(20, 20),
+                        AutoSize = true
+                    };
+                    historySection.Controls.Add(lblHistoryTitle);
+                    
+                    // Display real borrowing history from database
+                    int historyCount = 0;
+                    foreach (var borrowing in borrowingHistory.Take(5)) // Show last 5 borrowings
+                    {
+                        Panel historyItem = new Panel
+                        {
+                            Height = 50,
+                            Dock = DockStyle.Top,
+                            BackColor = Color.Transparent,
+                            Padding = new Padding(20, 10, 20, 0)
+                        };
+                        
+                        Label lblBook = new Label
+                        {
+                            Text = borrowing.BookTitle,
+                            Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                            ForeColor = Color.FromArgb(40, 40, 40),
+                            Location = new Point(0, 5),
+                            AutoSize = true,
+                            MaximumSize = new Size(400, 0)
+                        };
+                        historyItem.Controls.Add(lblBook);
+                        
+                        Label lblDate = new Label
+                        {
+                            Text = borrowing.BorrowDate.ToString("MMM dd, yyyy"),
+                            Font = new Font("Segoe UI", 9F),
+                            ForeColor = Color.Gray,
+                            Location = new Point(0, 25),
+                            AutoSize = true
+                        };
+                        historyItem.Controls.Add(lblDate);
+                        
+                        // Status tag
+                        string borrowStatusText = borrowing.Status;
+                        Color borrowBgColor = Color.FromArgb(243, 244, 246);
+                        Color borrowTextColor = Color.FromArgb(107, 114, 128);
+                        
+                        // Determine if overdue
+                        if (borrowing.Status == "Borrowed" && borrowing.DueDate < DateTime.Now)
+                        {
+                            borrowStatusText = "Overdue";
+                            borrowBgColor = Color.FromArgb(254, 226, 226);
+                            borrowTextColor = Color.FromArgb(239, 68, 68);
+                        }
+                        else if (borrowing.Status == "Returned")
+                        {
+                            borrowStatusText = "Returned";
+                            borrowBgColor = Color.FromArgb(243, 244, 246);
+                            borrowTextColor = Color.FromArgb(107, 114, 128);
+                        }
+                        else if (borrowing.Status == "Borrowed")
+                        {
+                            borrowStatusText = "Borrowed";
+                            borrowBgColor = Color.FromArgb(219, 234, 254);
+                            borrowTextColor = Color.FromArgb(37, 99, 235);
+                        }
+                        
+                        Panel tagBorrowStatus = new Panel
+                        {
+                            Size = new Size(75, 22),
+                            Location = new Point(historyItem.Width - 95, 14),
+                            Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                            BackColor = borrowBgColor
+                        };
+                        
+                        Color capturedBorrowBg = borrowBgColor;
+                        Color capturedBorrowText = borrowTextColor;
+                        string capturedBorrowStatus = borrowStatusText;
+                        
+                        tagBorrowStatus.Paint += (s, e) =>
+                        {
+                            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                            using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, 74, 21), 11))
+                            using (SolidBrush brush = new SolidBrush(capturedBorrowBg))
+                                e.Graphics.FillPath(brush, path);
+                            using (Font font = new Font("Segoe UI", 8F, FontStyle.Bold))
+                            using (SolidBrush brush = new SolidBrush(capturedBorrowText))
+                            {
+                                SizeF textSize = e.Graphics.MeasureString(capturedBorrowStatus, font);
+                                float x = (75 - textSize.Width) / 2;
+                                e.Graphics.DrawString(capturedBorrowStatus, font, brush, x, 4);
+                            }
+                        };
+                        historyItem.Controls.Add(tagBorrowStatus);
+                        historySection.Controls.Add(historyItem);
+                        
+                        historyCount++;
+                    }
+                    
+                    // If no borrowing history
+                    if (historyCount == 0)
+                    {
+                        Label lblNoBorrowings = new Label
+                        {
+                            Text = "No borrowing history yet",
+                            Font = new Font("Segoe UI", 10F, FontStyle.Italic),
+                            ForeColor = Color.Gray,
+                            Location = new Point(20, 60),
+                            AutoSize = true
+                        };
+                        historySection.Controls.Add(lblNoBorrowings);
+                    }
+                    
+                    contentPanel.Controls.Add(historySection);
+                    
+                    // Quick Actions section
+                    Panel actionsSection = new Panel
+                    {
+                        Height = 100,
+                        Dock = DockStyle.Top,
+                        BackColor = Color.FromArgb(245, 240, 235), // Beige background
+                        Padding = new Padding(0, 30, 0, 0)
+                    };
+                    actionsSection.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, actionsSection.Width - 1, actionsSection.Height - 1), 8))
+                        using (Pen pen = new Pen(Color.FromArgb(230, 230, 230)))
+                            e.Graphics.DrawPath(pen, path);
+                    };
+                    
+                    Label lblActionsTitle = new Label
+                    {
+                        Text = "Quick Actions",
+                        Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                        ForeColor = Color.FromArgb(40, 40, 40),
+                        Location = new Point(20, 20),
+                        AutoSize = true
+                    };
+                    actionsSection.Controls.Add(lblActionsTitle);
+                    
+                    // Dynamic suspend/activate button based on current status
+                    string suspendBtnText = status == "Suspended" ? "Activate Member" : "Suspend Member";
+                    Color suspendBtnBg = status == "Suspended" ? Color.FromArgb(220, 252, 231) : Color.FromArgb(254, 226, 226);
+                    Color suspendBtnForeColor = status == "Suspended" ? Color.FromArgb(22, 163, 74) : Color.FromArgb(239, 68, 68);
+                    
+                    Button btnSuspend = new Button
+                    {
+                        Text = suspendBtnText,
+                        Size = new Size(150, 35),
+                        Location = new Point(20, 50),
+                        FlatStyle = FlatStyle.Flat,
+                        BackColor = suspendBtnBg,
+                        ForeColor = suspendBtnForeColor,
+                        Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                        Cursor = Cursors.Hand
+                    };
+                    btnSuspend.FlatAppearance.BorderSize = 0;
+                    
+                    Color capturedSuspendBg = suspendBtnBg;
+                    Color capturedSuspendText = suspendBtnForeColor;
+                    string capturedSuspendBtnText = suspendBtnText;
+                    
+                    btnSuspend.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnSuspend.Width - 1, btnSuspend.Height - 1), 6))
+                        using (SolidBrush brush = new SolidBrush(capturedSuspendBg))
+                            e.Graphics.FillPath(brush, path);
+                        TextRenderer.DrawText(e.Graphics, capturedSuspendBtnText, btnSuspend.Font, new Rectangle(0, 0, btnSuspend.Width, btnSuspend.Height), capturedSuspendText, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                    };
+                    
+                    btnSuspend.Click += (s, e) =>
+                    {
+                        _isProcessingAction = false; // Reset flag to allow SuspendMember to execute
+                        SuspendMember(memberId);
+                        // Refresh the view after suspension
+                        viewForm.Close();
+                        if (!string.IsNullOrEmpty(memberId))
+                        {
+                            ViewMember(memberId);
+                        }
+                    };
+                    
+                    actionsSection.Controls.Add(btnSuspend);
+                    
+                    contentPanel.Controls.Add(actionsSection);
+                    
+                    // Footer buttons
+                    Panel footerPanel = new Panel
+                    {
+                        Dock = DockStyle.Bottom,
+                        Height = 70,
+                        BackColor = Color.FromArgb(245, 240, 235), // Beige background
+                        Padding = new Padding(30, 15, 30, 15)
                     };
                     
                     Button btnClose = new Button
                     {
                         Text = "Close",
-                        Location = new Point(385, 420),
-                        Size = new Size(75, 35),
-                        DialogResult = DialogResult.OK
+                        Size = new Size(100, 40),
+                        Location = new Point(580, 15),
+                        Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+                        FlatStyle = FlatStyle.Flat,
+                        BackColor = Color.FromArgb(243, 244, 246),
+                        ForeColor = Color.FromArgb(40, 40, 40),
+                        Font = new Font("Segoe UI", 9F),
+                        Cursor = Cursors.Hand,
+                        DialogResult = DialogResult.Cancel
+                    };
+                    btnClose.FlatAppearance.BorderSize = 0;
+                    btnClose.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnClose.Width - 1, btnClose.Height - 1), 6))
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(243, 244, 246)))
+                            e.Graphics.FillPath(brush, path);
+                        TextRenderer.DrawText(e.Graphics, btnClose.Text, btnClose.Font, new Rectangle(0, 0, btnClose.Width, btnClose.Height), Color.FromArgb(40, 40, 40), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                    };
+                    footerPanel.Controls.Add(btnClose);
+                    
+                    mainPanel.Controls.Add(footerPanel);
+                    mainPanel.Controls.Add(contentPanel);
+                    mainPanel.Controls.Add(headerPanel);
+                    
+                    // Form border/shadow effect
+                    viewForm.Paint += (s, e) =>
+                    {
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, viewForm.Width - 1, viewForm.Height - 1), 12))
+                        using (Pen pen = new Pen(Color.FromArgb(200, 200, 200), 1))
+                            e.Graphics.DrawPath(pen, path);
                     };
                     
-                    viewForm.Controls.AddRange(new Control[] { lblTitle, txtInfo, btnClose });
+                    viewForm.Controls.Add(mainPanel);
                     viewForm.ShowDialog();
                 }
             }
@@ -1370,6 +1935,212 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             }
         }
 
+        private void SuspendMember(string memberId)
+        {
+            if (_isProcessingAction) return;
+            try
+            {
+                _isProcessingAction = true;
+                
+                // Load member data
+                var memberService = new Service.MemberService();
+                var memberData = memberService.GetMemberByNumber(memberId);
+                
+                if (memberData == null)
+                {
+                    MessageBox.Show("Member not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                
+                string currentStatus = memberData.StatusText;
+                string newStatus = currentStatus == "Suspended" ? "Active" : "Suspended";
+                string action = currentStatus == "Suspended" ? "activate" : "suspend";
+                
+                // If suspending, show dialog for reason and duration
+                if (newStatus == "Suspended")
+                {
+                    using (Form suspendForm = new Form())
+                    {
+                        suspendForm.Text = "Suspend Member";
+                        suspendForm.Size = new Size(500, 350);
+                        suspendForm.StartPosition = FormStartPosition.CenterParent;
+                        suspendForm.FormBorderStyle = FormBorderStyle.FixedDialog;
+                        suspendForm.MaximizeBox = false;
+                        suspendForm.MinimizeBox = false;
+                        suspendForm.BackColor = Color.FromArgb(245, 240, 235);
+                        
+                        Label lblTitle = new Label
+                        {
+                            Text = $"Suspend {memberData.FirstName} {memberData.LastName}",
+                            Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                            ForeColor = ThemeConstants.PrimaryMaroon,
+                            Location = new Point(20, 20),
+                            AutoSize = true
+                        };
+                        suspendForm.Controls.Add(lblTitle);
+                        
+                        Label lblReason = new Label
+                        {
+                            Text = "Reason for Suspension:",
+                            Font = new Font("Segoe UI", 10F),
+                            Location = new Point(20, 60),
+                            AutoSize = true
+                        };
+                        suspendForm.Controls.Add(lblReason);
+                        
+                        TextBox txtReason = new TextBox
+                        {
+                            Location = new Point(20, 85),
+                            Size = new Size(440, 80),
+                            Multiline = true,
+                            Font = new Font("Segoe UI", 10F),
+                            ScrollBars = ScrollBars.Vertical
+                        };
+                        suspendForm.Controls.Add(txtReason);
+                        
+                        Label lblDuration = new Label
+                        {
+                            Text = "Suspension Duration (days):",
+                            Font = new Font("Segoe UI", 10F),
+                            Location = new Point(20, 180),
+                            AutoSize = true
+                        };
+                        suspendForm.Controls.Add(lblDuration);
+                        
+                        NumericUpDown numDuration = new NumericUpDown
+                        {
+                            Location = new Point(20, 205),
+                            Size = new Size(150, 25),
+                            Minimum = 1,
+                            Maximum = 365,
+                            Value = 30,
+                            Font = new Font("Segoe UI", 10F)
+                        };
+                        suspendForm.Controls.Add(numDuration);
+                        
+                        Label lblDays = new Label
+                        {
+                            Text = "days (Leave blank for indefinite)",
+                            Font = new Font("Segoe UI", 9F, FontStyle.Italic),
+                            ForeColor = Color.Gray,
+                            Location = new Point(180, 208),
+                            AutoSize = true
+                        };
+                        suspendForm.Controls.Add(lblDays);
+                        
+                        Button btnCancel = new Button
+                        {
+                            Text = "Cancel",
+                            Size = new Size(100, 35),
+                            Location = new Point(250, 260),
+                            DialogResult = DialogResult.Cancel,
+                            Font = new Font("Segoe UI", 9F)
+                        };
+                        suspendForm.Controls.Add(btnCancel);
+                        
+                        Button btnSuspend = new Button
+                        {
+                            Text = "Suspend",
+                            Size = new Size(100, 35),
+                            Location = new Point(360, 260),
+                            BackColor = ThemeConstants.PrimaryMaroon,
+                            ForeColor = Color.White,
+                            FlatStyle = FlatStyle.Flat,
+                            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                            DialogResult = DialogResult.OK
+                        };
+                        btnSuspend.FlatAppearance.BorderSize = 0;
+                        suspendForm.Controls.Add(btnSuspend);
+                        
+                        suspendForm.AcceptButton = btnSuspend;
+                        suspendForm.CancelButton = btnCancel;
+                        
+                        if (suspendForm.ShowDialog() == DialogResult.OK)
+                        {
+                            string reason = txtReason.Text.Trim();
+                            if (string.IsNullOrEmpty(reason))
+                            {
+                                MessageBox.Show("Please provide a reason for suspension.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                return;
+                            }
+                            
+                            int duration = (int)numDuration.Value;
+                            
+                            // TODO: Store reason and duration in database
+                            // For now, just update the status
+                            int statusValue = 2; // Suspended
+                            
+                            bool success = memberService.UpdateMember(
+                                memberId,
+                                memberData.FirstName,
+                                memberData.LastName,
+                                memberData.Email,
+                                memberData.Phone,
+                                memberData.Address,
+                                memberData.Department,
+                                memberData.MemberType,
+                                statusValue
+                            );
+                            
+                            if (success)
+                            {
+                                MessageBox.Show($"Member has been suspended for {duration} days.\nReason: {reason}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                LoadMembersData();
+                            }
+                            else
+                            {
+                                MessageBox.Show("Failed to suspend member. Please try again.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // Activating - simple confirmation
+                    DialogResult result = MessageBox.Show(
+                        $"Are you sure you want to activate {memberData.FirstName} {memberData.LastName}?",
+                        "Activate Member",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question);
+                    
+                    if (result == DialogResult.Yes)
+                    {
+                        int statusValue = 1; // Active
+                        
+                        bool success = memberService.UpdateMember(
+                            memberId,
+                            memberData.FirstName,
+                            memberData.LastName,
+                            memberData.Email,
+                            memberData.Phone,
+                            memberData.Address,
+                            memberData.Department,
+                            memberData.MemberType,
+                            statusValue
+                        );
+                        
+                        if (success)
+                        {
+                            MessageBox.Show("Member has been activated successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            LoadMembersData();
+                        }
+                        else
+                        {
+                            MessageBox.Show("Failed to activate member. Please try again.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to update member status: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _isProcessingAction = false;
+            }
+        }
+
         private void DeleteMember(string memberId)
         {
             if (_isProcessingAction) return;
@@ -1443,10 +2214,10 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 BackColor = Color.Transparent,
                 Tag = "CatalogStatsPanel"
             };
-            Panel cardTotalTitles = CreateCatalogStatCard("📚", "0", "Total Titles", ThemeConstants.PrimaryMaroon, new Point(0, 0));
-            Panel cardAvailableCopies = CreateCatalogStatCard("📖", "0", "Available Copies", Color.FromArgb(76, 175, 80), new Point(200, 0));
-            Panel cardTotalCopies = CreateCatalogStatCard("📚", "0", "Total Copies", Color.FromArgb(33, 150, 243), new Point(400, 0));
-            Panel cardCategories = CreateCatalogStatCard("🔖", "0", "Categories", Color.FromArgb(255, 152, 0), new Point(600, 0));
+            Panel cardTotalTitles = CreateCatalogStatCard("ðŸ“š", "0", "Total Titles", ThemeConstants.PrimaryMaroon, new Point(0, 0));
+            Panel cardAvailableCopies = CreateCatalogStatCard("ðŸ“–", "0", "Available Copies", Color.FromArgb(76, 175, 80), new Point(200, 0));
+            Panel cardTotalCopies = CreateCatalogStatCard("ðŸ“š", "0", "Total Copies", Color.FromArgb(33, 150, 243), new Point(400, 0));
+            Panel cardCategories = CreateCatalogStatCard("ðŸ”–", "0", "Categories", Color.FromArgb(255, 152, 0), new Point(600, 0));
             statsPanel.Controls.AddRange(new Control[] { cardTotalTitles, cardAvailableCopies, cardTotalCopies, cardCategories });
             Panel searchPanel = new Panel
             {
@@ -1479,7 +2250,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             };
             Label lblSearchIcon = new Label
             {
-                Text = "🔍",
+                Text = "ðŸ”",
                 Location = new Point(10, 8),
                 Size = new Size(25, 24),
                 Font = new Font("Segoe UI", 12F),
@@ -1608,9 +2379,9 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 BackColor = Color.Transparent,
                 Tag = "CirculationStatsPanel"
             };
-            Panel cardCurrentlyBorrowed = CreateCatalogStatCard("📚", "0", "Currently Borrowed", Color.FromArgb(33, 150, 243), new Point(0, 0));
-            Panel cardOverdue = CreateCatalogStatCard("⚠️", "0", "Overdue", Color.FromArgb(244, 67, 54), new Point(200, 0));
-            Panel cardReturnedToday = CreateCatalogStatCard("✓", "0", "Returned Today", Color.FromArgb(76, 175, 80), new Point(400, 0));
+            Panel cardCurrentlyBorrowed = CreateCatalogStatCard("ðŸ“š", "0", "Currently Borrowed", Color.FromArgb(33, 150, 243), new Point(0, 0));
+            Panel cardOverdue = CreateCatalogStatCard("âš ï¸", "0", "Overdue", Color.FromArgb(244, 67, 54), new Point(200, 0));
+            Panel cardReturnedToday = CreateCatalogStatCard("âœ“", "0", "Returned Today", Color.FromArgb(76, 175, 80), new Point(400, 0));
             statsPanel.Controls.AddRange(new Control[] { cardCurrentlyBorrowed, cardOverdue, cardReturnedToday });
             Panel searchPanel = new Panel
             {
@@ -1670,7 +2441,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             cmbStatusFilter.SelectedIndex = 0;
             Label searchIcon = new Label
             {
-                Text = "🔍",
+                Text = "ðŸ”",
                 Font = new Font("Segoe UI", 12F),
                 Location = new Point(10, 10),
                 Size = new Size(25, 20),
@@ -1804,10 +2575,10 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 BackColor = Color.Transparent,
                 Tag = "ReservationsStatsPanel"
             };
-            Panel cardPending = CreateCatalogStatCard("🕒", "0", "Pending", Color.FromArgb(255, 193, 7), new Point(0, 0));
-            Panel cardReady = CreateCatalogStatCard("🔔", "0", "Ready for Pickup", Color.FromArgb(76, 175, 80), new Point(200, 0));
-            Panel cardFulfilled = CreateCatalogStatCard("✓", "0", "Fulfilled", Color.FromArgb(33, 150, 243), new Point(400, 0));
-            Panel cardExpired = CreateCatalogStatCard("✗", "0", "Expired", Color.FromArgb(158, 158, 158), new Point(600, 0));
+            Panel cardPending = CreateCatalogStatCard("ðŸ•’", "0", "Pending", Color.FromArgb(255, 193, 7), new Point(0, 0));
+            Panel cardReady = CreateCatalogStatCard("ðŸ””", "0", "Ready for Pickup", Color.FromArgb(76, 175, 80), new Point(200, 0));
+            Panel cardFulfilled = CreateCatalogStatCard("âœ“", "0", "Fulfilled", Color.FromArgb(33, 150, 243), new Point(400, 0));
+            Panel cardExpired = CreateCatalogStatCard("âœ—", "0", "Expired", Color.FromArgb(158, 158, 158), new Point(600, 0));
             statsPanel.Controls.AddRange(new Control[] { cardPending, cardReady, cardFulfilled, cardExpired });
             Panel searchPanel = new Panel
             {
@@ -1840,7 +2611,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             };
             Label searchIcon = new Label
             {
-                Text = "🔍",
+                Text = "ðŸ”",
                 Font = new Font("Segoe UI", 12F),
                 Location = new Point(10, 10),
                 Size = new Size(25, 20),
@@ -1929,10 +2700,10 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 BackColor = Color.Transparent,
                 Tag = "FinesStatsPanel"
             };
-            Panel cardPendingFines = CreateCatalogStatCard("⚠️", "₱0.00", "Pending Fines", ThemeConstants.PrimaryMaroon, new Point(0, 0));
-            Panel cardCollected = CreateCatalogStatCard("✓", "₱0.00", "Collected", Color.FromArgb(76, 175, 80), new Point(200, 0));
-            Panel cardWaived = CreateCatalogStatCard("✗", "₱0.00", "Waived", Color.FromArgb(33, 150, 243), new Point(400, 0));
-            Panel cardPendingCases = CreateCatalogStatCard("₱", "0", "Pending Cases", Color.FromArgb(255, 193, 7), new Point(600, 0));
+            Panel cardPendingFines = CreateCatalogStatCard("âš ï¸", "â‚±0.00", "Pending Fines", ThemeConstants.PrimaryMaroon, new Point(0, 0));
+            Panel cardCollected = CreateCatalogStatCard("âœ“", "â‚±0.00", "Collected", Color.FromArgb(76, 175, 80), new Point(200, 0));
+            Panel cardWaived = CreateCatalogStatCard("âœ—", "â‚±0.00", "Waived", Color.FromArgb(33, 150, 243), new Point(400, 0));
+            Panel cardPendingCases = CreateCatalogStatCard("â‚±", "0", "Pending Cases", Color.FromArgb(255, 193, 7), new Point(600, 0));
             statsPanel.Controls.AddRange(new Control[] { cardPendingFines, cardCollected, cardWaived, cardPendingCases });
             Panel searchPanel = new Panel
             {
@@ -1965,7 +2736,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             };
             Label searchIcon = new Label
             {
-                Text = "🔍",
+                Text = "ðŸ”",
                 Font = new Font("Segoe UI", 12F),
                 Location = new Point(10, 10),
                 Size = new Size(25, 20),
@@ -2057,12 +2828,12 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 BackColor = Color.Transparent,
                 Tag = "InventoryStatsPanel"
             };
-            Panel cardTotalTitles = CreateCatalogStatCard("📚", "0", "Total Titles", ThemeConstants.PrimaryMaroon, new Point(0, 0));
-            Panel cardTotalCopies = CreateCatalogStatCard("📖", "0", "Total Copies", Color.White, new Point(250, 0));
-            Panel cardAvailable = CreateCatalogStatCard("✓", "0", "Available", Color.FromArgb(76, 175, 80), new Point(500, 0));
-            Panel cardBorrowed = CreateCatalogStatCard("📗", "0", "Borrowed", Color.FromArgb(33, 150, 243), new Point(0, 80));
-            Panel cardDamaged = CreateCatalogStatCard("⚠", "0", "Damaged", Color.FromArgb(255, 193, 7), new Point(250, 80));
-            Panel cardLost = CreateCatalogStatCard("❌", "0", "Lost", Color.FromArgb(244, 67, 54), new Point(500, 80));
+            Panel cardTotalTitles = CreateCatalogStatCard("ðŸ“š", "0", "Total Titles", ThemeConstants.PrimaryMaroon, new Point(0, 0));
+            Panel cardTotalCopies = CreateCatalogStatCard("ðŸ“–", "0", "Total Copies", Color.White, new Point(250, 0));
+            Panel cardAvailable = CreateCatalogStatCard("âœ“", "0", "Available", Color.FromArgb(76, 175, 80), new Point(500, 0));
+            Panel cardBorrowed = CreateCatalogStatCard("ðŸ“—", "0", "Borrowed", Color.FromArgb(33, 150, 243), new Point(0, 80));
+            Panel cardDamaged = CreateCatalogStatCard("âš ", "0", "Damaged", Color.FromArgb(255, 193, 7), new Point(250, 80));
+            Panel cardLost = CreateCatalogStatCard("âŒ", "0", "Lost", Color.FromArgb(244, 67, 54), new Point(500, 80));
             statsPanel.Controls.AddRange(new Control[] { cardTotalTitles, cardTotalCopies, cardAvailable, cardBorrowed, cardDamaged, cardLost });
             Panel searchPanel = new Panel
             {
@@ -2095,7 +2866,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             };
             Label searchIcon = new Label
             {
-                Text = "🔍",
+                Text = "ðŸ”",
                 Font = new Font("Segoe UI", 12F),
                 Location = new Point(10, 10),
                 Size = new Size(25, 20),
@@ -2182,7 +2953,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             // Header Buttons
              Button btnExport = new Button 
             { 
-                Text = "📥  Export", 
+                Text = "ðŸ“¥  Export", 
                 Size = new Size(100, 36), 
                 Location = new Point(pnlHeader.Width - 100, 5), 
                 FlatStyle = FlatStyle.Flat, 
@@ -2204,7 +2975,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             Button btnPrint = new Button 
             { 
-                Text = "🖨  Print", 
+                Text = "ðŸ–¨  Print", 
                 Size = new Size(90, 36), 
                 Location = new Point(pnlHeader.Width - 200, 5), 
                 FlatStyle = FlatStyle.Flat, 
@@ -2225,7 +2996,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             
             Panel pnlDate = new Panel { Size = new Size(140, 36), Location = new Point(pnlHeader.Width - 350, 5), BackColor = Color.White, Anchor = AnchorStyles.Top | AnchorStyles.Right };
             ComboBox cmbDate = new ComboBox { FlatStyle = FlatStyle.Flat, Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10), DropDownStyle = ComboBoxStyle.DropDownList };
-            cmbDate.Items.Add("📅  Last 7 days");
+            cmbDate.Items.Add("ðŸ“…  Last 7 days");
             cmbDate.SelectedIndex = 0;
             pnlDate.Controls.Add(cmbDate);
             pnlDate.Paint += (s, e) => {
@@ -2360,11 +3131,11 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
             
-            tlpKPI.Controls.Add(CreateReportStatCard("Total Collection", "2,450", "📖", Color.White, Color.Black, false), 0, 0);
-            tlpKPI.Controls.Add(CreateReportStatCard("Active Members", "142", "👥", Color.White, Color.Black, false), 1, 0);
-            tlpKPI.Controls.Add(CreateReportStatCard("Transactions", "38", "↗", Color.White, Color.Black, false), 2, 0);
-            tlpKPI.Controls.Add(CreateReportStatCard("Fines Collected", "$1,250", "💲", Color.White, Color.Black, false), 3, 0);
-            tlpKPI.Controls.Add(CreateReportStatCard("Overdue", "12", "📅", Color.White, Color.Black, false), 4, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Total Collection", "2,450", "ðŸ“–", Color.White, Color.Black, false), 0, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Active Members", "142", "ðŸ‘¥", Color.White, Color.Black, false), 1, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Transactions", "38", "â†—", Color.White, Color.Black, false), 2, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Fines Collected", "$1,250", "ðŸ’²", Color.White, Color.Black, false), 3, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Overdue", "12", "ðŸ“…", Color.White, Color.Black, false), 4, 0);
             flpReportsContent.Controls.Add(tlpKPI);
 
             // 2. Charts Section (Daily Circulation + Top Books)
@@ -2428,10 +3199,10 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             
-            tlpKPI.Controls.Add(CreateReportStatCard("Total Members", "524", "👥", Color.White, Color.Black, false), 0, 0);
-            tlpKPI.Controls.Add(CreateReportStatCard("New This Month", "32", "➕", Color.White, Color.Green, false), 1, 0);
-            tlpKPI.Controls.Add(CreateReportStatCard("Active Users", "412", "⚡", Color.White, Color.Blue, false), 2, 0);
-            tlpKPI.Controls.Add(CreateReportStatCard("Suspended", "8", "⛔", Color.White, Color.Red, false), 3, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Total Members", "524", "ðŸ‘¥", Color.White, Color.Black, false), 0, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("New This Month", "32", "âž•", Color.White, Color.Green, false), 1, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Active Users", "412", "âš¡", Color.White, Color.Blue, false), 2, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Suspended", "8", "â›”", Color.White, Color.Red, false), 3, 0);
             flpReportsContent.Controls.Add(tlpKPI);
 
             // 2. Charts Section
@@ -2496,10 +3267,10 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             
-            tlpKPI.Controls.Add(CreateReportStatCard("Total Titles", "12,450", "📚", Color.White, Color.Black, false), 0, 0);
-            tlpKPI.Controls.Add(CreateReportStatCard("Total Copies", "15,200", "📖", Color.White, Color.Black, false), 1, 0);
-            tlpKPI.Controls.Add(CreateReportStatCard("Available", "11,500", "✅", Color.White, Color.Green, false), 2, 0);
-            tlpKPI.Controls.Add(CreateReportStatCard("Lost/Damaged", "45", "❌", Color.White, Color.Red, false), 3, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Total Titles", "12,450", "ðŸ“š", Color.White, Color.Black, false), 0, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Total Copies", "15,200", "ðŸ“–", Color.White, Color.Black, false), 1, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Available", "11,500", "âœ…", Color.White, Color.Green, false), 2, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Lost/Damaged", "45", "âŒ", Color.White, Color.Red, false), 3, 0);
             flpReportsContent.Controls.Add(tlpKPI);
 
             // 2. Charts Section
@@ -2564,10 +3335,10 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             
-            tlpKPI.Controls.Add(CreateReportStatCard("Total Collected", "$12,450", "💰", Color.White, Color.Green, false), 0, 0);
-            tlpKPI.Controls.Add(CreateReportStatCard("Pending Fines", "$2,100", "⚠️", Color.White, Color.Orange, false), 1, 0);
-            tlpKPI.Controls.Add(CreateReportStatCard("Waived", "$540", "👋", Color.White, Color.Gray, false), 2, 0);
-            tlpKPI.Controls.Add(CreateReportStatCard("Overdue Cases", "45", "⚖️", Color.White, Color.Red, false), 3, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Total Collected", "$12,450", "ðŸ’°", Color.White, Color.Green, false), 0, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Pending Fines", "$2,100", "âš ï¸", Color.White, Color.Orange, false), 1, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Waived", "$540", "ðŸ‘‹", Color.White, Color.Gray, false), 2, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Overdue Cases", "45", "âš–ï¸", Color.White, Color.Red, false), 3, 0);
             flpReportsContent.Controls.Add(tlpKPI);
 
             // 2. Charts Section
@@ -2752,7 +3523,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             };
             btnTriggerSearch = new Button
             {
-                Text = "🔍 Search",
+                Text = "ðŸ” Search",
                 Size = new Size(100, 40),
                 BackColor = ThemeConstants.PrimaryMaroon,
                 ForeColor = Color.White,
@@ -2764,7 +3535,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             btnTriggerSearch.FlatAppearance.BorderSize = 0;
             btnSearchFilters = new Button
             {
-                Text = "All Categories  ▼",
+                Text = "All Categories  â–¼",
                 Size = new Size(100, 40),
                 BackColor = Color.White,
                 ForeColor = Color.Black,
@@ -2784,7 +3555,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 Width = 500,
                 Anchor = AnchorStyles.Left | AnchorStyles.Right
             };
-            Label lblSearchIcon = new Label { Text = "🔍", Font = new Font("Segoe UI", 12F), Location = new Point(10, 15), AutoSize = true, ForeColor = Color.Gray, BackColor = Color.Transparent };
+            Label lblSearchIcon = new Label { Text = "ðŸ”", Font = new Font("Segoe UI", 12F), Location = new Point(10, 15), AutoSize = true, ForeColor = Color.Gray, BackColor = Color.Transparent };
             pnlSearchBar.Resize += (s, e) =>
             {
                 txtSearchInput.Width = pnlSearchBar.Width - 260;
@@ -2825,7 +3596,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             };
             Label lblEmptyIcon = new Label
             {
-                Text = "🔍",
+                Text = "ðŸ”",
                 Font = new Font("Segoe UI", 60F),
                 ForeColor = Color.LightGray,
                 AutoSize = true,
@@ -3038,7 +3809,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             };
 
             // Close
-            Label btnClose = new Label { Text = "×", Font = new Font("Arial", 18), ForeColor = Color.Gray, Location = new Point(addBookForm.Width - 40, 10), Size = new Size(30, 30), Cursor = Cursors.Hand };
+            Label btnClose = new Label { Text = "Ã—", Font = new Font("Arial", 18), ForeColor = Color.Gray, Location = new Point(addBookForm.Width - 40, 10), Size = new Size(30, 30), Cursor = Cursors.Hand };
             btnClose.Click += (s, e) => addBookForm.Close();
             btnClose.MouseEnter += (s, e) => btnClose.ForeColor = Color.Black;
             btnClose.MouseLeave += (s, e) => btnClose.ForeColor = Color.Gray;
@@ -3085,6 +3856,50 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 return tb;
             };
 
+            // Helper for Numeric Inputs (Pages, Copies)
+            Func<string, int, int, int, Control> AddNumericInput = (placeholder, x, posY, w) => {
+                Panel pnl = new Panel();
+                pnl.Location = new Point(x, posY + 25);
+                pnl.Size = new Size(w, 40);
+                pnl.BackColor = Color.White;
+                pnl.Padding = new Padding(10, 8, 10, 5);
+
+                TextBox tb = new TextBox();
+                tb.BorderStyle = BorderStyle.None;
+                tb.Font = new Font("Segoe UI", 10F);
+                tb.Dock = DockStyle.Fill;
+                tb.BackColor = Color.White;
+                if(!string.IsNullOrEmpty(placeholder)) tb.SetPlaceholder(placeholder);
+
+                // Restrict to numbers only
+                tb.KeyPress += (s, e) => {
+                    if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+                    {
+                        e.Handled = true;
+                    }
+                };
+
+                pnl.Controls.Add(tb);
+                addBookForm.Controls.Add(pnl);
+
+                pnl.Paint += (s, e) => {
+                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    bool isFocused = (pnl.Tag as string == "Focused");
+                    Color borderColor = isFocused ? Color.Maroon : Color.FromArgb(220, 220, 220);
+                    float width = isFocused ? 1.5f : 1f;
+                    using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnl.Width - 3, pnl.Height - 3), 6))
+                    using(Pen pen = new Pen(borderColor, width))
+                    {
+                        e.Graphics.DrawPath(pen, path);
+                    }
+                };
+
+                tb.Enter += (s, e) => { pnl.Tag = "Focused"; pnl.Invalidate(); };
+                tb.Leave += (s, e) => { pnl.Tag = ""; pnl.Invalidate(); };
+
+                return tb;
+            };
+
             Action<string, int, int> AddLabel = (text, x, posY) => {
                 Label l = new Label { Text = text, Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(50, 50, 50), Location = new Point(x, posY), AutoSize = true };
                 addBookForm.Controls.Add(l);
@@ -3112,7 +3927,22 @@ namespace LMS_Library_Management_System.Forms.Dashboard
              // Custom Combo for Category
             Panel pnlCat = new Panel { Location = new Point(col2, y + 25), Size = new Size(w1, 40), BackColor = Color.White };
             ComboBox cmbCat = new ComboBox { FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 10), Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
-            cmbCat.Items.AddRange(new string[] { "Fiction", "Non-Fiction", "Science", "History", "Arts" });
+            cmbCat.Items.Add("Enter Category");
+            cmbCat.Items.AddRange(new string[] { "Fiction", "Non-Fiction", "Science", "Technology", "History", "Philosophy", "Arts", "Literature", "Business", "Education" });
+            cmbCat.SelectedIndex = 0;
+            cmbCat.ForeColor = Color.Gray;
+
+            cmbCat.SelectedIndexChanged += (s, e) => {
+                if (cmbCat.SelectedIndex == 0)
+                {
+                    cmbCat.ForeColor = Color.Gray;
+                }
+                else
+                {
+                    cmbCat.ForeColor = Color.Black;
+                }
+            };
+
             pnlCat.Controls.Add(cmbCat);
             addBookForm.Controls.Add(pnlCat);
              pnlCat.Paint += (s, e) => {
@@ -3131,18 +3961,39 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             // Row 4
             AddLabel("Publication Year", col1, y);
-            AddInput("2026", col1, y, 70);
+            AddNumericInput("2026", col1, y, 70);
             
             AddLabel("Pages", col1 + 90, y);
-            AddInput("0", col1 + 90, y, 70);
+            AddNumericInput("0", col1 + 90, y, 70);
 
             AddLabel("Copies", col2, y);
-            AddInput("1", col2, y, w1);
+            AddNumericInput("1", col2, y, w1);
             y += 75;
 
             // Row 5
             AddLabel("Language", col1, y);
-            AddInput("English", col1, y, w1);
+            
+            // Language Combo (allows typing)
+            Panel pnlLanguage = new Panel { Location = new Point(col1, y + 25), Size = new Size(w1, 40), BackColor = Color.White };
+            ComboBox cmbLanguage = new ComboBox { FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 10), Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDown };
+            cmbLanguage.Items.AddRange(new string[] { "English", "Tagalog", "Cebuano", "Spanish" });
+            cmbLanguage.Text = "English";
+            pnlLanguage.Controls.Add(cmbLanguage);
+            addBookForm.Controls.Add(pnlLanguage);
+            pnlLanguage.Paint += (s, e) => {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                bool isFocused = (pnlLanguage.Tag as string == "Focused");
+                Color borderColor = isFocused ? Color.Maroon : Color.FromArgb(220, 220, 220);
+                float width = isFocused ? 1.5f : 1f;
+                using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlLanguage.Width - 3, pnlLanguage.Height - 3), 6))
+                using(Pen pen = new Pen(borderColor, width))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+            cmbLanguage.Enter += (s, e) => { pnlLanguage.Tag = "Focused"; pnlLanguage.Invalidate(); };
+            cmbLanguage.Leave += (s, e) => { pnlLanguage.Tag = ""; pnlLanguage.Invalidate(); };
+            
             AddLabel("Location *", col2, y);
             AddInput("Section A, Shelf 1", col2, y, w1);
             y += 75;
@@ -3152,8 +4003,22 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             // Type Combo
             Panel pnlType = new Panel { Location = new Point(col1, y + 25), Size = new Size(wFull, 40), BackColor = Color.White };
             ComboBox cmbType = new ComboBox { FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 10), Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList };
-            cmbType.Items.Add("Book");
+            cmbType.Items.Add("Enter Resource Type");
+            cmbType.Items.AddRange(new string[] { "Book", "Periodical", "Thesis", "Audio-Visual", "Ebook" });
             cmbType.SelectedIndex = 0;
+            cmbType.ForeColor = Color.Gray;
+
+            cmbType.SelectedIndexChanged += (s, e) => {
+                if (cmbType.SelectedIndex == 0)
+                {
+                    cmbType.ForeColor = Color.Gray;
+                }
+                else
+                {
+                    cmbType.ForeColor = Color.Black;
+                }
+            };
+
             pnlType.Controls.Add(cmbType);
             addBookForm.Controls.Add(pnlType);
             pnlType.Paint += (s, e) => {
@@ -3219,7 +4084,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                  }
             };
 
-            Label btnClose = new Label { Text = "×", Font = new Font("Arial", 18), ForeColor = Color.Gray, Location = new Point(checkOutForm.Width - 40, 10), Size = new Size(30, 30), Cursor = Cursors.Hand };
+            Label btnClose = new Label { Text = "Ã—", Font = new Font("Arial", 18), ForeColor = Color.Gray, Location = new Point(checkOutForm.Width - 40, 10), Size = new Size(30, 30), Cursor = Cursors.Hand };
             btnClose.Click += (s, e) => checkOutForm.Close();
             checkOutForm.Controls.Add(btnClose);
 
@@ -3309,7 +4174,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                  }
             };
 
-            Label btnClose = new Label { Text = "×", Font = new Font("Arial", 18), ForeColor = Color.Gray, Location = new Point(rvForm.Width - 40, 10), Size = new Size(30, 30), Cursor = Cursors.Hand };
+            Label btnClose = new Label { Text = "Ã—", Font = new Font("Arial", 18), ForeColor = Color.Gray, Location = new Point(rvForm.Width - 40, 10), Size = new Size(30, 30), Cursor = Cursors.Hand };
             btnClose.Click += (s, e) => rvForm.Close();
             btnClose.MouseEnter += (s, e) => btnClose.ForeColor = Color.Black;
             btnClose.MouseLeave += (s, e) => btnClose.ForeColor = Color.Gray;
@@ -3402,7 +4267,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                  }
             };
 
-            Label btnClose = new Label { Text = "×", Font = new Font("Arial", 18), ForeColor = Color.Gray, Location = new Point(fineForm.Width - 40, 10), Size = new Size(30, 30), Cursor = Cursors.Hand };
+            Label btnClose = new Label { Text = "Ã—", Font = new Font("Arial", 18), ForeColor = Color.Gray, Location = new Point(fineForm.Width - 40, 10), Size = new Size(30, 30), Cursor = Cursors.Hand };
             btnClose.Click += (s, e) => fineForm.Close();
             fineForm.Controls.Add(btnClose);
 
@@ -3646,3 +4511,4 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
     }
 }
+

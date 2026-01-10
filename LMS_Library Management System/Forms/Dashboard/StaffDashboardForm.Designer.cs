@@ -17,6 +17,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(StaffDashboardForm));
             this.pnlSidebar = new System.Windows.Forms.Panel();
             this.pnlAdministrator = new System.Windows.Forms.Panel();
             this.btnSignOut = new System.Windows.Forms.Button();
@@ -58,19 +59,6 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.lblOverdueBooksChange = new System.Windows.Forms.Label();
             this.lblWelcome = new System.Windows.Forms.Label();
             this.lblDate = new System.Windows.Forms.Label();
-            this.pnlSidebar.SuspendLayout();
-            this.pnlAdministrator.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.picLogo)).BeginInit();
-            this.pnlMainContent.SuspendLayout();
-            this.pnlCollectionCategory.SuspendLayout();
-            this.pnlWeeklyCirculation.SuspendLayout();
-            this.pnlCardPendingFines.SuspendLayout();
-            this.pnlCardTodaysReturns.SuspendLayout();
-            this.pnlCardTodaysBorrowings.SuspendLayout();
-            this.pnlCardBooksBorrowed.SuspendLayout();
-            this.pnlCardActiveMembers.SuspendLayout();
-            this.pnlCardTotalBooks.SuspendLayout();
-            this.pnlCardOverdueBooks.SuspendLayout();
             this.pnlMembersView = new System.Windows.Forms.Panel();
             this.dgvMembers = new System.Windows.Forms.DataGridView();
             this.pnlSearchFilter = new System.Windows.Forms.Panel();
@@ -96,6 +84,19 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.lblMembersSubtitle = new System.Windows.Forms.Label();
             this.lblMembersTitle = new System.Windows.Forms.Label();
             this.btnAddMember = new System.Windows.Forms.Button();
+            this.pnlSidebar.SuspendLayout();
+            this.pnlAdministrator.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.picLogo)).BeginInit();
+            this.pnlMainContent.SuspendLayout();
+            this.pnlCollectionCategory.SuspendLayout();
+            this.pnlWeeklyCirculation.SuspendLayout();
+            this.pnlCardPendingFines.SuspendLayout();
+            this.pnlCardTodaysReturns.SuspendLayout();
+            this.pnlCardTodaysBorrowings.SuspendLayout();
+            this.pnlCardBooksBorrowed.SuspendLayout();
+            this.pnlCardActiveMembers.SuspendLayout();
+            this.pnlCardTotalBooks.SuspendLayout();
+            this.pnlCardOverdueBooks.SuspendLayout();
             this.pnlMembersView.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvMembers)).BeginInit();
             this.pnlSearchFilter.SuspendLayout();
@@ -168,12 +169,12 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.lblStaffName.ForeColor = System.Drawing.Color.White;
             this.lblStaffName.Location = new System.Drawing.Point(14, 9);
             this.lblStaffName.Name = "lblStaffName";
-            this.lblStaffName.Size = new System.Drawing.Size(96, 36);
+            this.lblStaffName.Size = new System.Drawing.Size(73, 36);
             this.lblStaffName.TabIndex = 0;
             this.lblStaffName.Text = "Staff";
             // 
             // btnSearch
-            //  
+            // 
             this.btnSearch.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(32)))));
             this.btnSearch.FlatAppearance.BorderSize = 0;
             this.btnSearch.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -966,7 +967,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnAddMember.Text = "👥+ Add Member";
             this.btnAddMember.UseVisualStyleBackColor = false;
             // 
-            // AdminDashboardForm
+            // StaffDashboardForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
@@ -974,8 +975,9 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.ClientSize = new System.Drawing.Size(1400, 650);
             this.Controls.Add(this.pnlMainContent);
             this.Controls.Add(this.pnlSidebar);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
-            this.Name = "AdminDashboardForm";
+            this.Name = "StaffDashboardForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "LibraryMS - Staff Dashboard";
             this.Load += new System.EventHandler(this.StaffDashboardForm_Load);

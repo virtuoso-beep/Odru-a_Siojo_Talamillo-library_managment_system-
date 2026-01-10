@@ -17,6 +17,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(AdminDashboardForm));
             this.pnlSidebar = new System.Windows.Forms.Panel();
             this.pnlAdministrator = new System.Windows.Forms.Panel();
             this.btnSignOut = new System.Windows.Forms.Button();
@@ -30,8 +31,8 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnCirculation = new System.Windows.Forms.Button();
             this.btnCatalog = new System.Windows.Forms.Button();
             this.btnMembers = new System.Windows.Forms.Button();
-            this.btnUserManagement = new System.Windows.Forms.Button();
             this.btnDashboard = new System.Windows.Forms.Button();
+            this.btnUserManagement = new System.Windows.Forms.Button();
             this.lblManagementSystem = new System.Windows.Forms.Label();
             this.lblLibraryMS = new System.Windows.Forms.Label();
             this.picLogo = new System.Windows.Forms.PictureBox();
@@ -60,25 +61,13 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.lblOverdueBooksChange = new System.Windows.Forms.Label();
             this.lblWelcome = new System.Windows.Forms.Label();
             this.lblDate = new System.Windows.Forms.Label();
-            this.pnlSidebar.SuspendLayout();
-            this.pnlAdministrator.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.picLogo)).BeginInit();
-            this.pnlMainContent.SuspendLayout();
-            this.pnlCollectionCategory.SuspendLayout();
-            this.pnlWeeklyCirculation.SuspendLayout();
-            this.pnlCardPendingFines.SuspendLayout();
-            this.pnlCardTodaysReturns.SuspendLayout();
-            this.pnlCardTodaysBorrowings.SuspendLayout();
-            this.pnlCardBooksBorrowed.SuspendLayout();
-            this.pnlCardActiveMembers.SuspendLayout();
-            this.pnlCardTotalBooks.SuspendLayout();
-            this.pnlCardOverdueBooks.SuspendLayout();
             this.pnlMembersView = new System.Windows.Forms.Panel();
             this.dgvMembers = new System.Windows.Forms.DataGridView();
             this.pnlSearchFilter = new System.Windows.Forms.Panel();
             this.cmbTypeFilter = new System.Windows.Forms.ComboBox();
             this.cmbStatusFilter = new System.Windows.Forms.ComboBox();
             this.txtSearchMembers = new System.Windows.Forms.TextBox();
+            this.btnSearchMembers = new System.Windows.Forms.Button();
             this.pnlCardExpiredMembers = new System.Windows.Forms.Panel();
             this.lblExpiredMembersIcon = new System.Windows.Forms.Label();
             this.lblExpiredMembers = new System.Windows.Forms.Label();
@@ -98,6 +87,19 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.lblMembersSubtitle = new System.Windows.Forms.Label();
             this.lblMembersTitle = new System.Windows.Forms.Label();
             this.btnAddMember = new System.Windows.Forms.Button();
+            this.pnlSidebar.SuspendLayout();
+            this.pnlAdministrator.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.picLogo)).BeginInit();
+            this.pnlMainContent.SuspendLayout();
+            this.pnlCollectionCategory.SuspendLayout();
+            this.pnlWeeklyCirculation.SuspendLayout();
+            this.pnlCardPendingFines.SuspendLayout();
+            this.pnlCardTodaysReturns.SuspendLayout();
+            this.pnlCardTodaysBorrowings.SuspendLayout();
+            this.pnlCardBooksBorrowed.SuspendLayout();
+            this.pnlCardActiveMembers.SuspendLayout();
+            this.pnlCardTotalBooks.SuspendLayout();
+            this.pnlCardOverdueBooks.SuspendLayout();
             this.pnlMembersView.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvMembers)).BeginInit();
             this.pnlSearchFilter.SuspendLayout();
@@ -196,7 +198,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnSettings.Click += new System.EventHandler(this.MenuItem_Click);
             // 
             // btnSearch
-            //  
+            // 
             this.btnSearch.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(32)))));
             this.btnSearch.FlatAppearance.BorderSize = 0;
             this.btnSearch.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -347,6 +349,25 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnMembers.UseVisualStyleBackColor = false;
             this.btnMembers.Click += new System.EventHandler(this.MenuItem_Click);
             // 
+            // btnDashboard
+            // 
+            this.btnDashboard.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(150)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
+            this.btnDashboard.FlatAppearance.BorderSize = 0;
+            this.btnDashboard.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnDashboard.Font = new System.Drawing.Font("Segoe UI", 11.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnDashboard.ForeColor = System.Drawing.Color.White;
+            this.btnDashboard.Location = new System.Drawing.Point(0, 90);
+            this.btnDashboard.Margin = new System.Windows.Forms.Padding(0);
+            this.btnDashboard.Name = "btnDashboard";
+            this.btnDashboard.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
+            this.btnDashboard.Size = new System.Drawing.Size(280, 42);
+            this.btnDashboard.TabIndex = 2;
+            this.btnDashboard.Tag = "Dashboard";
+            this.btnDashboard.Text = "  ▦ Dashboard";
+            this.btnDashboard.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.btnDashboard.UseVisualStyleBackColor = false;
+            this.btnDashboard.Click += new System.EventHandler(this.MenuItem_Click);
+            // 
             // btnUserManagement
             // 
             this.btnUserManagement.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(32)))));
@@ -365,26 +386,6 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnUserManagement.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.btnUserManagement.UseVisualStyleBackColor = false;
             this.btnUserManagement.Click += new System.EventHandler(this.MenuItem_Click);
-            // 
-            // btnDashboard
-            // 
-            this.btnDashboard.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(150)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
-            this.btnDashboard.FlatAppearance.BorderSize = 0;
-            this.btnDashboard.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnDashboard.Font = new System.Drawing.Font("Segoe UI", 11.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnDashboard.ForeColor = System.Drawing.Color.White;
-            this.btnDashboard.Location = new System.Drawing.Point(0, 90);
-            // User Management will be at 132 (right after Dashboard)
-            this.btnDashboard.Margin = new System.Windows.Forms.Padding(0);
-            this.btnDashboard.Name = "btnDashboard";
-            this.btnDashboard.Padding = new System.Windows.Forms.Padding(25, 0, 0, 0);
-            this.btnDashboard.Size = new System.Drawing.Size(280, 42);
-            this.btnDashboard.TabIndex = 2;
-            this.btnDashboard.Tag = "Dashboard";
-            this.btnDashboard.Text = "  ▦ Dashboard";
-            this.btnDashboard.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.btnDashboard.UseVisualStyleBackColor = false;
-            this.btnDashboard.Click += new System.EventHandler(this.MenuItem_Click);
             // 
             // lblManagementSystem
             // 
@@ -717,7 +718,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.pnlMembersView.Location = new System.Drawing.Point(30, 35);
             this.pnlMembersView.Name = "pnlMembersView";
             this.pnlMembersView.Padding = new System.Windows.Forms.Padding(25);
-            this.pnlMembersView.Size = new System.Drawing.Size(1060, 580);
+            this.pnlMembersView.Size = new System.Drawing.Size(1450, 630);
             this.pnlMembersView.TabIndex = 12;
             this.pnlMembersView.Visible = false;
             // 
@@ -728,7 +729,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.dgvMembers.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.dgvMembers.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
+            this.dgvMembers.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.None;
             this.dgvMembers.BackgroundColor = System.Drawing.Color.White;
             this.dgvMembers.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.dgvMembers.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
@@ -738,7 +739,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.dgvMembers.RowHeadersWidth = 51;
             this.dgvMembers.RowTemplate.Height = 40;
             this.dgvMembers.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dgvMembers.Size = new System.Drawing.Size(990, 215);
+            this.dgvMembers.Size = new System.Drawing.Size(1400, 215);
             this.dgvMembers.TabIndex = 7;
             // 
             // pnlSearchFilter
@@ -748,10 +749,11 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.pnlSearchFilter.BackColor = System.Drawing.Color.Transparent;
             this.pnlSearchFilter.Controls.Add(this.cmbTypeFilter);
             this.pnlSearchFilter.Controls.Add(this.cmbStatusFilter);
+            this.pnlSearchFilter.Controls.Add(this.btnSearchMembers);
             this.pnlSearchFilter.Controls.Add(this.txtSearchMembers);
             this.pnlSearchFilter.Location = new System.Drawing.Point(25, 280);
             this.pnlSearchFilter.Name = "pnlSearchFilter";
-            this.pnlSearchFilter.Size = new System.Drawing.Size(1030, 63);
+            this.pnlSearchFilter.Size = new System.Drawing.Size(1440, 63);
             this.pnlSearchFilter.TabIndex = 6;
             // 
             // cmbTypeFilter
@@ -766,10 +768,11 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             "Faculty",
             "Staff",
             "Guest"});
-            this.cmbTypeFilter.Location = new System.Drawing.Point(889, 0);
+            this.cmbTypeFilter.Location = new System.Drawing.Point(1200, 10);
             this.cmbTypeFilter.Name = "cmbTypeFilter";
             this.cmbTypeFilter.Size = new System.Drawing.Size(140, 36);
             this.cmbTypeFilter.TabIndex = 2;
+            this.cmbTypeFilter.SelectedIndexChanged += new System.EventHandler(this.CmbTypeFilter_SelectedIndexChanged);
             // 
             // cmbStatusFilter
             // 
@@ -783,18 +786,38 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             "Suspended",
             "Expired",
             "Inactive"});
-            this.cmbStatusFilter.Location = new System.Drawing.Point(743, 0);
+            this.cmbStatusFilter.Location = new System.Drawing.Point(1040, 10);
             this.cmbStatusFilter.Name = "cmbStatusFilter";
             this.cmbStatusFilter.Size = new System.Drawing.Size(140, 36);
             this.cmbStatusFilter.TabIndex = 1;
+            this.cmbStatusFilter.SelectedIndexChanged += new System.EventHandler(this.CmbStatusFilter_SelectedIndexChanged);
             // 
             // txtSearchMembers
             // 
             this.txtSearchMembers.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.txtSearchMembers.Location = new System.Drawing.Point(0, 10);
             this.txtSearchMembers.Name = "txtSearchMembers";
-            this.txtSearchMembers.Size = new System.Drawing.Size(600, 34);
+            this.txtSearchMembers.Size = new System.Drawing.Size(500, 34);
             this.txtSearchMembers.TabIndex = 0;
+            this.txtSearchMembers.Text = "🔍 Search members...";
+            this.txtSearchMembers.ForeColor = System.Drawing.Color.Gray;
+            this.txtSearchMembers.Enter += new System.EventHandler(this.TxtSearchMembers_Enter);
+            this.txtSearchMembers.Leave += new System.EventHandler(this.TxtSearchMembers_Leave);
+            this.txtSearchMembers.TextChanged += new System.EventHandler(this.TxtSearchMembers_TextChanged);
+            // 
+            // btnSearchMembers
+            // 
+            this.btnSearchMembers.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(120)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
+            this.btnSearchMembers.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnSearchMembers.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnSearchMembers.ForeColor = System.Drawing.Color.White;
+            this.btnSearchMembers.Location = new System.Drawing.Point(510, 10);
+            this.btnSearchMembers.Name = "btnSearchMembers";
+            this.btnSearchMembers.Size = new System.Drawing.Size(100, 34);
+            this.btnSearchMembers.TabIndex = 3;
+            this.btnSearchMembers.Text = "🔍 Search";
+            this.btnSearchMembers.UseVisualStyleBackColor = false;
+            this.btnSearchMembers.Click += new System.EventHandler(this.BtnSearchMembers_Click);
             // 
             // pnlCardExpiredMembers
             // 
@@ -1000,13 +1023,13 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.btnAddMember.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
             this.btnAddMember.FlatAppearance.BorderSize = 0;
             this.btnAddMember.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnAddMember.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnAddMember.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnAddMember.ForeColor = System.Drawing.Color.White;
-            this.btnAddMember.Location = new System.Drawing.Point(854, 28);
+            this.btnAddMember.Location = new System.Drawing.Point(1250, 28);
             this.btnAddMember.Name = "btnAddMember";
             this.btnAddMember.Size = new System.Drawing.Size(150, 40);
             this.btnAddMember.TabIndex = 8;
-            this.btnAddMember.Text = "👥+ Add Member";
+            this.btnAddMember.Text = "+ Add Member";
             this.btnAddMember.UseVisualStyleBackColor = false;
             // 
             // AdminDashboardForm
@@ -1014,9 +1037,10 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(245)))), ((int)(((byte)(240)))), ((int)(((byte)(230)))));
-            this.ClientSize = new System.Drawing.Size(1400, 650);
+            this.ClientSize = new System.Drawing.Size(1650, 700);
             this.Controls.Add(this.pnlMainContent);
             this.Controls.Add(this.pnlSidebar);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.Name = "AdminDashboardForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
@@ -1130,6 +1154,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
         private System.Windows.Forms.Label lblExpiredMembersIcon;
         private System.Windows.Forms.Panel pnlSearchFilter;
         private System.Windows.Forms.TextBox txtSearchMembers;
+        private System.Windows.Forms.Button btnSearchMembers;
         private System.Windows.Forms.ComboBox cmbStatusFilter;
         private System.Windows.Forms.ComboBox cmbTypeFilter;
         private System.Windows.Forms.DataGridView dgvMembers;
