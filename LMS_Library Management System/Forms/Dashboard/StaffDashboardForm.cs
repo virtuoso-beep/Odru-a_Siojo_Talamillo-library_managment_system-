@@ -537,9 +537,9 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 {
                     string searchLower = searchText.ToLower();
                     filteredMembers = filteredMembers.Where(m => 
-                        m.MemberId.ToLower().Contains(searchLower) ||
-                        m.Name.ToLower().Contains(searchLower) ||
-                        m.Email.ToLower().Contains(searchLower));
+                        m.MemberId.ToLower().StartsWith(searchLower) ||
+                        m.Name.ToLower().StartsWith(searchLower) ||
+                        m.Email.ToLower().StartsWith(searchLower));
                 }
                 if (statusFilter != "All Status")
                 {

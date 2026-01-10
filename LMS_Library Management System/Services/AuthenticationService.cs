@@ -179,41 +179,385 @@ namespace LMS_Library_Management_System.Service
         {
             try
             {
-                // Check if Users table has CreatedDate column
+                // Check and add CreatedDate column if needed
+                CheckAndAddColumn(connection, "Users", "CreatedDate", "DATETIME DEFAULT CURRENT_TIMESTAMP", 
+                    "UPDATE Users SET CreatedDate = NOW() WHERE CreatedDate IS NULL");
+
+                // Check and add Department column if needed
+                CheckAndAddColumn(connection, "Users", "Department", "VARCHAR(100) NULL", null);
+
+                // Check and add LastLogin column if needed
+                CheckAndAddColumn(connection, "Users", "LastLogin", "DATETIME NULL", null);
+
+                // Check and add Phone column if needed
+                CheckAndAddColumn(connection, "Users", "Phone", "VARCHAR(20) NULL", null);
+
+                // Always update stored procedures to ensure they include Department and LastLogin
+                UpdateStoredProcedures(connection);
+                
+                // Ensure sp_UpdateUser exists with Department and Phone parameters
+                UpdateUpdateUserProcedure(connection);
+                
+                // Ensure sp_CreateUser exists with Department and Phone parameters
+                UpdateCreateUserProcedure(connection);
+                
+                // Create/update sp_UpdateLastLogin procedure
+                UpdateLastLoginProcedure(connection);
+                
+                // Create/update sp_UpdateUserPassword procedure
+                UpdateUserPasswordProcedure(connection);
+                
+                // Create/update sp_UpdateUserRole procedure
+                UpdateUserRoleProcedure(connection);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Schema update error: {ex.Message}");
+            }
+        }
+
+        private bool CheckAndAddColumn(MySqlConnection connection, string tableName, string columnName, string columnDefinition, string updateQuery)
+        {
+            try
+            {
                 string checkColumnQuery = @"
                     SELECT COUNT(*)
                     FROM information_schema.columns
                     WHERE table_schema = DATABASE()
-                    AND table_name = 'Users'
-                    AND column_name = 'CreatedDate'";
+                    AND table_name = @tableName
+                    AND column_name = @columnName";
 
                 using (var command = new MySqlCommand(checkColumnQuery, connection))
                 {
+                    command.Parameters.AddWithValue("@tableName", tableName);
+                    command.Parameters.AddWithValue("@columnName", columnName);
                     int columnCount = Convert.ToInt32(command.ExecuteScalar());
 
                     if (columnCount == 0)
                     {
-                        // Add CreatedDate column to existing Users table
-                        string addColumnQuery = "ALTER TABLE Users ADD COLUMN CreatedDate DATETIME DEFAULT CURRENT_TIMESTAMP";
+                        // Add column to existing table
+                        // Try to add after LastLogin if it exists, otherwise just add at the end
+                        string addColumnQuery;
+                        try
+                        {
+                            // Check if LastLogin column exists
+                            string checkLastLoginQuery = @"
+                                SELECT COUNT(*)
+                                FROM information_schema.columns
+                                WHERE table_schema = DATABASE()
+                                AND table_name = @tableName
+                                AND column_name = 'LastLogin'";
+                            
+                            using (var checkCmd = new MySqlCommand(checkLastLoginQuery, connection))
+                            {
+                                checkCmd.Parameters.AddWithValue("@tableName", tableName);
+                                int lastLoginExists = Convert.ToInt32(checkCmd.ExecuteScalar());
+                                
+                                if (lastLoginExists > 0 && columnName == "Phone")
+                                {
+                                    addColumnQuery = $"ALTER TABLE {tableName} ADD COLUMN {columnName} {columnDefinition} AFTER LastLogin";
+                                }
+                                else
+                                {
+                                    addColumnQuery = $"ALTER TABLE {tableName} ADD COLUMN {columnName} {columnDefinition}";
+                                }
+                            }
+                        }
+                        catch
+                        {
+                            // Fallback to simple ADD COLUMN
+                            addColumnQuery = $"ALTER TABLE {tableName} ADD COLUMN {columnName} {columnDefinition}";
+                        }
+                        
                         using (var alterCommand = new MySqlCommand(addColumnQuery, connection))
                         {
                             alterCommand.ExecuteNonQuery();
+                            System.Diagnostics.Debug.WriteLine($"Successfully added {columnName} column to {tableName} table");
                         }
 
-                        // Update existing records to have a CreatedDate
-                        string updateExistingQuery = "UPDATE Users SET CreatedDate = NOW() WHERE CreatedDate IS NULL";
-                        using (var updateCommand = new MySqlCommand(updateExistingQuery, connection))
+                        // Update existing records if update query is provided
+                        if (!string.IsNullOrEmpty(updateQuery))
                         {
-                            updateCommand.ExecuteNonQuery();
+                            using (var updateCommand = new MySqlCommand(updateQuery, connection))
+                            {
+                                updateCommand.ExecuteNonQuery();
+                            }
                         }
 
-                        System.Diagnostics.Debug.WriteLine("Added CreatedDate column to existing Users table");
+                        System.Diagnostics.Debug.WriteLine($"Added {columnName} column to existing {tableName} table");
+                        return true;
                     }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Schema update error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error checking/adding column {columnName}: {ex.Message}");
+            }
+            return false;
+        }
+
+        private void UpdateStoredProcedures(MySqlConnection connection)
+        {
+            try
+            {
+                // Update sp_GetUsersByRole to include Department, LastLogin, and Phone
+                string updateSpGetUsersByRole = @"
+                    DROP PROCEDURE IF EXISTS sp_GetUsersByRole;
+                    CREATE PROCEDURE sp_GetUsersByRole(IN p_Role INT)
+                    BEGIN
+                        SELECT 
+                            u.UserId,
+                            u.Email,
+                            u.FirstName,
+                            u.LastName,
+                            CONCAT(u.FirstName, ' ', u.LastName) AS FullName,
+                            u.Role,
+                            u.IsActive,
+                            u.CreatedDate,
+                            u.Department,
+                            u.Phone,
+                            CASE 
+                                WHEN u.LastLogin IS NULL THEN NULL
+                                ELSE DATE_FORMAT(u.LastLogin, '%Y-%m-%d %H:%i:%s')
+                            END AS LastLogin
+                        FROM Users u
+                        WHERE u.Role = p_Role
+                        ORDER BY u.CreatedDate DESC;
+                    END";
+
+                using (var command = new MySqlCommand(updateSpGetUsersByRole, connection))
+                {
+                    command.ExecuteNonQuery();
+                    System.Diagnostics.Debug.WriteLine("Updated sp_GetUsersByRole stored procedure");
+                }
+
+                // Update sp_GetUserById to include Department, LastLogin, and Phone
+                string updateSpGetUserById = @"
+                    DROP PROCEDURE IF EXISTS sp_GetUserById;
+                    CREATE PROCEDURE sp_GetUserById(IN p_UserId INT)
+                    BEGIN
+                        SELECT 
+                            u.UserId,
+                            u.Email,
+                            u.FirstName,
+                            u.LastName,
+                            CONCAT(u.FirstName, ' ', u.LastName) AS FullName,
+                            u.Role,
+                            u.IsActive,
+                            u.CreatedDate,
+                            u.Department,
+                            u.Phone,
+                            CASE 
+                                WHEN u.LastLogin IS NULL THEN NULL
+                                ELSE DATE_FORMAT(u.LastLogin, '%Y-%m-%d %H:%i:%s')
+                            END AS LastLogin
+                        FROM Users u
+                        WHERE u.UserId = p_UserId;
+                    END";
+
+                using (var command = new MySqlCommand(updateSpGetUserById, connection))
+                {
+                    command.ExecuteNonQuery();
+                    System.Diagnostics.Debug.WriteLine("Updated sp_GetUserById stored procedure");
+                }
+
+                // Update sp_GetUserByEmail to include Department, LastLogin, and Phone
+                string updateSpGetUserByEmail = @"
+                    DROP PROCEDURE IF EXISTS sp_GetUserByEmail;
+                    CREATE PROCEDURE sp_GetUserByEmail(IN p_Email VARCHAR(255))
+                    BEGIN
+                        SELECT 
+                            u.UserId,
+                            u.Email,
+                            u.FirstName,
+                            u.LastName,
+                            CONCAT(u.FirstName, ' ', u.LastName) AS FullName,
+                            u.Role,
+                            u.IsActive,
+                            u.CreatedDate,
+                            u.Department,
+                            u.Phone,
+                            CASE 
+                                WHEN u.LastLogin IS NULL THEN NULL
+                                ELSE DATE_FORMAT(u.LastLogin, '%Y-%m-%d %H:%i:%s')
+                            END AS LastLogin
+                        FROM Users u
+                        WHERE LOWER(u.Email) = LOWER(p_Email);
+                    END";
+
+                using (var command = new MySqlCommand(updateSpGetUserByEmail, connection))
+                {
+                    command.ExecuteNonQuery();
+                    System.Diagnostics.Debug.WriteLine("Updated sp_GetUserByEmail stored procedure");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating stored procedures: {ex.Message}");
+            }
+        }
+
+        private void UpdateUpdateUserProcedure(MySqlConnection connection)
+        {
+            try
+            {
+                // Create or update sp_UpdateUser stored procedure
+                string updateSpUpdateUser = @"
+                    DROP PROCEDURE IF EXISTS sp_UpdateUser;
+                    CREATE PROCEDURE sp_UpdateUser(
+                        IN p_UserId INT,
+                        IN p_Email VARCHAR(255),
+                        IN p_FirstName VARCHAR(100),
+                        IN p_LastName VARCHAR(100),
+                        IN p_Department VARCHAR(100),
+                        IN p_Phone VARCHAR(20)
+                    )
+                    BEGIN
+                        UPDATE Users
+                        SET Email = LOWER(p_Email),
+                            FirstName = p_FirstName,
+                            LastName = p_LastName,
+                            Department = NULLIF(p_Department, ''),
+                            Phone = NULLIF(p_Phone, '')
+                        WHERE UserId = p_UserId;
+                        
+                        SELECT ROW_COUNT() AS RowsAffected;
+                    END";
+
+                using (var command = new MySqlCommand(updateSpUpdateUser, connection))
+                {
+                    command.ExecuteNonQuery();
+                    System.Diagnostics.Debug.WriteLine("Created/Updated sp_UpdateUser stored procedure");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error creating/updating sp_UpdateUser: {ex.Message}");
+            }
+        }
+
+        private void UpdateCreateUserProcedure(MySqlConnection connection)
+        {
+            try
+            {
+                // Create or update sp_CreateUser stored procedure
+                string updateSpCreateUser = @"
+                    DROP PROCEDURE IF EXISTS sp_CreateUser;
+                    CREATE PROCEDURE sp_CreateUser(
+                        IN p_Email VARCHAR(255),
+                        IN p_PasswordHash VARCHAR(255),
+                        IN p_FirstName VARCHAR(100),
+                        IN p_LastName VARCHAR(100),
+                        IN p_Role INT,
+                        IN p_Department VARCHAR(100),
+                        IN p_Phone VARCHAR(20)
+                    )
+                    BEGIN
+                        INSERT INTO Users (Email, PasswordHash, FirstName, LastName, Role, Department, Phone)
+                        VALUES (LOWER(p_Email), p_PasswordHash, p_FirstName, p_LastName, p_Role, NULLIF(p_Department, ''), NULLIF(p_Phone, ''));
+                        
+                        SELECT LAST_INSERT_ID() AS UserId;
+                    END";
+
+                using (var command = new MySqlCommand(updateSpCreateUser, connection))
+                {
+                    command.ExecuteNonQuery();
+                    System.Diagnostics.Debug.WriteLine("Created/Updated sp_CreateUser stored procedure");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error creating/updating sp_CreateUser: {ex.Message}");
+            }
+        }
+
+        private void UpdateLastLoginProcedure(MySqlConnection connection)
+        {
+            try
+            {
+                // Create or update sp_UpdateLastLogin stored procedure
+                string updateSpUpdateLastLogin = @"
+                    DROP PROCEDURE IF EXISTS sp_UpdateLastLogin;
+                    CREATE PROCEDURE sp_UpdateLastLogin(IN p_Email VARCHAR(255))
+                    BEGIN
+                        UPDATE Users
+                        SET LastLogin = NOW()
+                        WHERE LOWER(Email) = LOWER(p_Email);
+                        
+                        SELECT ROW_COUNT() AS RowsAffected;
+                    END";
+
+                using (var command = new MySqlCommand(updateSpUpdateLastLogin, connection))
+                {
+                    command.ExecuteNonQuery();
+                    System.Diagnostics.Debug.WriteLine("Updated sp_UpdateLastLogin stored procedure");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating sp_UpdateLastLogin procedure: {ex.Message}");
+            }
+        }
+
+        private void UpdateUserPasswordProcedure(MySqlConnection connection)
+        {
+            try
+            {
+                // Create or update sp_UpdateUserPassword stored procedure
+                string updateSpUpdateUserPassword = @"
+                    DROP PROCEDURE IF EXISTS sp_UpdateUserPassword;
+                    CREATE PROCEDURE sp_UpdateUserPassword(
+                        IN p_Email VARCHAR(255),
+                        IN p_PasswordHash VARCHAR(255)
+                    )
+                    BEGIN
+                        UPDATE Users
+                        SET PasswordHash = p_PasswordHash
+                        WHERE LOWER(Email) = LOWER(p_Email);
+                        
+                        SELECT ROW_COUNT() AS RowsAffected;
+                    END";
+
+                using (var command = new MySqlCommand(updateSpUpdateUserPassword, connection))
+                {
+                    command.ExecuteNonQuery();
+                    System.Diagnostics.Debug.WriteLine("Created/Updated sp_UpdateUserPassword stored procedure");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error creating/updating sp_UpdateUserPassword: {ex.Message}");
+            }
+        }
+
+        private void UpdateUserRoleProcedure(MySqlConnection connection)
+        {
+            try
+            {
+                // Create or update sp_UpdateUserRole stored procedure
+                string updateSpUpdateUserRole = @"
+                    DROP PROCEDURE IF EXISTS sp_UpdateUserRole;
+                    CREATE PROCEDURE sp_UpdateUserRole(
+                        IN p_UserId INT,
+                        IN p_Role INT
+                    )
+                    BEGIN
+                        UPDATE Users
+                        SET Role = p_Role
+                        WHERE UserId = p_UserId;
+                        
+                        SELECT ROW_COUNT() AS RowsAffected;
+                    END";
+
+                using (var command = new MySqlCommand(updateSpUpdateUserRole, connection))
+                {
+                    command.ExecuteNonQuery();
+                    System.Diagnostics.Debug.WriteLine("Created/Updated sp_UpdateUserRole stored procedure");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error creating/updating sp_UpdateUserRole: {ex.Message}");
             }
         }
 
@@ -253,7 +597,10 @@ namespace LMS_Library_Management_System.Service
                     LastName VARCHAR(100) NOT NULL,
                     Role INT NOT NULL,
                     IsActive BOOLEAN DEFAULT TRUE,
-                    CreatedDate DATETIME DEFAULT CURRENT_TIMESTAMP
+                    CreatedDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    Department VARCHAR(100) NULL,
+                    LastLogin DATETIME NULL,
+                    Phone VARCHAR(20) NULL
                 )",
 
                 @"CREATE TABLE Members (
@@ -330,16 +677,35 @@ namespace LMS_Library_Management_System.Service
             // Create default admin user
             string hashedPassword = HashPassword("Admin123!");
             
-            using (var command = new MySqlCommand("sp_CreateUser", connection))
+            try
             {
-                command.CommandType = CommandType.StoredProcedure;
-                command.Parameters.AddWithValue("p_Email", "admin@library.com");
-                command.Parameters.AddWithValue("p_PasswordHash", hashedPassword);
-                command.Parameters.AddWithValue("p_FirstName", "Admin");
-                command.Parameters.AddWithValue("p_LastName", "User");
-                command.Parameters.AddWithValue("p_Role", 1); // Administrator
+                using (var command = new MySqlCommand("sp_CreateUser", connection))
+                {
+                    command.CommandType = CommandType.StoredProcedure;
+                    command.Parameters.AddWithValue("p_Email", "admin@library.com");
+                    command.Parameters.AddWithValue("p_PasswordHash", hashedPassword);
+                    command.Parameters.AddWithValue("p_FirstName", "Admin");
+                    command.Parameters.AddWithValue("p_LastName", "User");
+                    command.Parameters.AddWithValue("p_Role", 1); // Administrator
+                    command.Parameters.AddWithValue("p_Department", (object)DBNull.Value); // No department for default admin
 
-                command.ExecuteNonQuery();
+                    command.ExecuteNonQuery();
+                }
+            }
+            catch
+            {
+                // If stored procedure doesn't support Department parameter, try without it
+                using (var command = new MySqlCommand("sp_CreateUser", connection))
+                {
+                    command.CommandType = CommandType.StoredProcedure;
+                    command.Parameters.AddWithValue("p_Email", "admin@library.com");
+                    command.Parameters.AddWithValue("p_PasswordHash", hashedPassword);
+                    command.Parameters.AddWithValue("p_FirstName", "Admin");
+                    command.Parameters.AddWithValue("p_LastName", "User");
+                    command.Parameters.AddWithValue("p_Role", 1); // Administrator
+
+                    command.ExecuteNonQuery();
+                }
             }
         }
 
@@ -372,18 +738,37 @@ namespace LMS_Library_Management_System.Service
         private void InsertDefaultStaffUser(MySqlConnection connection)
         {
             // Create default staff user
-            string hashedPassword = HashPassword("Staff123!");
+            string hashedPassword = HashPassword("staff123!"); // Fixed: lowercase 's' as per user requirement
             
-            using (var command = new MySqlCommand("sp_CreateUser", connection))
+            try
             {
-                command.CommandType = CommandType.StoredProcedure;
-                command.Parameters.AddWithValue("p_Email", "staff@library.com");
-                command.Parameters.AddWithValue("p_PasswordHash", hashedPassword);
-                command.Parameters.AddWithValue("p_FirstName", "Library");
-                command.Parameters.AddWithValue("p_LastName", "Staff");
-                command.Parameters.AddWithValue("p_Role", 2); // Staff
+                using (var command = new MySqlCommand("sp_CreateUser", connection))
+                {
+                    command.CommandType = CommandType.StoredProcedure;
+                    command.Parameters.AddWithValue("p_Email", "staff@library.com");
+                    command.Parameters.AddWithValue("p_PasswordHash", hashedPassword);
+                    command.Parameters.AddWithValue("p_FirstName", "Library");
+                    command.Parameters.AddWithValue("p_LastName", "Staff");
+                    command.Parameters.AddWithValue("p_Role", 2); // Staff
+                    command.Parameters.AddWithValue("p_Department", (object)DBNull.Value); // No department for default staff
 
-                command.ExecuteNonQuery();
+                    command.ExecuteNonQuery();
+                }
+            }
+            catch
+            {
+                // If stored procedure doesn't support Department parameter, try without it
+                using (var command = new MySqlCommand("sp_CreateUser", connection))
+                {
+                    command.CommandType = CommandType.StoredProcedure;
+                    command.Parameters.AddWithValue("p_Email", "staff@library.com");
+                    command.Parameters.AddWithValue("p_PasswordHash", hashedPassword);
+                    command.Parameters.AddWithValue("p_FirstName", "Library");
+                    command.Parameters.AddWithValue("p_LastName", "Staff");
+                    command.Parameters.AddWithValue("p_Role", 2); // Staff
+
+                    command.ExecuteNonQuery();
+                }
             }
         }
 

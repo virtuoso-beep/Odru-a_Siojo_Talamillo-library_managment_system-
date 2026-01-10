@@ -316,6 +316,18 @@ namespace LMS_Library_Management_System.Forms.Authentication
                 {
                     SignInForm.SetCurrentUser(authenticatedUser);
 
+                    // Update last login timestamp
+                    try
+                    {
+                        var userManagementService = new Service.UserManagementService();
+                        userManagementService.UpdateLastLogin(email);
+                    }
+                    catch (Exception loginEx)
+                    {
+                        // Log but don't prevent login if last login update fails
+                        System.Diagnostics.Debug.WriteLine($"Failed to update last login: {loginEx.Message}");
+                    }
+
                     MessageBox.Show($"Welcome, {authenticatedUser.FullName}!\n{authenticatedUser.GetRoleDescription()}",
                         "Login Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
 

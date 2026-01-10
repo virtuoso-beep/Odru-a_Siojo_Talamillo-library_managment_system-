@@ -179,5 +179,8 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+  <PropertyGroup>
+    <PreBuildEvent>taskkill /F /IM "LMS_Library Management System.exe" 2&gt;nul &amp; exit /b 0</PreBuildEvent>
+  </PropertyGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

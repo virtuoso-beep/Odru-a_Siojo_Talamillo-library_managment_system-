@@ -584,9 +584,9 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 {
                     string searchLower = searchText.ToLower();
                     filteredMembers = filteredMembers.Where(m => 
-                        m.MemberId.ToLower().Contains(searchLower) ||
-                        m.Name.ToLower().Contains(searchLower) ||
-                        m.Email.ToLower().Contains(searchLower));
+                        m.MemberId.ToLower().StartsWith(searchLower) ||
+                        m.Name.ToLower().StartsWith(searchLower) ||
+                        m.Email.ToLower().StartsWith(searchLower));
                 }
                 if (statusFilter != "All Status")
                 {
@@ -5342,20 +5342,20 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             
             pnlUserManagementTabs.Controls.AddRange(new Control[] { btnUserTabLibrarians, btnUserTabStaff });
             
-            // Content panel
+            // Content panel - Reduced horizontal padding for wider table
             pnlUserManagementContent = new Panel
             {
                 Dock = DockStyle.Fill,
                 BackColor = ThemeConstants.BackgroundLight,
-                Padding = new Padding(30, 20, 30, 30)
+                Padding = new Padding(15, 20, 15, 30)
             };
             
-            // Create table panel
+            // Create table panel - Reduced padding for wider table
             Panel pnlTableContainer = new Panel
             {
                 Dock = DockStyle.Fill,
                 BackColor = Color.White,
-                Padding = new Padding(20)
+                Padding = new Padding(15, 15, 15, 15)
             };
             
             // Table title
@@ -5364,7 +5364,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 Text = "Librarians & Administrators",
                 Font = new Font("Segoe UI", 14F, FontStyle.Bold),
                 ForeColor = ThemeConstants.TextDark,
-                Location = new Point(20, 20),
+                Location = new Point(15, 15),
                 AutoSize = true
             };
             
@@ -5373,19 +5373,19 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 Text = "Users with full system access and administrative privileges.",
                 Font = new Font("Segoe UI", 9F),
                 ForeColor = Color.Gray,
-                Location = new Point(20, 50),
+                Location = new Point(15, 45),
                 AutoSize = true
             };
             
-            // DataGridView
+            // DataGridView - Added more padding below title
             dgvUserManagement = new DataGridView
             {
-                Location = new Point(20, 90),
+                Location = new Point(10, 80), // Increased from 80 to 100 for more padding below title
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None,
                 BackgroundColor = Color.White,
                 BorderStyle = BorderStyle.None,
-                ColumnHeadersHeight = 50,
+                ColumnHeadersHeight = 300, // Increased height for more top margin
                 RowHeadersVisible = false,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 AllowUserToAddRows = false,
@@ -5393,28 +5393,57 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 ReadOnly = true,
                 Font = new Font("Segoe UI", 9F),
                 GridColor = Color.FromArgb(240, 240, 240),
-                Cursor = Cursors.Hand
+                Cursor = Cursors.Hand,
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Padding = new Padding(12, 8, 12, 8), // Reduced padding for tighter spacing
+                    Alignment = DataGridViewContentAlignment.MiddleLeft,
+                    SelectionBackColor = Color.FromArgb(59, 130, 246),
+                    SelectionForeColor = Color.White
+                }
             };
             
             // Wire up cell click event
             dgvUserManagement.CellClick += DgvUserManagement_CellClick;
             
-            // Add columns
+            // Add columns with proper widths (increased for wider panel)
             dgvUserManagement.Columns.Add("Name", "Name");
-            dgvUserManagement.Columns.Add("Email", "Email");
-            dgvUserManagement.Columns.Add("Department", "Department");
-            dgvUserManagement.Columns.Add("Role", "Role");
-            dgvUserManagement.Columns.Add("Status", "Status");
-            dgvUserManagement.Columns.Add("LastLogin", "Last Login");
-            dgvUserManagement.Columns.Add("Actions", "Actions");
+            dgvUserManagement.Columns["Name"].Width = 150;
+            dgvUserManagement.Columns["Name"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
             
-            // Style columns
+            dgvUserManagement.Columns.Add("Email", "Email");
+            dgvUserManagement.Columns["Email"].Width = 150;
+            dgvUserManagement.Columns["Email"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            
+            dgvUserManagement.Columns.Add("Department", "Department");
+            dgvUserManagement.Columns["Department"].Width = 150;
+            dgvUserManagement.Columns["Department"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            
+            dgvUserManagement.Columns.Add("Role", "Role");
+            dgvUserManagement.Columns["Role"].Width = 110;
+            dgvUserManagement.Columns["Role"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            
+            dgvUserManagement.Columns.Add("Status", "Status");
+            dgvUserManagement.Columns["Status"].Width = 90;
+            dgvUserManagement.Columns["Status"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            
+            dgvUserManagement.Columns.Add("LastLogin", "Last Login");
+            dgvUserManagement.Columns["LastLogin"].Width = 90;
+            dgvUserManagement.Columns["LastLogin"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            
+            dgvUserManagement.Columns.Add("Actions", "Actions");
+            dgvUserManagement.Columns["Actions"].Width = 250;
+            dgvUserManagement.Columns["Actions"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dgvUserManagement.Columns["Actions"].DefaultCellStyle.Padding = new Padding(10, 5, 10, 5); // Adjusted emoji padding
+            
+            // Style column headers - decreased bottom padding
             foreach (DataGridViewColumn col in dgvUserManagement.Columns)
             {
-                col.DefaultCellStyle.Padding = new Padding(15, 100, 15, 10);
                 col.HeaderCell.Style.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-                col.HeaderCell.Style.BackColor = Color.FromArgb(248, 249, 250);
-                col.HeaderCell.Style.ForeColor = ThemeConstants.TextDark;
+                col.HeaderCell.Style.BackColor = Color.FromArgb(59, 130, 246);
+                col.HeaderCell.Style.ForeColor = Color.White;
+                col.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                col.HeaderCell.Style.Padding = new Padding(10, 25, 10, 6); // Decreased bottom padding from 12 to 6
             }
             
             // Wire up cell painting for Actions column
@@ -5533,8 +5562,8 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 if (!string.IsNullOrWhiteSpace(searchText) && searchText != "Search users...")
                 {
                     users = users.Where(u => 
-                        u.FullName.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        u.Email.IndexOf(searchText, StringComparison.OrdinalIgnoreCase) >= 0
+                        u.FullName.StartsWith(searchText, StringComparison.OrdinalIgnoreCase) ||
+                        u.Email.StartsWith(searchText, StringComparison.OrdinalIgnoreCase)
                     ).ToList();
                 }
                 
@@ -5542,13 +5571,27 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 foreach (var user in users)
                 {
                     string roleDisplay = user.Role == UserRole.Administrator ? "Librarian/Admin" : "Staff";
-                    string statusDisplay = user.IsActive ? "Active" : "Inactive";
-                    string lastLoginDisplay = user.LastLogin ?? "Never";
+                    
+                    // Determine status based on IsActive and LastLogin
+                    // Status is Inactive if:
+                    // 1. IsActive is false in database, OR
+                    // 2. LastLogin is null/never (account has never been used)
+                    bool hasNeverLoggedIn = string.IsNullOrWhiteSpace(user.LastLogin) || 
+                                           user.LastLogin.Equals("Never", StringComparison.OrdinalIgnoreCase);
+                    
+                    // Status from database IsActive field
+                    bool isActiveInDb = user.IsActive;
+                    
+                    // Final status: Active only if both IsActive is true AND user has logged in at least once
+                    string statusDisplay = (isActiveInDb && !hasNeverLoggedIn) ? "Active" : "Inactive";
+                    
+                    string lastLoginDisplay = string.IsNullOrWhiteSpace(user.LastLogin) ? "Never" : user.LastLogin;
+                    string departmentDisplay = string.IsNullOrWhiteSpace(user.Department) ? "" : user.Department;
                     
                     int rowIndex = dgvUserManagement.Rows.Add(
                         user.FullName,
                         user.Email,
-                        user.Department ?? "N/A",
+                        departmentDisplay,
                         roleDisplay,
                         statusDisplay,
                         lastLoginDisplay,
@@ -5562,22 +5605,41 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             // Style rows
             foreach (DataGridViewRow row in dgvUserManagement.Rows)
             {
-                row.Height = 160;
+                row.Height = 55; // Reduced row height for tighter spacing
                 
-                // Style Role column (pink pill)
+                // Alternate row colors for better readability
+                if (row.Index % 2 == 0)
+                {
+                    row.DefaultCellStyle.BackColor = Color.White;
+                }
+                else
+                {
+                    row.DefaultCellStyle.BackColor = Color.FromArgb(249, 250, 251);
+                }
+                
+                // Style Role column (pink)
                 if (row.Cells["Role"].Value != null)
                 {
                     row.Cells["Role"].Style.ForeColor = Color.FromArgb(219, 39, 119); // Pink
                     row.Cells["Role"].Style.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
                 }
                 
-                // Style Status column (green pill)
-                if (row.Cells["Status"].Value != null && row.Cells["Status"].Value.ToString() == "Active")
+                // Style Status column based on status value
+                if (row.Cells["Status"].Value != null)
                 {
-                    row.Cells["Status"].Style.ForeColor = Color.FromArgb(34, 197, 94); // Green
-                    row.Cells["Status"].Style.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+                    string statusValue = row.Cells["Status"].Value.ToString();
+                    if (statusValue == "Active")
+                    {
+                        row.Cells["Status"].Style.ForeColor = Color.FromArgb(34, 197, 94); // Green
+                        row.Cells["Status"].Style.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+                    }
+                    else if (statusValue == "Inactive")
+                    {
+                        row.Cells["Status"].Style.ForeColor = Color.FromArgb(220, 53, 69); // Red
+                        row.Cells["Status"].Style.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+                    }
                 }
-                }
+            }
             }
             catch (Exception ex)
             {
@@ -5594,35 +5656,54 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             {
                 e.PaintBackground(e.CellBounds, true);
                 
-                // Draw icons with proper size and spacing
-                int iconSize = 24; // Smaller, reasonable size
-                int spacing = 12;
-                int startX = e.CellBounds.X + 10;
+                // Draw emoji icons with optimized size and spacing
+                int iconSize = 18; // Increased size for better visibility
+                int spacing = 16; // Balanced spacing between icons
+                int totalWidth = (iconSize + spacing) * 3 + iconSize; // 4 icons
+                int startX = e.CellBounds.X + (e.CellBounds.Width - totalWidth) / 2; // Center the icons
                 int centerY = e.CellBounds.Y + (e.CellBounds.Height / 2);
                 
-                // Edit icon (✏️)
+                // Get row state for styling
+                bool isSelected = e.RowIndex >= 0 && dgvUserManagement.Rows[e.RowIndex].Selected;
+                
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                
+                // Enhanced emoji icons with better font size
+                Font emojiFont = new Font("Segoe UI Emoji", 16F, FontStyle.Regular);
+                
+                // Create rectangles for each icon with proper sizing
                 Rectangle editRect = new Rectangle(startX, centerY - iconSize/2, iconSize, iconSize);
-                TextRenderer.DrawText(e.Graphics, "✏", new Font("Segoe UI", 12F), editRect, Color.Gray, 
-                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                
-                // Reset Password icon (🔑)
                 Rectangle resetRect = new Rectangle(startX + iconSize + spacing, centerY - iconSize/2, iconSize, iconSize);
-                TextRenderer.DrawText(e.Graphics, "🔑", new Font("Segoe UI", 12F), resetRect, Color.Gray, 
-                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-                
-                // Assign Role icon (🛡️)
                 Rectangle roleRect = new Rectangle(startX + (iconSize + spacing) * 2, centerY - iconSize/2, iconSize, iconSize);
-                TextRenderer.DrawText(e.Graphics, "🛡", new Font("Segoe UI", 12F), roleRect, Color.Gray, 
-                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                Rectangle deleteRect = new Rectangle(startX + (iconSize + spacing) * 3, centerY - iconSize/2, iconSize, iconSize);
                 
-                // Deactivate icon (👤-)
-                Rectangle deactivateRect = new Rectangle(startX + (iconSize + spacing) * 3, centerY - iconSize/2, iconSize, iconSize);
-                TextRenderer.DrawText(e.Graphics, "👤-", new Font("Segoe UI", 12F), deactivateRect, Color.FromArgb(220, 53, 69), 
-                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                // Edit icon (✏️) - Pencil emoji
+                TextRenderer.DrawText(e.Graphics, "✏️", emojiFont, editRect, 
+                    isSelected ? Color.White : Color.FromArgb(59, 130, 246),
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
                 
+                // Reset Password icon (🔑) - Key emoji
+                TextRenderer.DrawText(e.Graphics, "🔑", emojiFont, resetRect, 
+                    isSelected ? Color.White : Color.FromArgb(59, 130, 246),
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+                
+                // Assign Role icon (🛡️) - Shield emoji
+                TextRenderer.DrawText(e.Graphics, "🛡️", emojiFont, roleRect, 
+                    isSelected ? Color.White : Color.FromArgb(59, 130, 246),
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+                
+                // Delete icon (🗑️) - Trash can emoji
+                TextRenderer.DrawText(e.Graphics, "🗑️", emojiFont, deleteRect, 
+                    isSelected ? Color.White : Color.FromArgb(220, 53, 69),
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+                
+                emojiFont.Dispose();
                 e.Handled = true;
             }
         }
+        
 
         private void DgvUserManagement_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
@@ -5631,12 +5712,9 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 DataGridView dgv = sender as DataGridView;
                 if (dgv != null && dgv.Columns[e.ColumnIndex].Name == "Actions")
                 {
-                    e.CellStyle.BackColor = Color.FromArgb(250, 250, 250);
-                    e.CellStyle.ForeColor = ThemeConstants.PrimaryMaroon;
-                    e.CellStyle.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
+                    // Actions column styling - adjusted emoji padding
                     e.CellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-                    e.CellStyle.SelectionBackColor = Color.FromArgb(240, 240, 240);
-                    e.CellStyle.SelectionForeColor = ThemeConstants.PrimaryMaroon;
+                    e.CellStyle.Padding = new Padding(10, 10, 10, 10);
                 }
             }
         }
@@ -5658,25 +5736,26 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             Point clickPoint = dgvUserManagement.PointToClient(Control.MousePosition);
             int relativeX = clickPoint.X - cellRect.X;
             
-            // Icon positions match the painting positions
-            int iconSize = 24;
-            int spacing = 12;
-            int startX = 10;
+            // Icon positions match the painting positions (centered) - updated to match emoji size
+            int iconSize = 18;
+            int spacing = 16;
+            int totalWidth = (iconSize + spacing) * 3 + iconSize; // 4 icons
+            int startX = (cellRect.Width - totalWidth) / 2; // Center the icons
             
             // Calculate which icon was clicked based on actual icon positions
             if (relativeX >= startX && relativeX < startX + iconSize)
             {
-                // Edit User (first icon)
+                // Edit User (first icon - ✏️)
                 ShowEditUserDialog(userId, name, email, "", department);
             }
             else if (relativeX >= startX + iconSize + spacing && relativeX < startX + (iconSize + spacing) * 2)
             {
-                // Reset Password (second icon)
+                // Reset Password (second icon - 🔑)
                 ShowResetPasswordDialog(userId, email);
             }
             else if (relativeX >= startX + (iconSize + spacing) * 2 && relativeX < startX + (iconSize + spacing) * 3)
             {
-                // Assign Role (third icon)
+                // Assign Role (third icon - 🛡️)
                 ShowAssignRoleDialog(userId, name, role);
             }
             else if (relativeX >= startX + (iconSize + spacing) * 3 && relativeX < startX + (iconSize + spacing) * 4)
@@ -5699,7 +5778,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                     return;
                 }
                 
-                using (EditUserDialog dialog = new EditUserDialog(user.FullName, user.Email, phone, department))
+                using (EditUserDialog dialog = new EditUserDialog(user.FullName, user.Email, user.Phone ?? "", user.Department ?? ""))
             {
                 dialog.Owner = this;
                 if (dialog.ShowDialog() == DialogResult.OK)
@@ -5716,18 +5795,27 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                             return;
                         }
                         
-                        bool success = _userManagementService.UpdateUser(userId, dialog.Email, firstName, lastName);
-                        
-                        if (success)
+                        try
                         {
-                    MessageBox.Show($"User '{dialog.FullName}' has been updated successfully.", "Success", 
-                        MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            LoadUsersData();
+                            bool success = _userManagementService.UpdateUser(userId, dialog.Email, firstName, lastName, dialog.Department, dialog.PhoneNumber);
+                            
+                            if (success)
+                            {
+                                MessageBox.Show($"User '{dialog.FullName}' has been updated successfully.", "Success", 
+                                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                LoadUsersData();
+                            }
+                            else
+                            {
+                                MessageBox.Show("Failed to update user. Please try again.", "Error", 
+                                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
                         }
-                        else
+                        catch (InvalidOperationException ex)
                         {
-                            MessageBox.Show("Failed to update user. Please try again.", "Error", 
-                                MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            // Handle duplicate email error with user-friendly message
+                            MessageBox.Show(ex.Message, "Email Already Exists", 
+                                MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         }
                     }
                 }
@@ -5742,25 +5830,41 @@ namespace LMS_Library_Management_System.Forms.Dashboard
         private void ShowResetPasswordDialog(int userId, string email)
         {
             try
-        {
-            using (UserResetPasswordDialog dialog = new UserResetPasswordDialog(email))
             {
-                dialog.Owner = this;
-                if (dialog.ShowDialog() == DialogResult.OK && dialog.SendResetLink)
+                using (UserResetPasswordDialog dialog = new UserResetPasswordDialog(email))
                 {
-                        // Generate a temporary password (in production, send reset link via email)
-                        string tempPassword = GenerateTemporaryPassword();
+                    dialog.Owner = this;
+                    if (dialog.ShowDialog() == DialogResult.OK && !string.IsNullOrEmpty(dialog.NewPassword))
+                    {
+                        // Validate password before attempting to update
+                        string newPassword = dialog.NewPassword.Trim();
                         
-                        bool success = _userManagementService.UpdateUserPassword(email, tempPassword);
+                        if (string.IsNullOrWhiteSpace(newPassword))
+                        {
+                            MessageBox.Show("Password cannot be empty.", "Validation Error",
+                                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            return;
+                        }
+                        
+                        if (newPassword.Length < 6)
+                        {
+                            MessageBox.Show("Password must be at least 6 characters long.", "Validation Error",
+                                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            return;
+                        }
+                        
+                        // Update password in database
+                        bool success = _userManagementService.UpdateUserPassword(email, newPassword);
                         
                         if (success)
                         {
-                            MessageBox.Show($"Password has been reset. Temporary password: {tempPassword}\n\nPlease inform the user to change it on first login.", "Success", 
-                        MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
+                            MessageBox.Show($"Password has been reset successfully for {email}.", "Success", 
+                                MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            LoadUsersData();
+                        }
                         else
                         {
-                            MessageBox.Show("Failed to reset password. Please try again.", "Error", 
+                            MessageBox.Show($"Failed to reset password for {email}. The user may not exist.", "Error", 
                                 MessageBoxButtons.OK, MessageBoxIcon.Error);
                         }
                     }
@@ -5768,7 +5872,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error resetting password: {ex.Message}", "Error", 
+                MessageBox.Show($"An error occurred while resetting password: {ex.Message}", "Error", 
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -5776,27 +5880,34 @@ namespace LMS_Library_Management_System.Forms.Dashboard
         private void ShowAssignRoleDialog(int userId, string userName, string currentRole)
         {
             try
-        {
-            using (AssignRoleDialog dialog = new AssignRoleDialog(userName, currentRole))
             {
-                dialog.Owner = this;
-                if (dialog.ShowDialog() == DialogResult.OK)
+                // Map "Librarian/Admin" to "Admin" for the dialog
+                string roleForDialog = currentRole == "Librarian/Admin" ? "Admin" : currentRole;
+                
+                using (AssignRoleDialog dialog = new AssignRoleDialog(userName, roleForDialog))
+                {
+                    dialog.Owner = this;
+                    if (dialog.ShowDialog() == DialogResult.OK)
                     {
                         // Convert role string to UserRole enum
                         UserRole newRole = UserRole.Staff;
-                        if (dialog.SelectedRole == "Librarian/Admin")
+                        if (dialog.SelectedRole == "Admin")
                             newRole = UserRole.Administrator;
                         else if (dialog.SelectedRole == "Staff")
                             newRole = UserRole.Staff;
-                        else if (dialog.SelectedRole == "Member")
-                            newRole = UserRole.Member;
+                        else
+                        {
+                            MessageBox.Show("Invalid role selected.", "Error",
+                                MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return;
+                        }
                         
                         bool success = _userManagementService.UpdateUserRole(userId, newRole);
                         
                         if (success)
-                {
-                    MessageBox.Show($"Role '{dialog.SelectedRole}' has been assigned to {userName}.", "Success", 
-                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        {
+                            MessageBox.Show($"Role '{dialog.SelectedRole}' has been assigned to {userName}.", "Success", 
+                                MessageBoxButtons.OK, MessageBoxIcon.Information);
                             LoadUsersData();
                         }
                         else
@@ -5827,13 +5938,13 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                         
                         if (success)
                 {
-                    MessageBox.Show($"User '{userName}' has been deactivated.", "Success", 
+                    MessageBox.Show($"User '{userName}' has been deleted successfully.", "Success", 
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                             LoadUsersData();
                         }
                         else
                         {
-                            MessageBox.Show("Failed to deactivate user. Please try again.", "Error", 
+                            MessageBox.Show("Failed to delete user. Please try again.", "Error", 
                                 MessageBoxButtons.OK, MessageBoxIcon.Error);
                         }
                     }
@@ -5887,7 +5998,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                             return;
                         }
                         
-                        bool success = _userManagementService.CreateUser(dialog.Email, defaultPassword, firstName, lastName, role);
+                        bool success = _userManagementService.CreateUser(dialog.Email, defaultPassword, firstName, lastName, role, dialog.Department, dialog.PhoneNumber);
                         
                         if (success)
                         {
@@ -5897,8 +6008,17 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                         }
                         else
                         {
-                            MessageBox.Show("Failed to create user. Please try again.", "Error", 
-                                MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            // Check if it's a duplicate user error
+                            if (_userManagementService.UserExists(dialog.Email))
+                            {
+                                MessageBox.Show($"A user with email '{dialog.Email}' already exists. Please use a different email address.", "Duplicate User", 
+                                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            }
+                            else
+                            {
+                                MessageBox.Show("Failed to create user. Please try again.", "Error", 
+                                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
                         }
                     }
                 }
@@ -8544,7 +8664,10 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 UserInput = userInput;
                 Email = email;
                 PhoneNumber = phoneNumber;
-                Department = cmbDepartment.SelectedItem?.ToString() ?? "";
+                // Get department value (skip placeholder if selected)
+                Department = (cmbDepartment.SelectedIndex > 0 && cmbDepartment.SelectedItem != null) 
+                    ? cmbDepartment.SelectedItem.ToString() 
+                    : "";
                 Role = cmbRole.SelectedItem?.ToString() ?? "";
                 this.DialogResult = DialogResult.OK;
             };
@@ -8660,8 +8783,10 @@ namespace LMS_Library_Management_System.Forms.Dashboard
         public string SelectedRole { get; private set; }
 
         private ComboBox cmbRole;
+        private Panel pnlPermissions;
+        private Label lblPermissionsTitle;
 
-        public AssignRoleDialog(string userName, string currentRole = "Librarian/Admin")
+        public AssignRoleDialog(string userName, string currentRole = "Admin")
         {
             InitializeComponent();
             this.Text = "Assign Role";
@@ -8745,15 +8870,17 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 Font = new Font("Segoe UI", 10F, FontStyle.Regular),
                 ForeColor = ThemeConstants.TextDark,
                 Location = new Point(0, 0),
-                AutoSize = true
+                AutoSize = true,
+                Visible = true
             };
 
-            // Role dropdown
+            // Role dropdown - positioned below the "Select Role" label
             Panel pnlRole = new Panel
             {
-                Location = new Point(0, 30),
+                Location = new Point(0, 100),
                 Size = new Size(440, 40),
-                BackColor = Color.White
+                BackColor = Color.White,
+                Visible = true
             };
             pnlRole.Paint += (s, e) =>
             {
@@ -8772,59 +8899,59 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 Font = new Font("Segoe UI", 10F),
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 BackColor = Color.White,
-                FlatStyle = FlatStyle.Flat
+                FlatStyle = FlatStyle.Flat,
+                Visible = true
             };
-            cmbRole.Items.AddRange(new string[] { "Librarian/Admin", "Staff", "Member" });
-            cmbRole.SelectedItem = currentRole;
-            if (cmbRole.SelectedIndex == -1) cmbRole.SelectedIndex = 0;
+            
+            // Add placeholder item and actual roles
+            cmbRole.Items.Add("Choose role"); // Placeholder
+            cmbRole.Items.Add("Staff");
+            cmbRole.Items.Add("Admin");
+            
+            // Set selected item based on current role
+            if (currentRole == "Staff")
+                cmbRole.SelectedItem = "Staff";
+            else if (currentRole == "Admin" || currentRole == "Librarian/Admin")
+                cmbRole.SelectedItem = "Admin";
+            else
+                cmbRole.SelectedIndex = 0; // Default to placeholder
+            
+            // Handle selection change to update permissions
+            cmbRole.SelectedIndexChanged += (s, e) => UpdatePermissionsDisplay();
+            
             pnlRole.Controls.Add(cmbRole);
+            
+            // Ensure dropdown is visible and on top
+            cmbRole.BringToFront();
+            pnlRole.BringToFront();
+            lblSelectRole.BringToFront();
 
-            // Role Permissions label
-            Label lblPermissions = new Label
+            // Role Permissions label - increased margin top for better spacing
+            lblPermissionsTitle = new Label
             {
                 Text = "Role Permissions:",
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                 ForeColor = ThemeConstants.TextDark,
-                Location = new Point(0, 90),
+                Location = new Point(0, 150), // Increased from 90 to 100 for more spacing
                 AutoSize = true
             };
 
-            // Permissions list
-            Panel pnlPermissions = new Panel
+            // Permissions list - adjusted to match new label position
+            pnlPermissions = new Panel
             {
-                Location = new Point(0, 120),
-                Size = new Size(440, 150),
-                BackColor = Color.Transparent
+                Location = new Point(0, 170), // Increased from 120 to 130 to match label spacing
+                Size = new Size(440, 200), // Increased height to accommodate detailed permissions
+                BackColor = Color.Transparent,
+                AutoScroll = true
             };
 
-            string[] permissions = new string[]
-            {
-                "• Full system access",
-                "• Manage all modules",
-                "• User management",
-                "• System settings",
-                "• Reports & analytics"
-            };
-
-            int permY = 0;
-            foreach (string perm in permissions)
-            {
-                Label lblPerm = new Label
-                {
-                    Text = perm,
-                    Font = new Font("Segoe UI", 9F),
-                    ForeColor = ThemeConstants.TextDark,
-                    Location = new Point(0, permY),
-                    AutoSize = true
-                };
-                pnlPermissions.Controls.Add(lblPerm);
-                permY += 25;
-            }
+            // Initialize permissions display
+            UpdatePermissionsDisplay();
 
             contentPanel.Controls.AddRange(new Control[] 
             { 
                 lblSelectRole, pnlRole, 
-                lblPermissions, pnlPermissions 
+                lblPermissionsTitle, pnlPermissions 
             });
 
             // Footer panel with buttons
@@ -8867,7 +8994,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             // Assign Role button
             Button btnAssign = new Button
             {
-                Text = "🛡 Assign Role",
+                Text = "Assign Role",
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                 ForeColor = Color.White,
                 BackColor = ThemeConstants.PrimaryMaroon,
@@ -8891,10 +9018,20 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             };
             btnAssign.Click += (s, e) =>
             {
-                SelectedRole = cmbRole.SelectedItem?.ToString() ?? "";
+                string selected = cmbRole.SelectedItem?.ToString() ?? "";
+                
+                // Validate that a role is selected (not placeholder)
+                if (selected == "Choose role" || string.IsNullOrEmpty(selected))
+                {
+                    MessageBox.Show("Please select a role.", "Validation Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                
+                SelectedRole = selected;
                 this.DialogResult = DialogResult.OK;
             };
-
+            
             footerPanel.Controls.AddRange(new Control[] { btnCancel, btnAssign });
 
             mainPanel.Controls.Add(headerPanel);
@@ -8912,6 +9049,80 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                     e.Graphics.DrawRectangle(p, 0, 0, this.Width - 1, this.Height - 1);
                 }
             };
+        }
+
+        private void UpdatePermissionsDisplay()
+        {
+            // Clear existing permissions
+            pnlPermissions.Controls.Clear();
+            
+            string selectedRole = cmbRole.SelectedItem?.ToString() ?? "";
+            string[] permissions;
+            
+            if (selectedRole == "Staff")
+            {
+                permissions = new string[]
+                {
+                    "• Dashboard: View daily activity summary",
+                    "• Members: Register new members, view info",
+                    "• Circulation: Borrow, return, renew, validate members",
+                    "• Reservations: View reservations, assist members",
+                    "• Fines: View fines, collect payments",
+                    "• Inventory: Mark damaged, update location",
+                    "• Search: Yes",
+                    "• Sign Out: Yes",
+                    "",
+                    "❌ No access: User Management, Catalog edit, Reports, Settings"
+                };
+            }
+            else if (selectedRole == "Admin")
+            {
+                permissions = new string[]
+                {
+                    "• Dashboard: View all statistics, charts, analytics",
+                    "• User Management: Add, edit, deactivate users, assign roles",
+                    "• Members: Register, edit, suspend, activate, view history",
+                    "• Catalog: Add, edit, delete, archive books, bulk import",
+                    "• Circulation: Borrow, return, renew, override rules",
+                    "• Reservations: View, approve, cancel, manage all",
+                    "• Fines: View, calculate, collect, waive, adjust, audit",
+                    "• Inventory: Mark lost, damaged, repair, update location",
+                    "• Reports: Generate ALL reports",
+                    "• Search: Full advanced search",
+                    "• Settings: Configure system rules, fine rates, limits",
+                    "• Sign Out: Yes"
+                };
+            }
+            else
+            {
+                // No role selected (placeholder)
+                permissions = new string[]
+                {
+                    "Select a role to view permissions"
+                };
+            }
+            
+            int permY = 0;
+            foreach (string perm in permissions)
+            {
+                if (string.IsNullOrEmpty(perm))
+                {
+                    permY += 10; // Add spacing for empty line
+                    continue;
+                }
+                
+                Label lblPerm = new Label
+                {
+                    Text = perm,
+                    Font = new Font("Segoe UI", 9F),
+                    ForeColor = selectedRole == "Choose role" ? Color.Gray : ThemeConstants.TextDark,
+                    Location = new Point(0, permY),
+                    AutoSize = true,
+                    MaximumSize = new Size(440, 0) // Allow text wrapping
+                };
+                pnlPermissions.Controls.Add(lblPerm);
+                permY += 22; // Reduced spacing slightly for more items
+            }
         }
 
         private GraphicsPath CreateRoundedRectangle(Rectangle rect, int radius)
@@ -8939,7 +9150,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
         public DeactivateUserDialog(string userName)
         {
             InitializeComponent();
-            this.Text = "Deactivate User";
+            this.Text = "Delete User";
             this.Size = new Size(500, 200);
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.None;
@@ -8971,7 +9182,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             // Title
             Label lblTitle = new Label
             {
-                Text = "Deactivate User",
+                Text = "Delete User",
                 Font = new Font("Segoe UI", 18F, FontStyle.Bold),
                 ForeColor = ThemeConstants.TextDark,
                 Location = new Point(0, 0),
@@ -8981,7 +9192,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             // Message
             Label lblMessage = new Label
             {
-                Text = $"Are you sure you want to deactivate {userName}'s account? They will no longer be able to access the system.",
+                Text = $"Are you sure you want to permanently delete {userName}'s account? This action cannot be undone and all user data will be removed from the database.",
                 Font = new Font("Segoe UI", 10F),
                 ForeColor = ThemeConstants.TextDark,
                 Location = new Point(0, 40),
@@ -9032,10 +9243,10 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 this.DialogResult = DialogResult.Cancel;
             };
 
-            // Deactivate button (red)
+            // Delete button (red)
             Button btnDeactivate = new Button
             {
-                Text = "Deactivate",
+                Text = "Delete",
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                 ForeColor = Color.White,
                 BackColor = Color.FromArgb(220, 53, 69), // Red color
@@ -9119,13 +9330,13 @@ namespace LMS_Library_Management_System.Forms.Dashboard
         private TextBox txtFullName;
         private TextBox txtEmail;
         private TextBox txtPhoneNumber;
-        private TextBox txtDepartment;
+        private ComboBox cmbDepartment;
 
         public EditUserDialog(string fullName = "", string email = "", string phoneNumber = "", string department = "")
         {
             InitializeComponent();
             this.Text = "Edit User";
-            this.Size = new Size(500, 450);
+            this.Size = new Size(500, 600); // Increased height to ensure all fields are visible
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.None;
             // Match AddUserDialog beige
@@ -9200,11 +9411,11 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 AutoScroll = true
             };
 
-            int yPos = 0;
+            int yPos = 100; // Start with margin from top
             int inputWidth = 400;
             int spacing = 25;
 
-            // Full Name
+            // Full Name - FIRST FIELD (must be visible at the top)
             Label lblFullName = new Label
             {
                 Text = "Full Name *",
@@ -9280,6 +9491,10 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 BackColor = Color.FromArgb(248, 247, 242),
                 Text = email
             };
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                PlaceholderTextHelper.SetPlaceholder(txtEmail, "user@library.com");
+            }
             pnlEmail.Controls.Add(txtEmail);
 
             yPos += 25 + 40 + spacing;
@@ -9318,16 +9533,65 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 Font = new Font("Segoe UI", 10F),
                 BorderStyle = BorderStyle.None,
                 BackColor = Color.FromArgb(248, 247, 242),
-                Text = phoneNumber
+                Text = phoneNumber ?? "",
+                MaxLength = 11,
+                ReadOnly = false,
+                Enabled = true,
+                ForeColor = Color.Black
             };
-            // Allow only numeric input for phone number (no letters or symbols)
+            
+            // Only set placeholder if phone number is empty or null
+            if (string.IsNullOrWhiteSpace(phoneNumber))
+            {
+                PlaceholderTextHelper.SetPlaceholder(txtPhoneNumber, "09XXXXXXXXX");
+            }
+            else
+            {
+                // If phone number exists, ensure it's displayed and editable
+                txtPhoneNumber.Text = phoneNumber;
+                txtPhoneNumber.ForeColor = Color.Black;
+            }
+            
+            // Allow only numeric input for phone number (no letters or symbols) and limit to 11 digits
             txtPhoneNumber.KeyPress += (s, e) =>
             {
                 if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
                 {
                     e.Handled = true;
                 }
+                // Prevent typing if already 11 digits (excluding control characters)
+                if (char.IsDigit(e.KeyChar) && txtPhoneNumber.Text.Length >= 11)
+                {
+                    e.Handled = true;
+                }
             };
+            
+            // Ensure the field is editable when it gets focus
+            txtPhoneNumber.Enter += (s, e) =>
+            {
+                // Clear placeholder if it's showing
+                string actualText = txtPhoneNumber.GetActualText() ?? txtPhoneNumber.Text ?? "";
+                if (string.IsNullOrWhiteSpace(actualText) || actualText == "09XXXXXXXXX")
+                {
+                    txtPhoneNumber.Text = "";
+                    txtPhoneNumber.ForeColor = Color.Black;
+                }
+                else
+                {
+                    // Ensure text color is black for editing
+                    txtPhoneNumber.ForeColor = Color.Black;
+                }
+            };
+            
+            // Ensure text color stays black when typing
+            txtPhoneNumber.TextChanged += (s, e) =>
+            {
+                if (txtPhoneNumber.ForeColor != Color.Black && !string.IsNullOrWhiteSpace(txtPhoneNumber.Text))
+                {
+                    txtPhoneNumber.ForeColor = Color.Black;
+                }
+            };
+            
             pnlPhone.Controls.Add(txtPhoneNumber);
 
             yPos += 25 + 40 + spacing;
@@ -9359,24 +9623,85 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 }
             };
 
-            txtDepartment = new TextBox
+            cmbDepartment = new ComboBox
             {
-                Location = new Point(10, 8),
-                Size = new Size(inputWidth - 20, 24),
+                Location = new Point(10, 5),
+                Size = new Size(inputWidth - 20, 30),
                 Font = new Font("Segoe UI", 10F),
-                BorderStyle = BorderStyle.None,
+                DropDownStyle = ComboBoxStyle.DropDownList,
                 BackColor = Color.FromArgb(248, 247, 242),
-                Text = department
+                FlatStyle = FlatStyle.Flat
             };
-            pnlDepartment.Controls.Add(txtDepartment);
-
-            contentPanel.Controls.AddRange(new Control[] 
+            // Add placeholder as first item
+            cmbDepartment.Items.Add("Choose department");
+            cmbDepartment.Items.AddRange(new string[] 
             { 
-                lblFullName, pnlFullName, 
-                lblEmail, pnlEmail, 
-                lblPhone, pnlPhone, 
-                lblDepartment, pnlDepartment 
+                "Computing Education Department",
+                "Department of Engineering Education",
+                "Department of Teacher Education",
+                "Department of Arts and Sciences Education",
+                "Department of Business Administration Education",
+                "Department of Hospitality Education",
+                "JHS Department"
             });
+            
+            // Set selected department if provided
+            if (!string.IsNullOrWhiteSpace(department))
+            {
+                int deptIndex = cmbDepartment.Items.IndexOf(department);
+                if (deptIndex > 0)
+                {
+                    cmbDepartment.SelectedIndex = deptIndex;
+                    cmbDepartment.ForeColor = Color.Black;
+                }
+                else
+                {
+                    cmbDepartment.SelectedIndex = 0;
+                    cmbDepartment.ForeColor = Color.Gray;
+                }
+            }
+            else
+            {
+                cmbDepartment.SelectedIndex = 0; // Select placeholder by default
+                cmbDepartment.ForeColor = Color.Gray; // Gray color for placeholder
+            }
+            
+            // Change color when a real department is selected
+            cmbDepartment.SelectedIndexChanged += (s, e) =>
+            {
+                if (cmbDepartment.SelectedIndex == 0)
+                {
+                    cmbDepartment.ForeColor = Color.Gray;
+                }
+                else
+                {
+                    cmbDepartment.ForeColor = Color.Black;
+                }
+            };
+            
+            pnlDepartment.Controls.Add(cmbDepartment);
+
+            // Add controls to contentPanel - Full Name MUST be first and at the top
+            // Add Full Name controls FIRST
+            contentPanel.Controls.Add(lblFullName);
+            contentPanel.Controls.Add(pnlFullName);
+            
+            
+            contentPanel.Controls.Add(lblEmail);
+            
+            contentPanel.Controls.Add(pnlEmail);
+            contentPanel.Controls.Add(lblPhone);
+            contentPanel.Controls.Add(pnlPhone);
+            contentPanel.Controls.Add(lblDepartment);
+            contentPanel.Controls.Add(pnlDepartment);
+            
+            // CRITICAL: Bring Full Name to front to ensure it's visible
+            lblFullName.BringToFront();
+            pnlFullName.BringToFront();
+            
+            // Explicitly set positions to ensure Full Name is at top
+            lblFullName.Location = new Point(0, 20);
+            pnlFullName.Location = new Point(0, 45);
 
             // Footer panel with buttons
             Panel footerPanel = new Panel
@@ -9440,16 +9765,76 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             };
             btnSave.Click += (s, e) =>
             {
-                if (string.IsNullOrWhiteSpace(txtFullName.Text) || string.IsNullOrWhiteSpace(txtEmail.Text))
+                // Full Name Validation
+                string validatedFullName = txtFullName.Text?.Trim() ?? "";
+                if (string.IsNullOrWhiteSpace(validatedFullName))
                 {
-                    MessageBox.Show("Full Name and Email Address are required fields.", "Validation Error", 
+                    MessageBox.Show("Full Name is required.", "Validation Error", 
                         MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtFullName.Focus();
                     return;
                 }
-                FullName = txtFullName.Text;
-                Email = txtEmail.Text;
-                PhoneNumber = txtPhoneNumber.Text;
-                Department = txtDepartment.Text;
+                string[] nameParts = validatedFullName.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                if (nameParts.Length < 2)
+                {
+                    MessageBox.Show("Full Name must contain at least two words (first name and last name).", "Validation Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtFullName.Focus();
+                    return;
+                }
+                
+                // Email Validation
+                string validatedEmail = txtEmail.Text?.Trim() ?? "";
+                if (string.IsNullOrWhiteSpace(validatedEmail))
+                {
+                    MessageBox.Show("Email Address is required.", "Validation Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtEmail.Focus();
+                    return;
+                }
+                try
+                {
+                    var addr = new System.Net.Mail.MailAddress(validatedEmail);
+                    if (addr.Address != validatedEmail)
+                    {
+                        MessageBox.Show("Please enter a valid email address.", "Validation Error", 
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        txtEmail.Focus();
+                        return;
+                    }
+                }
+                catch
+                {
+                    MessageBox.Show("Please enter a valid email address.", "Validation Error", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtEmail.Focus();
+                    return;
+                }
+                
+                // Phone Number Validation (optional but if provided, must be valid)
+                string validatedPhoneNumber = txtPhoneNumber.GetActualText()?.Trim() ?? "";
+                if (!string.IsNullOrWhiteSpace(validatedPhoneNumber))
+                {
+                    if (validatedPhoneNumber.Length != 11 || !validatedPhoneNumber.StartsWith("09"))
+                    {
+                        MessageBox.Show("Phone Number must be exactly 11 digits and start with '09'.", "Validation Error", 
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        txtPhoneNumber.Focus();
+                        return;
+                    }
+                }
+                
+                // Department Validation (optional)
+                string selectedDepartment = "";
+                if (cmbDepartment.SelectedIndex > 0)
+                {
+                    selectedDepartment = cmbDepartment.SelectedItem.ToString();
+                }
+                
+                FullName = validatedFullName;
+                Email = validatedEmail;
+                PhoneNumber = validatedPhoneNumber;
+                Department = selectedDepartment;
                 this.DialogResult = DialogResult.OK;
             };
 
@@ -9461,9 +9846,13 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 int centerX = (contentPanel.ClientSize.Width - inputWidth) / 2;
                 if (centerX < 0) centerX = 0;
 
+                // Ensure Full Name stays at top
                 lblFullName.Left = centerX;
+                lblFullName.Top = 90;
                 pnlFullName.Left = centerX;
+                pnlFullName.Top = 115;
 
+                // Position other controls based on their calculated positions
                 lblEmail.Left = centerX;
                 pnlEmail.Left = centerX;
 
@@ -9472,6 +9861,22 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
                 lblDepartment.Left = centerX;
                 pnlDepartment.Left = centerX;
+            };
+            
+            // Ensure Full Name is visible on load
+            this.Load += (s, e) =>
+            {
+                contentPanel.AutoScrollPosition = new Point(0, 0);
+                lblFullName.BringToFront();
+                pnlFullName.BringToFront();
+            };
+            
+            this.Shown += (s, e) =>
+            {
+                contentPanel.AutoScrollPosition = new Point(0, 0);
+                contentPanel.ScrollControlIntoView(lblFullName);
+                lblFullName.BringToFront();
+                pnlFullName.BringToFront();
             };
 
             // Center buttons group
@@ -9515,13 +9920,16 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
     public class UserResetPasswordDialog : Form
     {
-        public bool SendResetLink { get; private set; }
+        public string NewPassword { get; private set; }
+        private TextBox txtConfirmPassword;
+        private string _email;
 
         public UserResetPasswordDialog(string email)
         {
             InitializeComponent();
+            _email = email;
             this.Text = "Reset Password";
-            this.Size = new Size(500, 250);
+            this.Size = new Size(500, 300); // Reduced height since we only have one field now
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.None;
             this.BackColor = Color.FromArgb(248, 247, 242);
@@ -9545,9 +9953,9 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             Panel headerPanel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 60,
+                Height = 100,
                 BackColor = Color.FromArgb(248, 247, 242),
-                Padding = new Padding(30, 20, 30, 10)
+                Padding = new Padding(30, 25, 30, 15)
             };
 
             Label lblTitle = new Label
@@ -9559,35 +9967,122 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 AutoSize = true
             };
 
+            Label lblUserInfo = new Label
+            {
+                Text = $"Resetting password for: {email}",
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.Gray,
+                Location = new Point(30, 55),
+                AutoSize = true
+            };
+
             headerPanel.Controls.Add(lblTitle);
+            headerPanel.Controls.Add(lblUserInfo);
 
             // Content panel
             Panel contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
                 BackColor = Color.FromArgb(248, 247, 242),
-                Padding = new Padding(30, 20, 30, 20)
+                Padding = new Padding(30, 40, 30, 30), // Increased top padding to push fields down
+                AutoScroll = true // Enable scrolling in case fields don't fit
             };
 
-            Label lblMessage = new Label
+            int inputWidth = 440;
+            int yPos = 0; // Start at top of content panel (padding is handled by panel)
+
+            // Reset Password field (renamed from Confirm Password, New Password field removed)
+            Label lblConfirmPassword = new Label
             {
-                Text = $"A password reset link will be sent to {email}. The user will be required to create a new password.",
-                Font = new Font("Segoe UI", 10F),
+                Text = "Reset Password *",
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
                 ForeColor = ThemeConstants.TextDark,
-                Location = new Point(0, 0),
-                Size = new Size(440, 60),
+                Location = new Point(0, yPos),
+                Size = new Size(inputWidth, 25),
                 AutoSize = false
             };
 
-            contentPanel.Controls.Add(lblMessage);
+            Panel pnlConfirmPassword = new Panel
+            {
+                Location = new Point(0, yPos + 25),
+                Size = new Size(inputWidth, 40),
+                BackColor = Color.FromArgb(248, 247, 242)
+            };
+            pnlConfirmPassword.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlConfirmPassword.Width - 1, pnlConfirmPassword.Height - 1), 6))
+                using (Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+
+            txtConfirmPassword = new TextBox
+            {
+                Name = "txtConfirmPassword",
+                Location = new Point(10, 8),
+                Size = new Size(inputWidth - 20, 24),
+                Font = new Font("Segoe UI", 10F),
+                BorderStyle = BorderStyle.None,
+                BackColor = Color.FromArgb(248, 247, 242),
+                PasswordChar = '*',
+                UseSystemPasswordChar = true
+            };
+            PlaceholderTextHelper.SetPlaceholder(txtConfirmPassword, "Enter new password");
+            
+            // Handle password field focus to show/hide placeholder
+            txtConfirmPassword.Enter += (s, e) =>
+            {
+                string actualText = txtConfirmPassword.GetActualText() ?? "";
+                if (string.IsNullOrWhiteSpace(actualText) || actualText == "Enter new password")
+                {
+                    txtConfirmPassword.Text = "";
+                    txtConfirmPassword.PasswordChar = '*';
+                    txtConfirmPassword.UseSystemPasswordChar = true;
+                    txtConfirmPassword.ForeColor = Color.Black;
+                }
+            };
+            
+            txtConfirmPassword.TextChanged += (s, e) =>
+            {
+                if (!string.IsNullOrWhiteSpace(txtConfirmPassword.Text) && txtConfirmPassword.ForeColor != Color.Black)
+                {
+                    txtConfirmPassword.ForeColor = Color.Black;
+                    txtConfirmPassword.PasswordChar = '*';
+                    txtConfirmPassword.UseSystemPasswordChar = true;
+                }
+            };
+            
+            pnlConfirmPassword.Controls.Add(txtConfirmPassword);
+
+            // Add controls to contentPanel - only Reset Password field
+            contentPanel.Controls.Add(lblConfirmPassword);
+            contentPanel.Controls.Add(pnlConfirmPassword);
+            
+            // Ensure field is visible and properly positioned
+            lblConfirmPassword.Visible = true;
+            pnlConfirmPassword.Visible = true;
+            
+            // Position Reset Password field at top
+            lblConfirmPassword.Location = new Point(0, 0);
+            pnlConfirmPassword.Location = new Point(0, 25);
+            
+            // Bring to front to ensure visibility
+            lblConfirmPassword.BringToFront();
+            pnlConfirmPassword.BringToFront();
+            
+            // Ensure Confirm Password is positioned correctly below New Password
+            lblConfirmPassword.Location = new Point(0, 20 + 25 + 40 + 25); // Below New Password field
+            pnlConfirmPassword.Location = new Point(0, 20 + 25 + 40 + 25 + 25); // Below Confirm Password label
 
             // Footer panel with buttons
             Panel footerPanel = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 70,
+                Height = 80,
                 BackColor = Color.FromArgb(248, 247, 242),
-                Padding = new Padding(30, 15, 30, 15)
+                Padding = new Padding(30, 20, 30, 20)
             };
 
             // Cancel button
@@ -9600,7 +10095,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 FlatStyle = FlatStyle.Flat,
                 FlatAppearance = { BorderSize = 1, BorderColor = Color.FromArgb(220, 220, 220) },
                 Size = new Size(100, 40),
-                Location = new Point(footerPanel.Width - 240, 15),
+                Location = new Point(footerPanel.Width - 240, 20),
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
                 Cursor = Cursors.Hand
             };
@@ -9618,42 +10113,66 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             };
             btnCancel.Click += (s, e) =>
             {
-                SendResetLink = false;
                 this.DialogResult = DialogResult.Cancel;
             };
 
-            // Send Reset Link button
-            Button btnSend = new Button
+            // Reset Password button
+            Button btnReset = new Button
             {
-                Text = "Send Reset Link",
+                Text = "Reset Password",
                 Font = new Font("Segoe UI", 10F, FontStyle.Bold),
                 ForeColor = Color.White,
                 BackColor = ThemeConstants.PrimaryMaroon,
                 FlatStyle = FlatStyle.Flat,
                 FlatAppearance = { BorderSize = 0 },
                 Size = new Size(140, 40),
-                Location = new Point(footerPanel.Width - 130, 15),
+                Location = new Point(footerPanel.Width - 130, 20),
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
                 Cursor = Cursors.Hand
             };
-            btnSend.Paint += (s, e) =>
+            btnReset.Paint += (s, e) =>
             {
                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnSend.Width - 1, btnSend.Height - 1), 6))
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnReset.Width - 1, btnReset.Height - 1), 6))
                 {
-                    e.Graphics.FillPath(new SolidBrush(btnSend.BackColor), path);
+                    e.Graphics.FillPath(new SolidBrush(btnReset.BackColor), path);
                 }
-                TextRenderer.DrawText(e.Graphics, btnSend.Text, btnSend.Font,
-                    new Rectangle(0, 0, btnSend.Width, btnSend.Height),
-                    btnSend.ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                TextRenderer.DrawText(e.Graphics, btnReset.Text, btnReset.Font,
+                    new Rectangle(0, 0, btnReset.Width, btnReset.Height),
+                    btnReset.ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
             };
-            btnSend.Click += (s, e) =>
+            btnReset.Click += (s, e) =>
             {
-                SendResetLink = true;
+                // Get actual text from password field (handling placeholder)
+                string newPassword = txtConfirmPassword.GetActualText()?.Trim() ?? "";
+                
+                // If GetActualText returns placeholder, try direct Text property
+                if (string.IsNullOrWhiteSpace(newPassword) || newPassword == "Enter new password")
+                {
+                    newPassword = txtConfirmPassword.Text?.Trim() ?? "";
+                }
+
+                if (string.IsNullOrWhiteSpace(newPassword))
+                {
+                    MessageBox.Show("Please enter a new password.", "Validation Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtConfirmPassword.Focus();
+                    return;
+                }
+
+                if (newPassword.Length < 6)
+                {
+                    MessageBox.Show("Password must be at least 6 characters long.", "Validation Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtConfirmPassword.Focus();
+                    return;
+                }
+
+                NewPassword = newPassword;
                 this.DialogResult = DialogResult.OK;
             };
 
-            footerPanel.Controls.AddRange(new Control[] { btnCancel, btnSend });
+            footerPanel.Controls.AddRange(new Control[] { btnCancel, btnReset });
 
             mainPanel.Controls.Add(headerPanel);
             mainPanel.Controls.Add(contentPanel);
