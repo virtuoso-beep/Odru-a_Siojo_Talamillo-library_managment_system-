@@ -4,6 +4,7 @@ using System.Data;
 using MySql.Data.MySqlClient;
 using LMS_Library_Management_System.Helper;
 using LMS_Library_Management_System.Models;
+using LMS_Library_Management_System.Interfaces;
 
 namespace LMS_Library_Management_System.Service
 {
@@ -11,7 +12,7 @@ namespace LMS_Library_Management_System.Service
     /// Service class for managing library members
     /// Handles CRUD operations for Member accounts
     /// </summary>
-    public class MemberService
+    public class MemberService : IMemberService
     {
         private readonly AuthenticationService _authService;
         private readonly UserManagementService _userManagementService;
@@ -361,8 +362,14 @@ namespace LMS_Library_Management_System.Service
                 // Check for duplicate entry error (MySQL error code 1062)
                 if (mysqlEx.Number == 1062)
                 {
+                    // Check if it's a duplicate email error
+                    if (mysqlEx.Message.Contains("Email") || mysqlEx.Message.Contains("email") || mysqlEx.Message.Contains("Duplicate email"))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Duplicate email when creating member: {email}");
+                        throw new InvalidOperationException($"A user with email '{email}' already exists. Please use a different email address.", mysqlEx);
+                    }
                     System.Diagnostics.Debug.WriteLine($"Duplicate member entry: {email}");
-                    return -1; // Member already exists
+                    throw new InvalidOperationException($"A member with this information already exists.", mysqlEx);
                 }
                 System.Diagnostics.Debug.WriteLine($"Error creating member: {mysqlEx.Message}");
                 throw;
@@ -557,9 +564,9 @@ namespace LMS_Library_Management_System.Service
         /// <summary>
         /// Gets borrowing history for a specific member
         /// </summary>
-        public List<BorrowingData> GetMemberBorrowingHistory(int memberId)
+        public List<Borrowing> GetMemberBorrowingHistory(int memberId)
         {
-            var borrowings = new List<BorrowingData>();
+            var borrowings = new List<Borrowing>();
             
             try
             {
@@ -588,7 +595,7 @@ namespace LMS_Library_Management_System.Service
                         {
                             while (reader.Read())
                             {
-                                var borrowing = new BorrowingData
+                                var borrowing = new Borrowing
                                 {
                                     BorrowingId = reader.GetInt32("BorrowingId"),
                                     BookTitle = reader.GetString("BookTitle"),
@@ -619,7 +626,7 @@ namespace LMS_Library_Management_System.Service
         /// </summary>
         public MemberStatistics GetMemberStatistics(int memberId, string memberType)
         {
-            var stats = new MemberStatistics
+            var stats = new Models.MemberStatistics
             {
                 MaxBooks = GetBookLimit(memberType)
             };
@@ -834,60 +841,4 @@ namespace LMS_Library_Management_System.Service
     /// <summary>
     /// Data class for member information
     /// </summary>
-    public class MemberData
-    {
-        public int MemberId { get; set; }
-        public string MemberNumber { get; set; }
-        public string FirstName { get; set; }
-        public string LastName { get; set; }
-        public string FullName => $"{FirstName} {LastName}";
-        public string Email { get; set; }
-        public string MemberType { get; set; }
-        public string Phone { get; set; }
-        public string Address { get; set; }
-        public string Department { get; set; }
-        public int Status { get; set; } // 1 = Active, 2 = Suspended, 3 = Expired
-        public string StatusText
-        {
-            get
-            {
-                switch (Status)
-                {
-                    case 0: return "Inactive";
-                    case 1: return "Active";
-                    case 2: return "Suspended";
-                    case 3: return "Expired";
-                    default: return "Unknown";
-                }
-            }
-        }
-        public DateTime RegistrationDate { get; set; }
-    }
-
-    /// <summary>
-    /// Data class for borrowing information
-    /// </summary>
-    public class BorrowingData
-    {
-        public int BorrowingId { get; set; }
-        public string BookTitle { get; set; }
-        public string Author { get; set; }
-        public DateTime BorrowDate { get; set; }
-        public DateTime DueDate { get; set; }
-        public DateTime? ReturnDate { get; set; }
-        public string Status { get; set; } // Borrowed, Returned, Overdue
-        public decimal FineAmount { get; set; }
-    }
-
-    /// <summary>
-    /// Data class for member statistics
-    /// </summary>
-    public class MemberStatistics
-    {
-        public int CurrentBooksCount { get; set; }
-        public int MaxBooks { get; set; }
-        public int TotalBorrowed { get; set; }
-        public decimal UnpaidFines { get; set; }
-        public DateTime? MembershipExpiry { get; set; }
-    }
 }

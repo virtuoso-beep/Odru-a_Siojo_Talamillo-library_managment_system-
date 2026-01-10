@@ -4,6 +4,7 @@ using System.Data;
 using MySql.Data.MySqlClient;
 using LMS_Library_Management_System.Helper;
 using LMS_Library_Management_System.Models;
+using LMS_Library_Management_System.Interfaces;
 
 namespace LMS_Library_Management_System.Service
 {
@@ -11,7 +12,7 @@ namespace LMS_Library_Management_System.Service
     /// Service class for managing users (Admin functionality)
     /// Handles CRUD operations for Librarian and Staff accounts
     /// </summary>
-    public class UserManagementService
+    public class UserManagementService : IUserManagementService
     {
         private readonly AuthenticationService _authService;
 
@@ -385,6 +386,12 @@ namespace LMS_Library_Management_System.Service
                 // Check for duplicate entry error (MySQL error code 1062)
                 if (mysqlEx.Number == 1062)
                 {
+                    // Check if it's a duplicate email error
+                    if (mysqlEx.Message.Contains("Email") || mysqlEx.Message.Contains("email") || mysqlEx.Message.Contains("Duplicate email"))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Duplicate email when creating user: {email}");
+                        return false; // User already exists - duplicate email
+                    }
                     System.Diagnostics.Debug.WriteLine($"Duplicate user entry: {email}");
                     return false; // User already exists
                 }
@@ -833,18 +840,4 @@ namespace LMS_Library_Management_System.Service
     /// <summary>
     /// Data class for user information in user management
     /// </summary>
-    public class UserInfo
-    {
-        public int UserId { get; set; }
-        public string Email { get; set; }
-        public string FirstName { get; set; }
-        public string LastName { get; set; }
-        public string FullName { get; set; }
-        public UserRole Role { get; set; }
-        public bool IsActive { get; set; }
-        public DateTime CreatedDate { get; set; }
-        public string Department { get; set; } // Optional field for display
-        public string LastLogin { get; set; } // Optional field for display
-        public string Phone { get; set; } // Optional field for phone number
-    }
 }

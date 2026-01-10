@@ -11,6 +11,7 @@ using LMS_Library_Management_System.Helper;
 using static LMS_Library_Management_System.Helper.PlaceholderTextHelper;
 using LMS_Library_Management_System.Service;
 using LMS_Library_Management_System.Models;
+using LMS_Library_Management_System.Interfaces;
 
 using System.Windows.Forms.DataVisualization.Charting;
 
@@ -1376,6 +1377,12 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                             "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
+                catch (InvalidOperationException ioEx)
+                {
+                    // Handle duplicate email or other validation errors
+                    MessageBox.Show(ioEx.Message, 
+                        "Registration Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
                 catch (Exception ex)
                 {
                     MessageBox.Show($"Error registering member: {ex.Message}", 
@@ -1486,6 +1493,249 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             if (idNumber.Length != 6)
                 return false;
             return System.Text.RegularExpressions.Regex.IsMatch(idNumber, @"^[0-9]{6}$");
+        }
+
+        /// <summary>
+        /// Validates ISBN format (ISBN-10 or ISBN-13)
+        /// </summary>
+        private bool IsValidISBN(string isbn)
+        {
+            if (string.IsNullOrWhiteSpace(isbn))
+                return false;
+
+            // Remove dashes, spaces, and convert to uppercase
+            string cleanISBN = System.Text.RegularExpressions.Regex.Replace(isbn.Trim().ToUpper(), @"[-\s]", "");
+
+            // ISBN-10: 10 characters, last can be X
+            if (cleanISBN.Length == 10)
+            {
+                return System.Text.RegularExpressions.Regex.IsMatch(cleanISBN, @"^[0-9]{9}[0-9X]$");
+            }
+
+            // ISBN-13: 13 characters, must start with 978 or 979
+            if (cleanISBN.Length == 13)
+            {
+                return System.Text.RegularExpressions.Regex.IsMatch(cleanISBN, @"^(978|979)[0-9]{10}$");
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Formats ISBN with dashes for better readability
+        /// </summary>
+        private string FormatISBN(string isbn)
+        {
+            if (string.IsNullOrWhiteSpace(isbn))
+                return isbn;
+
+            // Remove existing dashes and spaces, convert to uppercase
+            string clean = System.Text.RegularExpressions.Regex.Replace(isbn.Trim().ToUpper(), @"[-\s]", "");
+
+            // Format ISBN-10: X-XXXX-XXXX-X
+            if (clean.Length == 10)
+            {
+                return $"{clean.Substring(0, 1)}-{clean.Substring(1, 4)}-{clean.Substring(5, 4)}-{clean.Substring(9, 1)}";
+            }
+
+            // Format ISBN-13: XXX-X-XXXXXX-XX-X
+            if (clean.Length == 13)
+            {
+                return $"{clean.Substring(0, 3)}-{clean.Substring(3, 1)}-{clean.Substring(4, 6)}-{clean.Substring(10, 2)}-{clean.Substring(12, 1)}";
+            }
+
+            return isbn; // Return original if format doesn't match
+        }
+
+        /// <summary>
+        /// Checks if ISBN already exists in database
+        /// </summary>
+        private bool IsISBNDuplicate(string isbn)
+        {
+            if (string.IsNullOrWhiteSpace(isbn) || !IsValidISBN(isbn))
+                return false;
+
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Remove formatting for comparison
+                    string cleanISBN = System.Text.RegularExpressions.Regex.Replace(isbn.Trim().ToUpper(), @"[-\s]", "");
+
+                    string query = "SELECT COUNT(*) FROM Books WHERE REPLACE(REPLACE(UPPER(ISBN), '-', ''), ' ', '') = @CleanISBN";
+                    using (var command = new MySql.Data.MySqlClient.MySqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@CleanISBN", cleanISBN);
+                        object result = command.ExecuteScalar();
+                        return result != null && Convert.ToInt32(result) > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error checking ISBN duplicate: {ex.Message}");
+                return false; // Don't block if check fails
+            }
+        }
+
+        /// <summary>
+        /// Generates a unique ISBN-13 for library books
+        /// Format: 978-0-XXXXXX-XX-X where XXXXXX is a sequential number
+        /// </summary>
+        private string GenerateISBN()
+        {
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Ensure we're using the correct database
+                    using (var useDbCmd = new MySql.Data.MySqlClient.MySqlCommand("USE LMS_DB", connection))
+                    {
+                        useDbCmd.ExecuteNonQuery();
+                    }
+                    
+                    // Get the last generated ISBN from database
+                    // Look for ISBNs that match our pattern: 978-0-XXXXXX-XX-X or 9780XXXXXX00X
+                    using (var command = new MySql.Data.MySqlClient.MySqlCommand(@"
+                        SELECT ISBN 
+                        FROM Books 
+                        WHERE (ISBN LIKE '978-0-%' OR ISBN LIKE '9780%')
+                        AND LENGTH(REPLACE(REPLACE(ISBN, '-', ''), ' ', '')) = 13
+                        ORDER BY CAST(SUBSTRING(REPLACE(REPLACE(ISBN, '-', ''), ' ', ''), 5, 6) AS UNSIGNED) DESC
+                        LIMIT 1", connection))
+                    {
+                        object result = command.ExecuteScalar();
+                        int nextNumber = 1;
+                        
+                        if (result != null && result != DBNull.Value)
+                        {
+                            string lastISBN = result.ToString();
+                            System.Diagnostics.Debug.WriteLine($"GenerateISBN: Found last ISBN: {lastISBN}");
+                            
+                            // Remove dashes and spaces
+                            string cleanISBN = System.Text.RegularExpressions.Regex.Replace(lastISBN, @"[-\s]", "");
+                            
+                            // Extract the 6-digit registrant number (positions 4-9 in ISBN-13)
+                            if (cleanISBN.Length >= 10 && cleanISBN.StartsWith("978"))
+                            {
+                                try
+                                {
+                                    string registrantPart = cleanISBN.Substring(4, 6);
+                                    if (int.TryParse(registrantPart, out int lastNumber))
+                                    {
+                                        nextNumber = lastNumber + 1;
+                                        System.Diagnostics.Debug.WriteLine($"GenerateISBN: Extracted number: {lastNumber}, next: {nextNumber}");
+                                    }
+                                }
+                                catch (Exception parseEx)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"GenerateISBN: Error parsing registrant: {parseEx.Message}");
+                                }
+                            }
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine("GenerateISBN: No existing ISBN found, starting from 1");
+                        }
+                        
+                        // Ensure we don't exceed 6 digits (999999)
+                        if (nextNumber > 999999)
+                        {
+                            nextNumber = 1; // Reset
+                            System.Diagnostics.Debug.WriteLine("GenerateISBN: Sequence reset - reached maximum");
+                        }
+                        
+                        // Format: 978-0-XXXXXX-XX-X
+                        // 978 = EAN prefix for books
+                        // 0 = registration group (0 = English language)
+                        // XXXXXX = 6-digit registrant number
+                        // XX = 2-digit publication number (00 for now)
+                        // X = check digit (calculated)
+                        
+                        string registrant = nextNumber.ToString("D6"); // 6 digits with leading zeros
+                        string publication = "00"; // Fixed for now
+                        string prefix = "9780";
+                        string baseISBN = prefix + registrant + publication;
+                        
+                        // Calculate check digit for ISBN-13
+                        int checkDigit = CalculateISBN13CheckDigit(baseISBN);
+                        
+                        // Format with dashes: 978-0-XXXXXX-XX-X
+                        string formattedISBN = $"978-0-{registrant}-{publication}-{checkDigit}";
+                        
+                        System.Diagnostics.Debug.WriteLine($"GenerateISBN: Generated ISBN: {formattedISBN}");
+                        
+                        // Verify it's unique and find next available if needed
+                        int attempts = 0;
+                        while (IsISBNDuplicate(formattedISBN) && attempts < 1000)
+                        {
+                            nextNumber++;
+                            if (nextNumber > 999999) nextNumber = 1;
+                            registrant = nextNumber.ToString("D6");
+                            baseISBN = prefix + registrant + publication;
+                            checkDigit = CalculateISBN13CheckDigit(baseISBN);
+                            formattedISBN = $"978-0-{registrant}-{publication}-{checkDigit}";
+                            attempts++;
+                            
+                            if (attempts % 100 == 0)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"GenerateISBN: Still checking uniqueness, attempt {attempts}");
+                            }
+                        }
+                        
+                        if (attempts >= 1000)
+                        {
+                            System.Diagnostics.Debug.WriteLine("GenerateISBN: WARNING - Could not find unique ISBN after 1000 attempts, using timestamp fallback");
+                            // Use timestamp fallback
+                            string timestamp = DateTime.Now.Ticks.ToString().Substring(Math.Max(0, DateTime.Now.Ticks.ToString().Length - 9));
+                            registrant = timestamp.PadLeft(6, '0').Substring(0, 6);
+                            baseISBN = prefix + registrant + publication;
+                            checkDigit = CalculateISBN13CheckDigit(baseISBN);
+                            formattedISBN = $"978-0-{registrant}-{publication}-{checkDigit}";
+                        }
+                        
+                        System.Diagnostics.Debug.WriteLine($"GenerateISBN: Final ISBN: {formattedISBN} (after {attempts} uniqueness checks)");
+                        return formattedISBN;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error generating ISBN: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"GenerateISBN StackTrace: {ex.StackTrace}");
+                
+                // Fallback: use timestamp-based ISBN
+                string timestamp = DateTime.Now.Ticks.ToString().Substring(Math.Max(0, DateTime.Now.Ticks.ToString().Length - 9));
+                string registrant = timestamp.PadLeft(6, '0').Substring(0, 6);
+                string prefix = "9780";
+                string publication = "00";
+                string baseISBN = prefix + registrant + publication;
+                int checkDigit = CalculateISBN13CheckDigit(baseISBN);
+                string fallbackISBN = $"978-0-{registrant}-{publication}-{checkDigit}";
+                System.Diagnostics.Debug.WriteLine($"GenerateISBN: Using fallback ISBN: {fallbackISBN}");
+                return fallbackISBN;
+            }
+        }
+
+        /// <summary>
+        /// Calculates the check digit for ISBN-13
+        /// </summary>
+        private int CalculateISBN13CheckDigit(string isbn12)
+        {
+            if (isbn12.Length != 12)
+                throw new ArgumentException("ISBN must be 12 digits for check digit calculation");
+            
+            int sum = 0;
+            for (int i = 0; i < 12; i++)
+            {
+                int digit = int.Parse(isbn12[i].ToString());
+                // Multiply by 1 for odd positions, 3 for even positions (0-indexed)
+                sum += digit * (i % 2 == 0 ? 1 : 3);
+            }
+            
+            int remainder = sum % 10;
+            int checkDigit = remainder == 0 ? 0 : 10 - remainder;
+            return checkDigit;
         }
 
         private void DgvMembers_CellClick(object sender, DataGridViewCellEventArgs e)
@@ -3044,97 +3294,1641 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 BackColor = Color.Transparent,
                 Tag = "CatalogStatsPanel"
             };
-            Panel cardTotalTitles = CreateCatalogStatCard("📚", "0", "Total Titles", ThemeConstants.PrimaryMaroon, new Point(0, 0));
-            Panel cardAvailableCopies = CreateCatalogStatCard("📖", "0", "Available Copies", Color.FromArgb(76, 175, 80), new Point(200, 0));
-            Panel cardTotalCopies = CreateCatalogStatCard("📚", "0", "Total Copies", Color.FromArgb(33, 150, 243), new Point(400, 0));
-            Panel cardCategories = CreateCatalogStatCard("🔖", "0", "Categories", Color.FromArgb(255, 152, 0), new Point(600, 0));
+            Panel cardTotalTitles = CreateCatalogStatCard("📚", "0", "Total Titles", ThemeConstants.PrimaryMaroon, new Point(0, 0), "TotalTitles");
+            Panel cardAvailableCopies = CreateCatalogStatCard("📖", "0", "Available Copies", Color.FromArgb(76, 175, 80), new Point(200, 0), "AvailableCopies");
+            Panel cardTotalCopies = CreateCatalogStatCard("📚", "0", "Total Copies", Color.FromArgb(33, 150, 243), new Point(400, 0), "TotalCopies");
+            Panel cardCategories = CreateCatalogStatCard("🔖", "0", "Categories", Color.FromArgb(255, 152, 0), new Point(600, 0), "Categories");
+            statsPanel.Tag = "CatalogStatsPanel";
             statsPanel.Controls.AddRange(new Control[] { cardTotalTitles, cardAvailableCopies, cardTotalCopies, cardCategories });
-            var searchBarComponents = CreateConsistentSearchBar("🔍 Search by title, author, or ISBN...", 700);
+            // Create search bar with enough width for category filter
+            var searchBarComponents = CreateConsistentSearchBar("🔍 Search by title, author, or ISBN...", 600);
             Panel searchPanel = searchBarComponents.panel;
             TextBox txtSearchBooks = searchBarComponents.textBox;
             Button btnSearchBooks = searchBarComponents.button;
             searchPanel.Location = new Point(30, 240);
+            // Expand panel width to accommodate category filter
+            searchPanel.Width = Math.Max(searchPanel.Width, 1100);
+            
+            // Position category filter after search button with proper spacing
+            int categoryFilterX = btnSearchBooks.Location.X + btnSearchBooks.Width + 20;
             
             Label lblCategoryFilter = new Label
             {
                 Text = "Category:",
-                Location = new Point(820, 18),
-                Size = new Size(80, 25),
-                Font = new Font("Segoe UI", 10F)
+                Location = new Point(categoryFilterX, 18),
+                Size = new Size(70, 25),
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                ForeColor = Color.Black,
+                BackColor = Color.Transparent
             };
             searchPanel.Controls.Add(lblCategoryFilter);
             
             ComboBox cmbCategoryFilter = new ComboBox
             {
-                Location = new Point(910, 15),
-                Size = new Size(150, 30),
+                Location = new Point(categoryFilterX + 75, 15),
+                Size = new Size(180, 30),
                 Font = new Font("Segoe UI", 10F),
-                DropDownStyle = ComboBoxStyle.DropDownList
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                BackColor = Color.White,
+                ForeColor = Color.Black
             };
-            cmbCategoryFilter.Items.Add("All Categories");
-            cmbCategoryFilter.SelectedIndex = 0;
+            
+            // Function to refresh category filter
+            Action refreshCategoryFilter = () =>
+            {
+                cmbCategoryFilter.Items.Clear();
+                cmbCategoryFilter.Items.Add("All Categories");
+                
+                // Load categories from database
+                var bookService = new LMS_Library_Management_System.Service.BookService();
+                try
+                {
+                    var categories = bookService.GetAllCategories();
+                    foreach (var category in categories)
+                    {
+                        if (!string.IsNullOrWhiteSpace(category))
+                        {
+                            cmbCategoryFilter.Items.Add(category);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error loading categories: {ex.Message}");
+                }
+                
+                // Restore selection if possible
+                if (cmbCategoryFilter.Items.Count > 0)
+                {
+                    string previousSelection = cmbCategoryFilter.SelectedItem?.ToString();
+                    cmbCategoryFilter.SelectedIndex = 0;
+                    
+                    // Try to restore previous selection
+                    if (!string.IsNullOrEmpty(previousSelection))
+                    {
+                        for (int i = 0; i < cmbCategoryFilter.Items.Count; i++)
+                        {
+                            if (cmbCategoryFilter.Items[i].ToString() == previousSelection)
+                            {
+                                cmbCategoryFilter.SelectedIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                }
+            };
+            
+            // Initial load
+            refreshCategoryFilter();
+            
+            // Search button click event
+            btnSearchBooks.Click += (s, e) =>
+            {
+                string searchTerm = txtSearchBooks.GetActualText();
+                string selectedCategory = cmbCategoryFilter?.SelectedItem?.ToString() ?? "All Categories";
+                LoadBooksData(searchTerm, selectedCategory);
+            };
+            
+            // Search on Enter key press
+            txtSearchBooks.KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.Enter)
+                {
+                    string searchTerm = txtSearchBooks.GetActualText();
+                    string selectedCategory = cmbCategoryFilter?.SelectedItem?.ToString() ?? "All Categories";
+                    LoadBooksData(searchTerm, selectedCategory);
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
+                }
+            };
+            
+            // Category filter change event
+            cmbCategoryFilter.SelectedIndexChanged += (s, e) =>
+            {
+                string searchTerm = txtSearchBooks.GetActualText();
+                string selectedCategory = cmbCategoryFilter.SelectedItem?.ToString() ?? "All Categories";
+                LoadBooksData(searchTerm, selectedCategory);
+            };
+            
             searchPanel.Controls.Add(cmbCategoryFilter);
-            DataGridView dgvBooks = new DataGridView
+            
+            // Store reference to refresh function in panel tag for later use
+            searchPanel.Tag = new { RefreshCategories = refreshCategoryFilter, CategoryComboBox = cmbCategoryFilter };
+            
+            // Scrollable container for book cards
+            Panel pnlBooksContainer = new Panel
             {
                 Location = new Point(30, 320),
                 Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 350),
-                BackgroundColor = Color.FromArgb(250, 250, 250),
-                BorderStyle = BorderStyle.None,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                ReadOnly = true,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                MultiSelect = false,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                RowHeadersVisible = false,
-                EnableHeadersVisualStyles = false,
-                GridColor = Color.FromArgb(230, 230, 230),
-                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+                BackColor = Color.FromArgb(250, 250, 250),
+                AutoScroll = true,
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
             };
-            dgvBooks.ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
+            pnlBooksContainer.Name = "pnlBooksContainer";
+            pnlMainContent.Tag = "CatalogView";
+            pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnAddBookHeader, statsPanel, searchPanel, pnlBooksContainer });
+            
+            // Load statistics immediately
+            UpdateCatalogStatistics();
+            
+            // Load books data
+            LoadBooksData();
+        }
+        
+        /// <summary>
+        /// Recursively finds a control by name
+        /// </summary>
+        private Control FindControlByName(Control parent, string name)
+        {
+            if (parent == null || string.IsNullOrEmpty(name)) return null;
+            
+            if (parent.Name == name)
+                return parent;
+            
+            foreach (Control child in parent.Controls)
             {
-                BackColor = Color.FromArgb(248, 249, 250),
-                ForeColor = Color.FromArgb(33, 37, 41),
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-                Alignment = DataGridViewContentAlignment.MiddleLeft,
-                Padding = new Padding(10, 0, 0, 0),
-                SelectionBackColor = Color.FromArgb(248, 249, 250)
-            };
-            dgvBooks.DefaultCellStyle = new DataGridViewCellStyle
+                Control found = FindControlByName(child, name);
+                if (found != null)
+                    return found;
+            }
+            
+            return null;
+        }
+        
+        /// <summary>
+        /// Refreshes the category filter dropdown with latest categories from database
+        /// </summary>
+        private void RefreshCategoryFilter()
+        {
+            try
             {
+                // Find the category filter ComboBox
+                ComboBox cmbCategoryFilter = FindCategoryFilterComboBox();
+                if (cmbCategoryFilter != null)
+                {
+                    string previousSelection = cmbCategoryFilter.SelectedItem?.ToString();
+                    
+                    cmbCategoryFilter.Items.Clear();
+                    cmbCategoryFilter.Items.Add("All Categories");
+                    
+                    var bookService = new LMS_Library_Management_System.Service.BookService();
+                    var categories = bookService.GetAllCategories();
+                    foreach (var category in categories)
+                    {
+                        if (!string.IsNullOrWhiteSpace(category))
+                        {
+                            cmbCategoryFilter.Items.Add(category);
+                        }
+                    }
+                    
+                    // Restore previous selection if possible
+                    if (cmbCategoryFilter.Items.Count > 0)
+                    {
+                        if (!string.IsNullOrEmpty(previousSelection) && previousSelection != "All Categories")
+                        {
+                            for (int i = 0; i < cmbCategoryFilter.Items.Count; i++)
+                            {
+                                if (cmbCategoryFilter.Items[i].ToString() == previousSelection)
+                                {
+                                    cmbCategoryFilter.SelectedIndex = i;
+                                    System.Diagnostics.Debug.WriteLine($"RefreshCategoryFilter: Restored selection to: {previousSelection}");
+                                    return;
+                                }
+                            }
+                        }
+                        cmbCategoryFilter.SelectedIndex = 0;
+                    }
+                    System.Diagnostics.Debug.WriteLine($"RefreshCategoryFilter: Category filter refreshed with {cmbCategoryFilter.Items.Count} items");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("RefreshCategoryFilter: Category filter ComboBox not found");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"RefreshCategoryFilter Error: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Finds the category filter ComboBox in the catalog view
+        /// </summary>
+        private ComboBox FindCategoryFilterComboBox()
+        {
+            foreach (Control control in pnlMainContent.Controls)
+            {
+                if (control is Panel searchPanel)
+                {
+                    foreach (Control child in searchPanel.Controls)
+                    {
+                        if (child is ComboBox cmb && cmb.DropDownStyle == ComboBoxStyle.DropDownList)
+                        {
+                            // Check if it's the category filter by checking if it has "All Categories"
+                            if (cmb.Items.Count > 0 && cmb.Items[0].ToString() == "All Categories")
+                            {
+                                return cmb;
+                            }
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+        
+        /// <summary>
+        /// Updates catalog statistics from database
+        /// </summary>
+        private void UpdateCatalogStatistics()
+        {
+            try
+            {
+                var bookService = new LMS_Library_Management_System.Service.BookService();
+                var stats = bookService.GetBookStatistics();
+                
+                System.Diagnostics.Debug.WriteLine($"UpdateCatalogStatistics: TotalTitles={(stats.ContainsKey("TotalTitles") ? stats["TotalTitles"].ToString() : "N/A")}, " +
+                    $"TotalCopies={(stats.ContainsKey("TotalCopies") ? stats["TotalCopies"].ToString() : "N/A")}, " +
+                    $"AvailableCopies={(stats.ContainsKey("AvailableCopies") ? stats["AvailableCopies"].ToString() : "N/A")}, " +
+                    $"Categories={(stats.ContainsKey("Categories") ? stats["Categories"].ToString() : "N/A")}");
+                
+                // Find and update stat cards
+                bool statsPanelFound = false;
+                foreach (Control control in pnlMainContent.Controls)
+                {
+                    if (control is Panel statsPanel && statsPanel.Tag?.ToString() == "CatalogStatsPanel")
+                    {
+                        statsPanelFound = true;
+                        System.Diagnostics.Debug.WriteLine("UpdateCatalogStatistics: Found CatalogStatsPanel");
+                        int cardsFound = 0;
+                        int labelsUpdated = 0;
+                        
+                        foreach (Control statCard in statsPanel.Controls)
+                        {
+                            if (statCard is Panel card)
+                            {
+                                cardsFound++;
+                                foreach (Control label in card.Controls)
+                                {
+                                    if (label is Label lbl && lbl.Tag != null)
+                                    {
+                                        string tag = lbl.Tag.ToString();
+                                        
+                                        if (tag == "TotalTitles" && stats.ContainsKey("TotalTitles"))
+                                        {
+                                            lbl.Text = stats["TotalTitles"].ToString();
+                                            labelsUpdated++;
+                                            System.Diagnostics.Debug.WriteLine($"UpdateCatalogStatistics: Updated TotalTitles to: {stats["TotalTitles"]}");
+                                        }
+                                        else if (tag == "AvailableCopies" && stats.ContainsKey("AvailableCopies"))
+                                        {
+                                            lbl.Text = stats["AvailableCopies"].ToString();
+                                            labelsUpdated++;
+                                            System.Diagnostics.Debug.WriteLine($"UpdateCatalogStatistics: Updated AvailableCopies to: {stats["AvailableCopies"]}");
+                                        }
+                                        else if (tag == "TotalCopies" && stats.ContainsKey("TotalCopies"))
+                                        {
+                                            lbl.Text = stats["TotalCopies"].ToString();
+                                            labelsUpdated++;
+                                            System.Diagnostics.Debug.WriteLine($"UpdateCatalogStatistics: Updated TotalCopies to: {stats["TotalCopies"]}");
+                                        }
+                                        else if (tag == "Categories" && stats.ContainsKey("Categories"))
+                                        {
+                                            lbl.Text = stats["Categories"].ToString();
+                                            labelsUpdated++;
+                                            System.Diagnostics.Debug.WriteLine($"UpdateCatalogStatistics: Updated Categories to: {stats["Categories"]}");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        System.Diagnostics.Debug.WriteLine($"UpdateCatalogStatistics: Found {cardsFound} cards, Updated {labelsUpdated} labels");
+                        break;
+                    }
+                }
+                
+                if (!statsPanelFound)
+                {
+                    System.Diagnostics.Debug.WriteLine("UpdateCatalogStatistics: WARNING - CatalogStatsPanel not found");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"UpdateCatalogStatistics Error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"UpdateCatalogStatistics StackTrace: {ex.StackTrace}");
+            }
+        }
+
+        /// <summary>
+        /// Loads books data from database and populates the book cards grid
+        /// </summary>
+        private void LoadBooksData(string searchTerm = null, string category = null)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"LoadBooksData: Starting - searchTerm='{searchTerm}', category='{category}'");
+                
+                // Find the books container panel
+                Panel pnlBooksContainer = null;
+                foreach (Control control in pnlMainContent.Controls)
+                {
+                    if (control is Panel pnl && pnl.Name == "pnlBooksContainer")
+                    {
+                        pnlBooksContainer = pnl;
+                        break;
+                    }
+                }
+
+                if (pnlBooksContainer == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("LoadBooksData: ERROR - pnlBooksContainer not found!");
+                    // Try to find it by iterating through all controls recursively
+                    pnlBooksContainer = FindControlByName(pnlMainContent, "pnlBooksContainer") as Panel;
+                    if (pnlBooksContainer == null)
+                    {
+                        System.Diagnostics.Debug.WriteLine("LoadBooksData: Could not find container even with recursive search");
+                        return;
+                    }
+                    System.Diagnostics.Debug.WriteLine("LoadBooksData: Found container using recursive search");
+                }
+
+                System.Diagnostics.Debug.WriteLine($"LoadBooksData: Found container, clearing {pnlBooksContainer.Controls.Count} existing cards");
+                
+                // Clear existing cards - use SuspendLayout for better performance
+                pnlBooksContainer.SuspendLayout();
+                pnlBooksContainer.Controls.Clear();
+                pnlBooksContainer.ResumeLayout();
+
+                // Get books from database (with search and filter)
+                var bookService = new LMS_Library_Management_System.Service.BookService();
+                List<Book> books;
+                
+                // Normalize category - treat "All Categories" as null/empty
+                string normalizedCategory = (string.IsNullOrWhiteSpace(category) || category == "All Categories") ? null : category;
+                string normalizedSearchTerm = string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm;
+                
+                if (normalizedSearchTerm == null && normalizedCategory == null)
+                {
+                    // No filters, get all books
+                    System.Diagnostics.Debug.WriteLine("LoadBooksData: Getting all books (no filters)");
+                    books = bookService.GetAllBooks();
+                }
+                else
+                {
+                    // Apply search and/or category filter
+                    System.Diagnostics.Debug.WriteLine($"LoadBooksData: Searching with term='{normalizedSearchTerm}', category='{normalizedCategory}'");
+                    books = bookService.SearchBooks(normalizedSearchTerm, normalizedCategory);
+                }
+
+                System.Diagnostics.Debug.WriteLine($"LoadBooksData: Retrieved {books?.Count ?? 0} books from database");
+
+                // Create book cards
+                int cardWidth = 220;
+                int cardHeight = 380;
+                int gap = 20;
+                int cardsPerRow = 4;
+                int startX = 0;
+                int startY = 0;
+                int currentX = startX;
+                int currentY = startY;
+                int row = 0;
+
+                if (books != null && books.Count > 0)
+                {
+                    pnlBooksContainer.SuspendLayout();
+                    int cardsCreated = 0;
+                    foreach (var book in books)
+                    {
+                        try
+                        {
+                            Panel bookCard = CreateBookCard(book, cardWidth, cardHeight);
+                            bookCard.Location = new Point(currentX, currentY);
+                            pnlBooksContainer.Controls.Add(bookCard);
+                            cardsCreated++;
+
+                            // Move to next position
+                            currentX += cardWidth + gap;
+                            if ((row + 1) % cardsPerRow == 0)
+                            {
+                                currentX = startX;
+                                currentY += cardHeight + gap;
+                                row = 0;
+                            }
+                            else
+                            {
+                                row++;
+                            }
+                        }
+                        catch (Exception cardEx)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"LoadBooksData: Error creating card for book '{book?.Title}': {cardEx.Message}");
+                        }
+                    }
+                    pnlBooksContainer.ResumeLayout(true);
+                    System.Diagnostics.Debug.WriteLine($"LoadBooksData: Successfully created {cardsCreated} book cards");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("LoadBooksData: No books to display");
+                }
+
+                // Update container height for scrolling
+                if (books != null && books.Count > 0)
+                {
+                    int totalRows = (int)Math.Ceiling((double)books.Count / cardsPerRow);
+                    int totalHeight = totalRows * (cardHeight + gap) - gap;
+                    pnlBooksContainer.AutoScrollMinSize = new Size(0, totalHeight);
+                }
+
+                // Update statistics
+                var stats = bookService.GetBookStatistics();
+                
+                System.Diagnostics.Debug.WriteLine($"Statistics retrieved: TotalTitles={(stats.ContainsKey("TotalTitles") ? stats["TotalTitles"].ToString() : "N/A")}, " +
+                    $"TotalCopies={(stats.ContainsKey("TotalCopies") ? stats["TotalCopies"].ToString() : "N/A")}, " +
+                    $"AvailableCopies={(stats.ContainsKey("AvailableCopies") ? stats["AvailableCopies"].ToString() : "N/A")}, " +
+                    $"Categories={(stats.ContainsKey("Categories") ? stats["Categories"].ToString() : "N/A")}");
+                
+                // Find and update stat cards
+                bool statsPanelFound = false;
+                foreach (Control control in pnlMainContent.Controls)
+                {
+                    if (control is Panel statsPanel && statsPanel.Tag?.ToString() == "CatalogStatsPanel")
+                    {
+                        statsPanelFound = true;
+                        System.Diagnostics.Debug.WriteLine("Found CatalogStatsPanel");
+                        int cardsFound = 0;
+                        int labelsUpdated = 0;
+                        
+                        foreach (Control statCard in statsPanel.Controls)
+                        {
+                            if (statCard is Panel card)
+                            {
+                                cardsFound++;
+                                foreach (Control label in card.Controls)
+                                {
+                                    if (label is Label lbl && lbl.Tag != null)
+                                    {
+                                        string tag = lbl.Tag.ToString();
+                                        System.Diagnostics.Debug.WriteLine($"Found label with tag: {tag}");
+                                        
+                                        if (tag == "TotalTitles" && stats.ContainsKey("TotalTitles"))
+                                        {
+                                            lbl.Text = stats["TotalTitles"].ToString();
+                                            labelsUpdated++;
+                                            System.Diagnostics.Debug.WriteLine($"Updated TotalTitles to: {stats["TotalTitles"]}");
+                                        }
+                                        else if (tag == "AvailableCopies" && stats.ContainsKey("AvailableCopies"))
+                                        {
+                                            lbl.Text = stats["AvailableCopies"].ToString();
+                                            labelsUpdated++;
+                                            System.Diagnostics.Debug.WriteLine($"Updated AvailableCopies to: {stats["AvailableCopies"]}");
+                                        }
+                                        else if (tag == "TotalCopies" && stats.ContainsKey("TotalCopies"))
+                                        {
+                                            lbl.Text = stats["TotalCopies"].ToString();
+                                            labelsUpdated++;
+                                            System.Diagnostics.Debug.WriteLine($"Updated TotalCopies to: {stats["TotalCopies"]}");
+                                        }
+                                        else if (tag == "Categories" && stats.ContainsKey("Categories"))
+                                        {
+                                            lbl.Text = stats["Categories"].ToString();
+                                            labelsUpdated++;
+                                            System.Diagnostics.Debug.WriteLine($"Updated Categories to: {stats["Categories"]}");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        System.Diagnostics.Debug.WriteLine($"Statistics update complete: Found {cardsFound} cards, Updated {labelsUpdated} labels");
+                        break;
+                    }
+                }
+                
+                if (!statsPanelFound)
+                {
+                    System.Diagnostics.Debug.WriteLine("WARNING: CatalogStatsPanel not found in pnlMainContent.Controls");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading books: {ex.Message}");
+                MessageBox.Show($"Error loading books: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// Creates a book card panel with cover, title, author, category, and action buttons
+        /// </summary>
+        private Panel CreateBookCard(Book book, int width, int height)
+        {
+            Panel card = new Panel
+            {
+                Size = new Size(width, height),
                 BackColor = Color.White,
-                ForeColor = Color.FromArgb(33, 37, 41),
-                Font = new Font("Segoe UI", 9F),
-                Alignment = DataGridViewContentAlignment.MiddleLeft,
-                Padding = new Padding(5, 0, 0, 0),
-                SelectionBackColor = Color.FromArgb(33, 150, 243, 20),
-                SelectionForeColor = Color.FromArgb(33, 37, 41)
+                BorderStyle = BorderStyle.None
             };
-            dgvBooks.AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle
+
+            // Card shadow and border
+            card.Paint += (s, e) =>
             {
-                BackColor = Color.FromArgb(252, 252, 252),
-                ForeColor = Color.FromArgb(33, 37, 41),
-                Font = new Font("Segoe UI", 9F),
-                SelectionBackColor = Color.FromArgb(33, 150, 243, 20),
-                SelectionForeColor = Color.FromArgb(33, 37, 41)
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                
+                // Shadow
+                Rectangle shadowRect = new Rectangle(2, 2, width - 2, height - 2);
+                using (var shadowBrush = new SolidBrush(Color.FromArgb(15, 0, 0, 0)))
+                using (var shadowPath = CreateRoundedRectangle(shadowRect, 8))
+                {
+                    e.Graphics.FillPath(shadowBrush, shadowPath);
+                }
+                
+                // Card
+                Rectangle cardRect = new Rectangle(0, 0, width - 2, height - 2);
+                using (var bgBrush = new SolidBrush(Color.White))
+                using (var cardPath = CreateRoundedRectangle(cardRect, 8))
+                {
+                    e.Graphics.FillPath(bgBrush, cardPath);
+                }
+                
+                // Border
+                using (var borderPen = new Pen(Color.FromArgb(230, 230, 230), 1))
+                using (var borderPath = CreateRoundedRectangle(cardRect, 8))
+                {
+                    e.Graphics.DrawPath(borderPen, borderPath);
+                }
             };
-            dgvBooks.Columns.Add("BookId", "ID");
-            dgvBooks.Columns.Add("Title", "Title");
-            dgvBooks.Columns.Add("Author", "Author");
-            dgvBooks.Columns.Add("ISBN", "ISBN");
-            dgvBooks.Columns.Add("Category", "Category");
-            dgvBooks.Columns.Add("TotalCopies", "Total");
-            dgvBooks.Columns.Add("AvailableCopies", "Available");
-            dgvBooks.Columns["BookId"].Width = 60;
-            dgvBooks.Columns["Title"].Width = 200;
-            dgvBooks.Columns["Author"].Width = 150;
-            dgvBooks.Columns["ISBN"].Width = 120;
-            dgvBooks.Columns["Category"].Width = 100;
-            dgvBooks.Columns["TotalCopies"].Width = 70;
-            dgvBooks.Columns["AvailableCopies"].Width = 80;
-            dgvBooks.Columns["BookId"].Visible = false;
-            pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnAddBookHeader, statsPanel, searchPanel, dgvBooks });
+
+            // Book cover image placeholder
+            Panel pnlCover = new Panel
+            {
+                Location = new Point(10, 10),
+                Size = new Size(width - 20, 180),
+                BackColor = Color.FromArgb(240, 240, 240)
+            };
+            pnlCover.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                // Draw book cover placeholder
+                using (var brush = new SolidBrush(Color.FromArgb(200, 200, 200)))
+                {
+                    e.Graphics.FillRectangle(brush, 0, 0, pnlCover.Width, pnlCover.Height);
+                }
+                // Draw book icon
+                using (var font = new Font("Segoe UI", 48))
+                using (var brush = new SolidBrush(Color.FromArgb(150, 150, 150)))
+                {
+                    e.Graphics.DrawString("📚", font, brush, new RectangleF(0, 0, pnlCover.Width, pnlCover.Height), 
+                        new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+                }
+            };
+
+            // Availability badge
+            Label lblAvailability = new Label
+            {
+                Text = $"{book.AvailableCopies} Available",
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(255, 193, 7),
+                BackColor = Color.FromArgb(255, 248, 220),
+                AutoSize = true,
+                Location = new Point(width - 120, 15),
+                Padding = new Padding(6, 3, 6, 3),
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+            lblAvailability.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (var path = CreateRoundedRectangle(new Rectangle(0, 0, lblAvailability.Width, lblAvailability.Height), 12))
+                using (var brush = new SolidBrush(lblAvailability.BackColor))
+                {
+                    e.Graphics.FillPath(brush, path);
+                }
+                TextRenderer.DrawText(e.Graphics, lblAvailability.Text, lblAvailability.Font, 
+                    new Rectangle(0, 0, lblAvailability.Width, lblAvailability.Height), 
+                    lblAvailability.ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+
+            // Title
+            Label lblTitle = new Label
+            {
+                Text = book.Title,
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(40, 40, 40),
+                Location = new Point(10, 200),
+                Size = new Size(width - 20, 25),
+                AutoEllipsis = true
+            };
+
+            // Author
+            Label lblAuthor = new Label
+            {
+                Text = book.Author,
+                Font = new Font("Segoe UI", 9F),
+                ForeColor = Color.FromArgb(100, 100, 100),
+                Location = new Point(10, 230),
+                Size = new Size(width - 20, 20),
+                AutoEllipsis = true
+            };
+
+            // Category tag
+            Label lblCategory = new Label
+            {
+                Text = book.Category ?? "Uncategorized",
+                Font = new Font("Segoe UI", 8F),
+                ForeColor = Color.FromArgb(100, 100, 100),
+                BackColor = Color.FromArgb(245, 245, 245),
+                AutoSize = true,
+                Location = new Point(10, 255),
+                Padding = new Padding(8, 4, 8, 4),
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+            lblCategory.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (var path = CreateRoundedRectangle(new Rectangle(0, 0, lblCategory.Width, lblCategory.Height), 10))
+                using (var brush = new SolidBrush(lblCategory.BackColor))
+                {
+                    e.Graphics.FillPath(brush, path);
+                }
+                TextRenderer.DrawText(e.Graphics, lblCategory.Text, lblCategory.Font, 
+                    new Rectangle(0, 0, lblCategory.Width, lblCategory.Height), 
+                    lblCategory.ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+
+            // Action buttons container
+            Panel pnlActions = new Panel
+            {
+                Location = new Point(10, height - 45),
+                Size = new Size(width - 20, 35),
+                BackColor = Color.Transparent
+            };
+
+            // View button
+            Label btnView = new Label
+            {
+                Text = "👁",
+                Font = new Font("Segoe UI", 16F),
+                Size = new Size(35, 35),
+                Location = new Point(0, 0),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Cursor = Cursors.Hand,
+                Tag = book.BookId
+            };
+            btnView.MouseEnter += (s, e) => btnView.BackColor = Color.FromArgb(240, 240, 240);
+            btnView.MouseLeave += (s, e) => btnView.BackColor = Color.Transparent;
+            btnView.Click += (s, e) => {
+                ShowViewBookDialog(book.BookId);
+            };
+
+            // Edit button
+            Label btnEdit = new Label
+            {
+                Text = "✏️",
+                Font = new Font("Segoe UI", 16F),
+                Size = new Size(35, 35),
+                Location = new Point(40, 0),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Cursor = Cursors.Hand,
+                Tag = book.BookId
+            };
+            btnEdit.MouseEnter += (s, e) => btnEdit.BackColor = Color.FromArgb(240, 240, 240);
+            btnEdit.MouseLeave += (s, e) => btnEdit.BackColor = Color.Transparent;
+            btnEdit.Click += (s, e) => {
+                ShowEditBookDialog(book.BookId);
+            };
+
+            pnlActions.Controls.AddRange(new Control[] { btnView, btnEdit });
+
+            card.Controls.AddRange(new Control[] { pnlCover, lblAvailability, lblTitle, lblAuthor, lblCategory, pnlActions });
+
+            return card;
+        }
+
+        /// <summary>
+        /// Shows the View Book dialog with full book details from database
+        /// </summary>
+        private void ShowViewBookDialog(int bookId)
+        {
+            try
+            {
+                // Get book data from database
+                var bookService = new LMS_Library_Management_System.Service.BookService();
+                var book = bookService.GetBookById(bookId);
+
+                if (book == null)
+                {
+                    MessageBox.Show("Book not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                // Calculate derived values
+                int borrowed = book.TotalCopies - book.AvailableCopies;
+                string accessionNumber = $"ACC-{book.CreatedDate.Year}-{book.BookId:D5}";
+                string callNumber = GenerateCallNumber(book.Category, book.Author, book.Title);
+                
+                // Create form
+                Form viewForm = new Form
+                {
+                    Text = "",
+                    Size = new Size(800, 900),
+                    StartPosition = FormStartPosition.CenterParent,
+                    FormBorderStyle = FormBorderStyle.None,
+                    BackColor = Color.FromArgb(245, 240, 235),
+                    ShowInTaskbar = false
+                };
+
+                // Border
+                viewForm.Paint += (s, e) =>
+                {
+                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    using (Pen p = new Pen(Color.FromArgb(200, 200, 200), 1))
+                    {
+                        e.Graphics.DrawRectangle(p, 0, 0, viewForm.Width - 1, viewForm.Height - 1);
+                    }
+                };
+
+                // Close button (X)
+                Label btnCloseX = new Label
+                {
+                    Text = "×",
+                    Font = new Font("Arial", 18),
+                    ForeColor = Color.Gray,
+                    Location = new Point(viewForm.Width - 40, 10),
+                    Size = new Size(30, 30),
+                    Cursor = Cursors.Hand,
+                    TextAlign = ContentAlignment.MiddleCenter
+                };
+                btnCloseX.Click += (s, e) => viewForm.Close();
+                btnCloseX.MouseEnter += (s, e) => btnCloseX.ForeColor = Color.Black;
+                btnCloseX.MouseLeave += (s, e) => btnCloseX.ForeColor = Color.Gray;
+                viewForm.Controls.Add(btnCloseX);
+
+                // Header: Title and Accession Number
+                Label lblBookTitle = new Label
+                {
+                    Text = book.Title,
+                    Font = new Font("Segoe UI", 20F, FontStyle.Bold),
+                    ForeColor = Color.FromArgb(40, 40, 40),
+                    Location = new Point(30, 20),
+                    AutoSize = true
+                };
+                viewForm.Controls.Add(lblBookTitle);
+
+                Label lblAccession = new Label
+                {
+                    Text = accessionNumber,
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.Gray,
+                    Location = new Point(30, 50),
+                    AutoSize = true
+                };
+                viewForm.Controls.Add(lblAccession);
+
+                // Main content panel (scrollable)
+                Panel mainContent = new Panel
+                {
+                    Location = new Point(0, 80),
+                    Size = new Size(viewForm.Width, viewForm.Height - 150),
+                    AutoScroll = true,
+                    BackColor = Color.Transparent
+                };
+
+                // Book Info Section (Top)
+                Panel pnlBookInfo = new Panel
+                {
+                    Location = new Point(30, 20),
+                    Size = new Size(viewForm.Width - 60, 180),
+                    BackColor = Color.White
+                };
+                pnlBookInfo.Paint += (s, e) =>
+                {
+                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    using (var path = CreateRoundedRectangle(new Rectangle(0, 0, pnlBookInfo.Width - 1, pnlBookInfo.Height - 1), 8))
+                    using (var brush = new SolidBrush(Color.White))
+                    {
+                        e.Graphics.FillPath(brush, path);
+                    }
+                    using (var pen = new Pen(Color.FromArgb(230, 230, 230), 1))
+                    using (var path = CreateRoundedRectangle(new Rectangle(0, 0, pnlBookInfo.Width - 1, pnlBookInfo.Height - 1), 8))
+                    {
+                        e.Graphics.DrawPath(pen, path);
+                    }
+                };
+
+                // Book cover placeholder
+                Panel pnlCover = new Panel
+                {
+                    Location = new Point(20, 20),
+                    Size = new Size(120, 140),
+                    BackColor = Color.FromArgb(240, 240, 240)
+                };
+                pnlCover.Paint += (s, e) =>
+                {
+                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    using (var brush = new SolidBrush(Color.FromArgb(200, 200, 200)))
+                    {
+                        e.Graphics.FillRectangle(brush, 0, 0, pnlCover.Width, pnlCover.Height);
+                    }
+                    using (var font = new Font("Segoe UI", 36))
+                    using (var brush = new SolidBrush(Color.FromArgb(150, 150, 150)))
+                    {
+                        e.Graphics.DrawString("📚", font, brush, new RectangleF(0, 0, pnlCover.Width, pnlCover.Height),
+                            new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+                    }
+                };
+
+                // Book details (right of cover)
+                Label lblTitle = new Label
+            {
+                    Text = book.Title,
+                    Font = new Font("Segoe UI", 16F, FontStyle.Bold),
+                    ForeColor = Color.FromArgb(40, 40, 40),
+                    Location = new Point(160, 20),
+                    AutoSize = true
+                };
+
+                Label lblSubtitle = new Label
+                {
+                    Text = ExtractSubtitle(book.Description) ?? "",
+                    Font = new Font("Segoe UI", 11F),
+                    ForeColor = Color.FromArgb(100, 100, 100),
+                    Location = new Point(160, 50),
+                    AutoSize = true
+                };
+
+                Label lblAuthor = new Label
+                {
+                    Text = $"by {book.Author}",
+                Font = new Font("Segoe UI", 10F),
+                    ForeColor = Color.FromArgb(100, 100, 100),
+                    Location = new Point(160, 80),
+                    AutoSize = true
+                };
+
+                // Badges
+                Label lblAvailabilityBadge = new Label
+                {
+                    Text = $"{book.AvailableCopies} Available",
+                    Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                    ForeColor = Color.FromArgb(255, 152, 0),
+                    BackColor = Color.FromArgb(255, 248, 220),
+                    AutoSize = true,
+                    Location = new Point(160, 110),
+                    Padding = new Padding(10, 5, 10, 5),
+                    TextAlign = ContentAlignment.MiddleCenter
+                };
+                lblAvailabilityBadge.Paint += (s, e) =>
+                {
+                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    using (var path = CreateRoundedRectangle(new Rectangle(0, 0, lblAvailabilityBadge.Width, lblAvailabilityBadge.Height), 15))
+                    using (var brush = new SolidBrush(lblAvailabilityBadge.BackColor))
+                    {
+                        e.Graphics.FillPath(brush, path);
+                    }
+                    TextRenderer.DrawText(e.Graphics, lblAvailabilityBadge.Text, lblAvailabilityBadge.Font,
+                        new Rectangle(0, 0, lblAvailabilityBadge.Width, lblAvailabilityBadge.Height),
+                        lblAvailabilityBadge.ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                };
+
+                Label lblCategoryBadge = new Label
+                {
+                    Text = book.Category ?? "Uncategorized",
+                    Font = new Font("Segoe UI", 9F),
+                    ForeColor = Color.FromArgb(100, 100, 100),
+                    BackColor = Color.FromArgb(245, 245, 245),
+                    AutoSize = true,
+                    Location = new Point(160, 145),
+                    Padding = new Padding(10, 5, 10, 5),
+                    TextAlign = ContentAlignment.MiddleCenter
+                };
+                lblCategoryBadge.Paint += (s, e) =>
+                {
+                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    using (var path = CreateRoundedRectangle(new Rectangle(0, 0, lblCategoryBadge.Width, lblCategoryBadge.Height), 15))
+                    using (var brush = new SolidBrush(lblCategoryBadge.BackColor))
+                    {
+                        e.Graphics.FillPath(brush, path);
+                    }
+                    TextRenderer.DrawText(e.Graphics, lblCategoryBadge.Text, lblCategoryBadge.Font,
+                        new Rectangle(0, 0, lblCategoryBadge.Width, lblCategoryBadge.Height),
+                        lblCategoryBadge.ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                };
+
+                Label lblTypeBadge = new Label
+                {
+                    Text = "Book",
+                    Font = new Font("Segoe UI", 9F),
+                    ForeColor = Color.FromArgb(100, 100, 100),
+                    BackColor = Color.FromArgb(245, 245, 245),
+                    AutoSize = true,
+                    Location = new Point(280, 145),
+                    Padding = new Padding(10, 5, 10, 5),
+                    TextAlign = ContentAlignment.MiddleCenter
+                };
+                lblTypeBadge.Paint += (s, e) =>
+                {
+                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    using (var path = CreateRoundedRectangle(new Rectangle(0, 0, lblTypeBadge.Width, lblTypeBadge.Height), 15))
+                    using (var brush = new SolidBrush(lblTypeBadge.BackColor))
+                    {
+                        e.Graphics.FillPath(brush, path);
+                    }
+                    TextRenderer.DrawText(e.Graphics, lblTypeBadge.Text, lblTypeBadge.Font,
+                        new Rectangle(0, 0, lblTypeBadge.Width, lblTypeBadge.Height),
+                        lblTypeBadge.ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                };
+
+                pnlBookInfo.Controls.AddRange(new Control[] { pnlCover, lblTitle, lblSubtitle, lblAuthor, lblAvailabilityBadge, lblCategoryBadge, lblTypeBadge });
+
+                // Book Details Card
+                Panel pnlBookDetails = CreateDetailCard("Book Details", new Point(30, 220), new Size(360, 200));
+                AddDetailRow(pnlBookDetails, "ISBN:", book.ISBN ?? "N/A", 20);
+                AddDetailRow(pnlBookDetails, "Call Number:", callNumber, 50);
+                AddDetailRow(pnlBookDetails, "Publisher:", book.Publisher ?? "N/A", 80);
+                AddDetailRow(pnlBookDetails, "Year:", book.PublicationYear?.ToString() ?? "N/A", 110);
+                AddDetailRow(pnlBookDetails, "Pages:", "N/A", 140); // Not in database
+                AddDetailRow(pnlBookDetails, "Language:", "English", 170); // Default or from database if added
+
+                // Inventory Card
+                Panel pnlInventory = CreateDetailCard("Inventory", new Point(410, 220), new Size(360, 200));
+                AddDetailRow(pnlInventory, "Location:", "Section D, Shelf 1", 20); // Placeholder - not in database
+                AddDetailRow(pnlInventory, "Total Copies:", book.TotalCopies.ToString(), 50);
+                Label lblAvailable = AddDetailRow(pnlInventory, "Available:", book.AvailableCopies.ToString(), 80);
+                lblAvailable.ForeColor = Color.FromArgb(76, 175, 80);
+                AddDetailRow(pnlInventory, "Borrowed:", borrowed.ToString(), 110);
+                AddDetailRow(pnlInventory, "Added:", book.CreatedDate.ToString("MMM d, yyyy"), 140);
+
+                // Description Card
+                Panel pnlDescription = CreateDetailCard("Description", new Point(30, 440), new Size(740, 120));
+                Label lblDescription = new Label
+                {
+                    Text = !string.IsNullOrWhiteSpace(book.Description) ? book.Description : "No description available.",
+                    Font = new Font("Segoe UI", 10F),
+                    ForeColor = Color.FromArgb(60, 60, 60),
+                    Location = new Point(20, 50),
+                    Size = new Size(700, 60),
+                    AutoEllipsis = true
+                };
+                pnlDescription.Controls.Add(lblDescription);
+
+                // Add Copies Section
+                Panel pnlAddCopies = new Panel
+            {
+                    Location = new Point(30, 580),
+                    Size = new Size(740, 80),
+                    BackColor = Color.White
+                };
+                pnlAddCopies.Paint += (s, e) =>
+                {
+                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    using (var path = CreateRoundedRectangle(new Rectangle(0, 0, pnlAddCopies.Width - 1, pnlAddCopies.Height - 1), 8))
+                    using (var brush = new SolidBrush(Color.White))
+                    {
+                        e.Graphics.FillPath(brush, path);
+                    }
+                    using (var pen = new Pen(Color.FromArgb(230, 230, 230), 1))
+                    using (var path = CreateRoundedRectangle(new Rectangle(0, 0, pnlAddCopies.Width - 1, pnlAddCopies.Height - 1), 8))
+                    {
+                        e.Graphics.DrawPath(pen, path);
+                    }
+                };
+
+                Label lblAddCopiesTitle = new Label
+                {
+                    Text = "Add Copies",
+                    Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                    ForeColor = Color.FromArgb(40, 40, 40),
+                    Location = new Point(20, 20),
+                    AutoSize = true
+                };
+
+                // Numeric input for copies
+                Panel pnlCopiesInput = new Panel
+                {
+                    Location = new Point(20, 45),
+                    Size = new Size(120, 30),
+                    BackColor = Color.FromArgb(245, 245, 245)
+                };
+                TextBox txtCopies = new TextBox
+                {
+                    Text = "1",
+                    Font = new Font("Segoe UI", 10F),
+                BorderStyle = BorderStyle.None,
+                    BackColor = Color.FromArgb(245, 245, 245),
+                    Location = new Point(10, 5),
+                    Size = new Size(60, 20),
+                    TextAlign = HorizontalAlignment.Center
+                };
+                txtCopies.KeyPress += (s, e) =>
+                {
+                    if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
+                        e.Handled = true;
+                };
+
+                // Up/Down buttons
+                Label btnUp = new Label
+                {
+                    Text = "▲",
+                    Font = new Font("Segoe UI", 8F),
+                    ForeColor = Color.Gray,
+                    Location = new Point(75, 2),
+                    Size = new Size(15, 13),
+                    TextAlign = ContentAlignment.MiddleCenter,
+                    Cursor = Cursors.Hand
+                };
+                btnUp.Click += (s, e) =>
+                {
+                    if (int.TryParse(txtCopies.Text, out int val))
+                    {
+                        txtCopies.Text = (val + 1).ToString();
+                    }
+                };
+
+                Label btnDown = new Label
+                {
+                    Text = "▼",
+                    Font = new Font("Segoe UI", 8F),
+                    ForeColor = Color.Gray,
+                    Location = new Point(75, 15),
+                    Size = new Size(15, 13),
+                    TextAlign = ContentAlignment.MiddleCenter,
+                    Cursor = Cursors.Hand
+                };
+                btnDown.Click += (s, e) =>
+                {
+                    if (int.TryParse(txtCopies.Text, out int val) && val > 1)
+                    {
+                        txtCopies.Text = (val - 1).ToString();
+                    }
+                };
+
+                pnlCopiesInput.Controls.AddRange(new Control[] { txtCopies, btnUp, btnDown });
+
+                Button btnAddCopies = new Button
+                {
+                    Text = "+ Add Copies",
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                    ForeColor = Color.White,
+                    BackColor = ThemeConstants.PrimaryMaroon,
+                    FlatStyle = FlatStyle.Flat,
+                    Location = new Point(150, 45),
+                    Size = new Size(130, 30),
+                    Cursor = Cursors.Hand
+                };
+                btnAddCopies.FlatAppearance.BorderSize = 0;
+                btnAddCopies.Click += (s, e) =>
+                {
+                    if (int.TryParse(txtCopies.Text, out int copies) && copies > 0)
+                    {
+                        try
+                        {
+                            // Add copies to database
+                            if (bookService.AddCopies(bookId, copies))
+                            {
+                                string copyText = copies == 1 ? "copy" : "copies";
+                                int newTotal = book.TotalCopies + copies;
+                                int newAvailable = book.AvailableCopies + copies;
+                                
+                                MessageBox.Show(
+                                    $"Successfully added {copies} {copyText} to {book.Title}.\n\nTotal copies: {newTotal}\nAvailable copies: {newAvailable}",
+                                    "Add Copies",
+                                    MessageBoxButtons.OK,
+                                    MessageBoxIcon.Information
+                                );
+                                
+                                // Close the dialog and refresh the book list
+                                viewForm.Close();
+                                
+                                // Refresh book list, statistics, and category filter if we're in Catalog view
+                                if (pnlMainContent.Tag?.ToString() == "CatalogView")
+                                {
+                                    LoadBooksData();
+                                    UpdateCatalogStatistics();
+                                    RefreshCategoryFilter();
+                                }
+                            }
+                            else
+                            {
+                                MessageBox.Show("Failed to add copies. Book may not exist.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show($"Error adding copies: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            System.Diagnostics.Debug.WriteLine($"Error in AddCopies: {ex.Message}");
+                        }
+                    }
+                    else
+                    {
+                        MessageBox.Show("Please enter a valid number of copies (greater than 0).", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
+                };
+
+                pnlAddCopies.Controls.AddRange(new Control[] { lblAddCopiesTitle, pnlCopiesInput, btnAddCopies });
+
+                mainContent.Controls.AddRange(new Control[] { pnlBookInfo, pnlBookDetails, pnlInventory, pnlDescription, pnlAddCopies });
+                viewForm.Controls.Add(mainContent);
+
+                // Footer buttons
+                Panel pnlFooter = new Panel
+                {
+                    Dock = DockStyle.Bottom,
+                    Height = 70,
+                    BackColor = Color.FromArgb(245, 240, 235)
+            };
+
+                Button btnClose = new Button
+                {
+                    Text = "Close",
+                    Font = new Font("Segoe UI", 10F),
+                    ForeColor = Color.Black,
+                BackColor = Color.White,
+                    FlatStyle = FlatStyle.Flat,
+                    Location = new Point(viewForm.Width - 350, 20),
+                    Size = new Size(100, 35),
+                    Cursor = Cursors.Hand
+                };
+                btnClose.Click += (s, e) => viewForm.Close();
+
+                Button btnDelete = new Button
+                {
+                    Text = "🗑 Delete Book",
+                    Font = new Font("Segoe UI", 10F),
+                    ForeColor = Color.White,
+                    BackColor = Color.FromArgb(244, 67, 54),
+                    FlatStyle = FlatStyle.Flat,
+                    Location = new Point(viewForm.Width - 240, 20),
+                    Size = new Size(130, 35),
+                    Cursor = Cursors.Hand
+                };
+                btnDelete.FlatAppearance.BorderSize = 0;
+                btnDelete.Click += (s, e) =>
+                {
+                    DialogResult result = MessageBox.Show(
+                        $"Are you sure you want to delete '{book.Title}'?\n\nThis action cannot be undone.",
+                        "Delete Book",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Warning,
+                        MessageBoxDefaultButton.Button2
+                    );
+                    if (result == DialogResult.Yes)
+                    {
+                        try
+                        {
+                            if (bookService.DeleteBook(bookId))
+                            {
+                                MessageBox.Show("Book deleted successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                viewForm.Close();
+                                // Refresh book list, statistics, and category filter
+                                if (pnlMainContent.Tag?.ToString() == "CatalogView")
+                                {
+                                    LoadBooksData();
+                                    UpdateCatalogStatistics();
+                                    RefreshCategoryFilter();
+                                }
+                            }
+                            else
+                            {
+                                MessageBox.Show("Failed to delete book. It may have active borrowings.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show($"Error deleting book: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                };
+
+                Button btnEdit = new Button
+                {
+                    Text = "✏️ Edit Book",
+                    Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                    ForeColor = Color.White,
+                    BackColor = ThemeConstants.PrimaryMaroon,
+                    FlatStyle = FlatStyle.Flat,
+                    Location = new Point(viewForm.Width - 110, 20),
+                    Size = new Size(110, 35),
+                    Cursor = Cursors.Hand
+                };
+                btnEdit.FlatAppearance.BorderSize = 0;
+                btnEdit.Click += (s, e) =>
+                {
+                    viewForm.Close();
+                    ShowEditBookDialog(bookId);
+                };
+
+                pnlFooter.Controls.AddRange(new Control[] { btnClose, btnDelete, btnEdit });
+                viewForm.Controls.Add(pnlFooter);
+
+                viewForm.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading book details: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"Error in ShowViewBookDialog: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Shows the Edit Book dialog with form fields connected to database
+        /// </summary>
+        private void ShowEditBookDialog(int bookId)
+        {
+            try
+            {
+                // Get book data from database
+                var bookService = new LMS_Library_Management_System.Service.BookService();
+                var book = bookService.GetBookById(bookId);
+
+                if (book == null)
+                {
+                    MessageBox.Show("Book not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                string description = book.Description ?? "";
+
+                // Create form
+                Form editForm = new Form
+                {
+                    Text = "",
+                    Size = new Size(600, 650),
+                    StartPosition = FormStartPosition.CenterParent,
+                    FormBorderStyle = FormBorderStyle.None,
+                    BackColor = Color.FromArgb(245, 240, 235),
+                    ShowInTaskbar = false
+                };
+
+                // Border
+                editForm.Paint += (s, e) =>
+                {
+                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    using (Pen p = new Pen(Color.FromArgb(200, 200, 200), 1))
+                    {
+                        e.Graphics.DrawRectangle(p, 0, 0, editForm.Width - 1, editForm.Height - 1);
+                    }
+                };
+
+                // Close button (X)
+                Label btnCloseX = new Label
+                {
+                    Text = "×",
+                    Font = new Font("Arial", 18),
+                    ForeColor = Color.Gray,
+                    Location = new Point(editForm.Width - 40, 10),
+                    Size = new Size(30, 30),
+                    Cursor = Cursors.Hand,
+                    TextAlign = ContentAlignment.MiddleCenter
+                };
+                btnCloseX.Click += (s, e) => editForm.Close();
+                btnCloseX.MouseEnter += (s, e) => btnCloseX.ForeColor = Color.Black;
+                btnCloseX.MouseLeave += (s, e) => btnCloseX.ForeColor = Color.Gray;
+                editForm.Controls.Add(btnCloseX);
+
+                // Header: Title and Accession Number
+                Label lblDialogTitle = new Label
+                {
+                    Text = "Edit Book",
+                    Font = new Font("Segoe UI", 20F, FontStyle.Bold),
+                    ForeColor = Color.FromArgb(40, 40, 40),
+                    Location = new Point(30, 20),
+                    AutoSize = true
+                };
+                editForm.Controls.Add(lblDialogTitle);
+
+                string accessionNumber = $"ACC-{book.CreatedDate.Year}-{book.BookId:D5}";
+                Label lblAccession = new Label
+                {
+                    Text = accessionNumber,
+                    Font = new Font("Segoe UI", 10F),
+                    ForeColor = Color.Gray,
+                    Location = new Point(30, 50),
+                    AutoSize = true
+                };
+                editForm.Controls.Add(lblAccession);
+
+                // Main content panel (scrollable)
+                Panel mainContent = new Panel
+                {
+                    Location = new Point(0, 80),
+                    Size = new Size(editForm.Width, editForm.Height - 150),
+                    AutoScroll = true,
+                    BackColor = Color.Transparent
+                };
+
+                int yPos = 20;
+
+                // Title field
+                Label lblTitle = new Label
+                {
+                    Text = "Title",
+                    Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                    ForeColor = Color.FromArgb(60, 60, 60),
+                    Location = new Point(30, yPos),
+                    AutoSize = true
+                };
+                TextBox txtTitle = new TextBox
+                {
+                    Text = book.Title,
+                    Font = new Font("Segoe UI", 10F),
+                    Location = new Point(30, yPos + 25),
+                    Size = new Size(540, 30),
+                    BorderStyle = BorderStyle.FixedSingle
+                };
+                yPos += 70;
+
+                // Language field (ComboBox with DropDown style for type-ahead)
+                Label lblLanguage = new Label
+                {
+                    Text = "Language",
+                    Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                    ForeColor = Color.FromArgb(60, 60, 60),
+                    Location = new Point(30, yPos),
+                    AutoSize = true
+                };
+                ComboBox cmbLanguage = new ComboBox
+                {
+                    DropDownStyle = ComboBoxStyle.DropDown,
+                    Font = new Font("Segoe UI", 10F),
+                    Location = new Point(30, yPos + 25),
+                    Size = new Size(540, 30),
+                    Items = { "English", "Tagalog", "Cebuano", "Spanish" }
+                };
+                if (!string.IsNullOrWhiteSpace(book.Description) && book.Description.Contains("Language:"))
+                {
+                    // Try to extract language from description if stored there
+                    var langMatch = System.Text.RegularExpressions.Regex.Match(book.Description, @"Language:\s*(\w+)");
+                    if (langMatch.Success)
+                    {
+                        cmbLanguage.Text = langMatch.Groups[1].Value;
+                    }
+                    else
+                    {
+                        cmbLanguage.Text = "English";
+                    }
+                }
+                else
+                {
+                    cmbLanguage.Text = "English";
+                }
+                yPos += 70;
+
+                // Location field
+                Label lblLocation = new Label
+                {
+                    Text = "Location",
+                    Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                    ForeColor = Color.FromArgb(60, 60, 60),
+                    Location = new Point(30, yPos),
+                    AutoSize = true
+                };
+                TextBox txtLocation = new TextBox
+                {
+                    Text = "Section D, Shelf 1", // Placeholder - not in database yet
+                    Font = new Font("Segoe UI", 10F),
+                    Location = new Point(30, yPos + 25),
+                    Size = new Size(540, 30),
+                    BorderStyle = BorderStyle.FixedSingle
+                };
+                yPos += 70;
+
+                // Description field (multiline)
+                Label lblDescription = new Label
+                {
+                    Text = "Description",
+                    Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                    ForeColor = Color.FromArgb(60, 60, 60),
+                    Location = new Point(30, yPos),
+                    AutoSize = true
+                };
+                TextBox txtDescription = new TextBox
+                {
+                    Text = description,
+                    Font = new Font("Segoe UI", 10F),
+                    Location = new Point(30, yPos + 25),
+                    Size = new Size(540, 120),
+                    Multiline = true,
+                    ScrollBars = ScrollBars.Vertical,
+                    BorderStyle = BorderStyle.FixedSingle
+                };
+                yPos += 150;
+
+                mainContent.Controls.AddRange(new Control[] { 
+                    lblTitle, txtTitle, 
+                    lblLanguage, cmbLanguage, 
+                    lblLocation, txtLocation, 
+                    lblDescription, txtDescription 
+                });
+                editForm.Controls.Add(mainContent);
+
+                // Footer buttons
+                Panel pnlFooter = new Panel
+                {
+                    Dock = DockStyle.Bottom,
+                    Height = 70,
+                    BackColor = Color.FromArgb(245, 240, 235)
+                };
+
+                Button btnCancel = new Button
+                {
+                    Text = "Cancel",
+                    Font = new Font("Segoe UI", 10F),
+                    ForeColor = Color.Black,
+                    BackColor = Color.White,
+                    FlatStyle = FlatStyle.Flat,
+                    Location = new Point(editForm.Width - 250, 20),
+                    Size = new Size(100, 35),
+                    Cursor = Cursors.Hand
+                };
+                btnCancel.Click += (s, e) => editForm.Close();
+
+                Button btnSave = new Button
+                {
+                    Text = "Save Changes",
+                    Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                    ForeColor = Color.White,
+                    BackColor = ThemeConstants.PrimaryMaroon,
+                    FlatStyle = FlatStyle.Flat,
+                    Location = new Point(editForm.Width - 140, 20),
+                    Size = new Size(120, 35),
+                    Cursor = Cursors.Hand
+                };
+                btnSave.FlatAppearance.BorderSize = 0;
+                btnSave.Click += (s, e) =>
+                {
+                    try
+                    {
+                        // Validate required fields
+                        if (string.IsNullOrWhiteSpace(txtTitle.Text))
+                        {
+                            MessageBox.Show("Title is required.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            txtTitle.Focus();
+                            return;
+                        }
+
+                        // Combine language and location with description for storage
+                        // (Until Language, Location are added to database)
+                        string updatedDescription = txtDescription.Text.Trim();
+                        if (!string.IsNullOrWhiteSpace(cmbLanguage.Text))
+                        {
+                            updatedDescription += $"\n\nLanguage: {cmbLanguage.Text.Trim()}";
+                        }
+                        if (!string.IsNullOrWhiteSpace(txtLocation.Text))
+                        {
+                            updatedDescription += $"\n\nLocation: {txtLocation.Text.Trim()}";
+                        }
+
+                        // Update book in database
+                        // Note: Currently only Title and Description are in database
+                        // Language, Location are stored in Description until DB schema is updated
+                        if (bookService.UpdateBook(
+                            bookId,
+                            book.ISBN, // Keep existing ISBN
+                            txtTitle.Text.Trim(),
+                            book.Author, // Keep existing Author
+                            book.Publisher, // Keep existing Publisher
+                            book.PublicationYear, // Keep existing Year
+                            book.Category, // Keep existing Category
+                            book.TotalCopies, // Keep existing TotalCopies
+                            book.AvailableCopies, // Keep existing AvailableCopies
+                            updatedDescription))
+                        {
+                            MessageBox.Show(
+                                "Book updated successfully.",
+                                "Success",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Information
+                            );
+                            
+                            editForm.Close();
+                            
+                            // Refresh book list and statistics if we're in Catalog view
+                            if (pnlMainContent.Tag?.ToString() == "CatalogView")
+                            {
+                                LoadBooksData();
+                                UpdateCatalogStatistics();
+                            }
+                        }
+                        else
+                        {
+                            MessageBox.Show("Failed to update book.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Error updating book: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        System.Diagnostics.Debug.WriteLine($"Error in Save Changes: {ex.Message}");
+                    }
+                };
+
+                pnlFooter.Controls.AddRange(new Control[] { btnCancel, btnSave });
+                editForm.Controls.Add(pnlFooter);
+
+                editForm.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading book for editing: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"Error in ShowEditBookDialog: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Creates a detail card panel
+        /// </summary>
+        private Panel CreateDetailCard(string title, Point location, Size size)
+        {
+            Panel card = new Panel
+            {
+                Location = location,
+                Size = size,
+                BackColor = Color.White
+            };
+            card.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (var path = CreateRoundedRectangle(new Rectangle(0, 0, card.Width - 1, card.Height - 1), 8))
+                using (var brush = new SolidBrush(Color.White))
+                {
+                    e.Graphics.FillPath(brush, path);
+                }
+                using (var pen = new Pen(Color.FromArgb(230, 230, 230), 1))
+                using (var path = CreateRoundedRectangle(new Rectangle(0, 0, card.Width - 1, card.Height - 1), 8))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+
+            Label lblTitle = new Label
+            {
+                Text = title,
+                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(40, 40, 40),
+                Location = new Point(20, 15),
+                AutoSize = true
+            };
+            card.Controls.Add(lblTitle);
+
+            return card;
+        }
+
+        /// <summary>
+        /// Adds a detail row to a card
+        /// </summary>
+        private Label AddDetailRow(Panel card, string label, string value, int y)
+        {
+            Label lblLabel = new Label
+            {
+                Text = label,
+                Font = new Font("Segoe UI", 9F),
+                ForeColor = Color.FromArgb(100, 100, 100),
+                Location = new Point(20, y),
+                AutoSize = true
+            };
+
+            Label lblValue = new Label
+            {
+                Text = value,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(40, 40, 40),
+                Location = new Point(150, y),
+                AutoSize = true
+            };
+
+            card.Controls.Add(lblLabel);
+            card.Controls.Add(lblValue);
+
+            return lblValue;
+        }
+
+        /// <summary>
+        /// Generates a call number from category, author, and title
+        /// </summary>
+        private string GenerateCallNumber(string category, string author, string title)
+        {
+            if (string.IsNullOrWhiteSpace(category) || string.IsNullOrWhiteSpace(author) || string.IsNullOrWhiteSpace(title))
+                return "N/A";
+
+            string catPrefix = category.Length >= 3 ? category.Substring(0, 3).ToUpper() : category.ToUpper();
+            string authorPrefix = author.Split(' ').Length > 0 ? author.Split(' ').Last().Substring(0, Math.Min(3, author.Split(' ').Last().Length)).ToUpper() : "UNK";
+            string titlePrefix = title.Length >= 3 ? title.Substring(0, 3).ToUpper() : title.ToUpper();
+
+            return $"{catPrefix}-{authorPrefix}-{titlePrefix}";
+        }
+
+        /// <summary>
+        /// Extracts subtitle from description if available
+        /// </summary>
+        private string ExtractSubtitle(string description)
+        {
+            if (string.IsNullOrWhiteSpace(description))
+                return null;
+
+            // Try to extract subtitle (first sentence or line)
+            string[] lines = description.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+            if (lines.Length > 0 && lines[0].Length < 100)
+                return lines[0];
+
+            return null;
         }
 
         private void ShowCirculationView()
@@ -7034,7 +8828,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
 
 
-        private Panel CreateCatalogStatCard(string icon, string value, string label, Color accentColor, Point location)
+        private Panel CreateCatalogStatCard(string icon, string value, string label, Color accentColor, Point location, string tag = null)
 
         {
 
@@ -7130,7 +8924,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
                 TextAlign = ContentAlignment.MiddleLeft,
 
-                Tag = "Value",
+                Tag = !string.IsNullOrEmpty(tag) ? tag : "Value",
 
                 BackColor = Color.Transparent
 
@@ -7534,11 +9328,13 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             AddLabel("Title *", col1, y);
 
-            AddInput("Book title", col1, y, w1);
+            Control txtTitleControl = AddInput("Book title", col1, y, w1);
+            TextBox txtTitle = txtTitleControl as TextBox ?? (txtTitleControl.Parent.Controls[0] as TextBox);
 
             AddLabel("Subtitle", col2, y);
 
-            AddInput("Optional subtitle", col2, y, w1);
+            Control txtSubtitleControl = AddInput("Optional subtitle", col2, y, w1);
+            TextBox txtSubtitle = txtSubtitleControl as TextBox ?? (txtSubtitleControl.Parent.Controls[0] as TextBox);
 
             y += 75;
 
@@ -7548,7 +9344,110 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             AddLabel("ISBN *", col1, y);
 
-            AddInput("978-0-00-000000-0", col1, y, w1);
+            // Custom ISBN Input with auto-formatting and validation
+            Panel pnlISBN = new Panel();
+            pnlISBN.Location = new Point(col1, y + 25);
+            pnlISBN.Size = new Size(w1, 40);
+            pnlISBN.BackColor = Color.White;
+            pnlISBN.Padding = new Padding(10, 8, 10, 5);
+
+            TextBox txtISBN = new TextBox();
+            txtISBN.BorderStyle = BorderStyle.None;
+            txtISBN.Font = new Font("Segoe UI", 10F);
+            txtISBN.Dock = DockStyle.Fill;
+            txtISBN.BackColor = Color.White;
+            txtISBN.Name = "txtISBN"; // Name for identification
+            txtISBN.SetPlaceholder("978-0-00-000000-0");
+            
+            // Auto-generate ISBN when form loads
+            string generatedISBN = GenerateISBN();
+            txtISBN.SetActualText(generatedISBN);
+
+            // Auto-formatting on text change
+            txtISBN.TextChanged += (s, e) => {
+                if (txtISBN.Focused)
+                {
+                    string currentText = txtISBN.Text;
+                    string placeholder = "";
+                    if (txtISBN.Tag is Helper.PlaceholderTextHelper.PlaceholderData data)
+                    {
+                        placeholder = data.PlaceholderText;
+                    }
+                    
+                    // Don't format if it's placeholder text
+                    if (currentText == placeholder)
+                        return;
+
+                    int cursorPos = txtISBN.SelectionStart;
+                    string cleanText = System.Text.RegularExpressions.Regex.Replace(currentText, @"[^\dX]", "");
+                    
+                    // Only format if we have enough digits
+                    if (cleanText.Length >= 10)
+                    {
+                        string formatted = FormatISBN(cleanText);
+                        if (formatted != currentText)
+                        {
+                            txtISBN.Text = formatted;
+                            // Restore cursor position (approximate)
+                            txtISBN.SelectionStart = Math.Min(cursorPos + (formatted.Length - currentText.Length), formatted.Length);
+                        }
+                    }
+                }
+            };
+
+            pnlISBN.Controls.Add(txtISBN);
+            addBookForm.Controls.Add(pnlISBN);
+
+            pnlISBN.Paint += (s, e) => {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                bool isFocused = (pnlISBN.Tag as string == "Focused");
+                bool hasError = (pnlISBN.Tag as string == "Error");
+                Color borderColor = hasError ? Color.Red : (isFocused ? Color.Maroon : Color.FromArgb(220, 220, 220));
+                float width = (isFocused || hasError) ? 1.5f : 1f;
+                using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlISBN.Width - 3, pnlISBN.Height - 3), 6))
+                using(Pen pen = new Pen(borderColor, width))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+
+            txtISBN.Enter += (s, e) => { 
+                if (pnlISBN.Tag as string != "Error")
+                    pnlISBN.Tag = "Focused"; 
+                pnlISBN.Invalidate(); 
+            };
+
+            // Combined validation and focus management on leave
+            txtISBN.Leave += (s, e) => {
+                string isbnText = txtISBN.GetActualText();
+                string placeholder = "";
+                if (txtISBN.Tag is Helper.PlaceholderTextHelper.PlaceholderData data)
+                {
+                    placeholder = data.PlaceholderText;
+                }
+                
+                if (!string.IsNullOrWhiteSpace(isbnText) && isbnText != placeholder)
+                {
+                    if (!IsValidISBN(isbnText))
+                    {
+                        pnlISBN.Tag = "Error";
+                        pnlISBN.Invalidate();
+                        MessageBox.Show("Invalid ISBN format. Please enter a valid ISBN-10 or ISBN-13.", "Invalid ISBN", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        txtISBN.Focus();
+                    }
+                    else
+                    {
+                        pnlISBN.Tag = "";
+                        pnlISBN.Invalidate();
+                    }
+                }
+                else
+                {
+                    if (pnlISBN.Tag as string != "Error")
+                        pnlISBN.Tag = "";
+                    pnlISBN.Invalidate();
+                }
+            };
 
             
 
@@ -7598,11 +9497,13 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             AddLabel("Author *", col1, y);
 
-            AddInput("Author name", col1, y, w1);
+            Control txtAuthorControl = AddInput("Author name", col1, y, w1);
+            TextBox txtAuthor = txtAuthorControl as TextBox ?? (txtAuthorControl.Parent.Controls[0] as TextBox);
 
             AddLabel("Publisher *", col2, y);
 
-            AddInput("Publisher name", col2, y, w1);
+            Control txtPublisherControl = AddInput("Publisher name", col2, y, w1);
+            TextBox txtPublisher = txtPublisherControl as TextBox ?? (txtPublisherControl.Parent.Controls[0] as TextBox);
 
             y += 75;
 
@@ -7612,7 +9513,9 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             AddLabel("Publication Year", col1, y);
 
-            AddNumericInput("2026", col1, y, 70);
+            Control txtYearControl = AddNumericInput("2026", col1, y, 70);
+            TextBox txtYear = txtYearControl as TextBox ?? (txtYearControl.Parent.Controls[0] as TextBox);
+            txtYear.Name = "txtYear";
 
             
 
@@ -7624,7 +9527,9 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             AddLabel("Copies", col2, y);
 
-            AddNumericInput("1", col2, y, w1);
+            Control txtCopiesControl = AddNumericInput("1", col2, y, w1);
+            TextBox txtCopies = txtCopiesControl as TextBox ?? (txtCopiesControl.Parent.Controls[0] as TextBox);
+            txtCopies.Name = "txtCopies";
 
             y += 75;
 
@@ -7771,7 +9676,146 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             };
 
-            btnAdd.Click += (s, e) => { MessageBox.Show("Book added!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information); addBookForm.Close(); };
+            btnAdd.Click += (s, e) => {
+                try
+                {
+                    // Collect all field values
+                    string title = txtTitle.GetActualText();
+                    string isbn = txtISBN.GetActualText();
+                    string author = txtAuthor.GetActualText();
+                    string publisher = txtPublisher.GetActualText();
+                    string category = cmbCat.SelectedIndex == 0 ? "" : cmbCat.SelectedItem.ToString();
+                    string description = txtDesc.GetActualText();
+                    
+                    // Get publication year
+                    int? publicationYear = null;
+                    string yearText = txtYear.GetActualText();
+                    string yearPlaceholder = "";
+                    if (txtYear.Tag is Helper.PlaceholderTextHelper.PlaceholderData yearData)
+                    {
+                        yearPlaceholder = yearData.PlaceholderText;
+                    }
+                    if (!string.IsNullOrWhiteSpace(yearText) && yearText != yearPlaceholder)
+                    {
+                        if (int.TryParse(yearText, out int year) && year >= 1900 && year <= 2100)
+                        {
+                            publicationYear = year;
+                        }
+                    }
+                    
+                    // Get copies
+                    int totalCopies = 1;
+                    string copiesText = txtCopies.GetActualText();
+                    string copiesPlaceholder = "";
+                    if (txtCopies.Tag is Helper.PlaceholderTextHelper.PlaceholderData copiesData)
+                    {
+                        copiesPlaceholder = copiesData.PlaceholderText;
+                    }
+                    if (!string.IsNullOrWhiteSpace(copiesText) && copiesText != copiesPlaceholder)
+                    {
+                        if (!int.TryParse(copiesText, out totalCopies) || totalCopies < 1)
+                        {
+                            MessageBox.Show("Copies must be a number greater than 0.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            txtCopies.Focus();
+                            return;
+                        }
+                    }
+
+                    // Validate required fields
+                    string titlePlaceholder = "";
+                    if (txtTitle.Tag is Helper.PlaceholderTextHelper.PlaceholderData titleData)
+                    {
+                        titlePlaceholder = titleData.PlaceholderText;
+                    }
+                    if (string.IsNullOrWhiteSpace(title) || title == titlePlaceholder)
+                    {
+                        MessageBox.Show("Title is required.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        txtTitle.Focus();
+                        return;
+                    }
+
+                    string isbnPlaceholder = "";
+                    if (txtISBN.Tag is Helper.PlaceholderTextHelper.PlaceholderData isbnData)
+                    {
+                        isbnPlaceholder = isbnData.PlaceholderText;
+                    }
+                    if (string.IsNullOrWhiteSpace(isbn) || isbn == isbnPlaceholder)
+                    {
+                        MessageBox.Show("ISBN is required.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        txtISBN.Focus();
+                        return;
+                    }
+
+                    if (!IsValidISBN(isbn))
+                    {
+                        MessageBox.Show("Invalid ISBN format. Please enter a valid ISBN-10 or ISBN-13.\n\nISBN-10: 10 digits (e.g., 0-123456-78-9)\nISBN-13: 13 digits starting with 978 or 979 (e.g., 978-0-123456-78-9)", 
+                            "Invalid ISBN", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        txtISBN.Focus();
+                        return;
+                    }
+
+                    string authorPlaceholder = "";
+                    if (txtAuthor.Tag is Helper.PlaceholderTextHelper.PlaceholderData authorData)
+                    {
+                        authorPlaceholder = authorData.PlaceholderText;
+                    }
+                    if (string.IsNullOrWhiteSpace(author) || author == authorPlaceholder)
+                    {
+                        MessageBox.Show("Author is required.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        txtAuthor.Focus();
+                        return;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(category) || category == "Enter Category")
+                    {
+                        MessageBox.Show("Category is required.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        cmbCat.Focus();
+                        return;
+                    }
+
+                    // Check for duplicate ISBN - prevent duplicates
+                    if (IsISBNDuplicate(isbn))
+                    {
+                        MessageBox.Show(
+                            "This ISBN already exists in the database.\n\nPlease use a different ISBN or edit the existing book.",
+                            "Duplicate ISBN",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning
+                        );
+                        txtISBN.Focus();
+                        txtISBN.SelectAll();
+                        return;
+                    }
+
+                    // Add book to database
+                    var bookService = new LMS_Library_Management_System.Service.BookService();
+                    int bookId = bookService.AddBook(isbn, title, author, publisher, publicationYear, category, totalCopies, description);
+
+                    if (bookId > 0)
+                    {
+                        MessageBox.Show("Book added successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        addBookForm.DialogResult = DialogResult.OK;
+                        // Don't refresh here - will refresh after dialog closes
+                    }
+                    else
+                    {
+                        MessageBox.Show("Failed to add book. Please try again.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+                catch (ArgumentException ex)
+                {
+                    MessageBox.Show(ex.Message, "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"An error occurred while adding the book: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    System.Diagnostics.Debug.WriteLine($"Error adding book: {ex.Message}");
+                }
+            };
 
 
 
@@ -7779,7 +9823,49 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             addBookForm.Controls.Add(btnAdd);
 
-            addBookForm.ShowDialog(this);
+            // Show dialog and refresh after it closes if book was added
+            DialogResult result = addBookForm.ShowDialog(this);
+            
+            // Refresh book list, statistics, and category filter if book was successfully added
+            if (result == DialogResult.OK && pnlMainContent.Tag?.ToString() == "CatalogView")
+            {
+                try
+                {
+                    System.Diagnostics.Debug.WriteLine("ShowAddBookDialog: Starting refresh after book added");
+                    
+                    // Refresh everything synchronously (we're already on UI thread after ShowDialog)
+                    LoadBooksData();
+                    UpdateCatalogStatistics();
+                    RefreshCategoryFilter();
+                    
+                    // Force UI update
+                    Application.DoEvents();
+                    pnlMainContent.Invalidate();
+                    pnlMainContent.Update();
+                    
+                    System.Diagnostics.Debug.WriteLine("ShowAddBookDialog: Successfully refreshed book list after adding book");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ShowAddBookDialog: Error refreshing after add: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"ShowAddBookDialog: StackTrace: {ex.StackTrace}");
+                    
+                    // Retry with BeginInvoke as fallback
+                    this.BeginInvoke(new Action(() =>
+                    {
+                        try
+                        {
+                            LoadBooksData();
+                            UpdateCatalogStatistics();
+                            RefreshCategoryFilter();
+                        }
+                        catch (Exception retryEx)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"ShowAddBookDialog: Retry refresh also failed: {retryEx.Message}");
+                        }
+                    }));
+                }
+            }
 
         }
 

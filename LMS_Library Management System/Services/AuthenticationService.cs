@@ -207,6 +207,9 @@ namespace LMS_Library_Management_System.Service
                 // Create/update sp_UpdateUserPassword procedure
                 UpdateUserPasswordProcedure(connection);
                 
+                // Create/update book-related stored procedures
+                UpdateBookStoredProcedures(connection);
+                
                 // Create/update sp_UpdateUserRole procedure
                 UpdateUserRoleProcedure(connection);
             }
@@ -440,7 +443,7 @@ namespace LMS_Library_Management_System.Service
         {
             try
             {
-                // Create or update sp_CreateUser stored procedure
+                // Create or update sp_CreateUser stored procedure with duplicate email check
                 string updateSpCreateUser = @"
                     DROP PROCEDURE IF EXISTS sp_CreateUser;
                     CREATE PROCEDURE sp_CreateUser(
@@ -453,6 +456,23 @@ namespace LMS_Library_Management_System.Service
                         IN p_Phone VARCHAR(20)
                     )
                     BEGIN
+                        DECLARE v_EmailExists INT DEFAULT 0;
+                        DECLARE v_ErrorMessage VARCHAR(500);
+                        
+                        -- Check if email already exists (case-insensitive)
+                        SELECT COUNT(*) INTO v_EmailExists
+                        FROM Users
+                        WHERE LOWER(Email) = LOWER(p_Email);
+                        
+                        -- If email exists, signal error
+                        IF v_EmailExists > 0 THEN
+                            SET v_ErrorMessage = CONCAT('Duplicate email: ', p_Email, ' already exists in the system.');
+                            SIGNAL SQLSTATE '23000'
+                            SET MESSAGE_TEXT = v_ErrorMessage,
+                                MYSQL_ERRNO = 1062;
+                        END IF;
+                        
+                        -- Insert new user
                         INSERT INTO Users (Email, PasswordHash, FirstName, LastName, Role, Department, Phone)
                         VALUES (LOWER(p_Email), p_PasswordHash, p_FirstName, p_LastName, p_Role, NULLIF(p_Department, ''), NULLIF(p_Phone, ''));
                         
@@ -496,6 +516,251 @@ namespace LMS_Library_Management_System.Service
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error updating sp_UpdateLastLogin procedure: {ex.Message}");
+            }
+        }
+
+        private void UpdateBookStoredProcedures(MySqlConnection connection)
+        {
+            try
+            {
+                // sp_AddBook
+                string spAddBook = @"
+                    DROP PROCEDURE IF EXISTS sp_AddBook;
+                    CREATE PROCEDURE sp_AddBook(
+                        IN p_ISBN VARCHAR(20),
+                        IN p_Title VARCHAR(255),
+                        IN p_Author VARCHAR(255),
+                        IN p_Publisher VARCHAR(255),
+                        IN p_PublicationYear INT,
+                        IN p_Category VARCHAR(100),
+                        IN p_TotalCopies INT,
+                        IN p_Description TEXT
+                    )
+                    BEGIN
+                        INSERT INTO Books (ISBN, Title, Author, Publisher, PublicationYear, Category, TotalCopies, AvailableCopies, Description, CreatedDate)
+                        VALUES (p_ISBN, p_Title, p_Author, NULLIF(p_Publisher, ''), p_PublicationYear, p_Category, p_TotalCopies, p_TotalCopies, NULLIF(p_Description, ''), NOW());
+                        
+                        SELECT LAST_INSERT_ID() AS BookId;
+                    END";
+
+                // sp_GetAllBooks
+                string spGetAllBooks = @"
+                    DROP PROCEDURE IF EXISTS sp_GetAllBooks;
+                    CREATE PROCEDURE sp_GetAllBooks()
+                    BEGIN
+                        SELECT 
+                            BookId,
+                            ISBN,
+                            Title,
+                            Author,
+                            Publisher,
+                            PublicationYear,
+                            Category,
+                            TotalCopies,
+                            AvailableCopies,
+                            Description,
+                            CreatedDate
+                        FROM Books
+                        ORDER BY CreatedDate DESC;
+                    END";
+
+                // sp_GetBookById
+                string spGetBookById = @"
+                    DROP PROCEDURE IF EXISTS sp_GetBookById;
+                    CREATE PROCEDURE sp_GetBookById(IN p_BookId INT)
+                    BEGIN
+                        SELECT 
+                            BookId,
+                            ISBN,
+                            Title,
+                            Author,
+                            Publisher,
+                            PublicationYear,
+                            Category,
+                            TotalCopies,
+                            AvailableCopies,
+                            Description,
+                            CreatedDate
+                        FROM Books
+                        WHERE BookId = p_BookId;
+                    END";
+
+                // sp_SearchBooks
+                string spSearchBooks = @"
+                    DROP PROCEDURE IF EXISTS sp_SearchBooks;
+                    CREATE PROCEDURE sp_SearchBooks(
+                        IN p_SearchTerm VARCHAR(255),
+                        IN p_Category VARCHAR(100)
+                    )
+                    BEGIN
+                        SELECT 
+                            BookId,
+                            ISBN,
+                            Title,
+                            Author,
+                            Publisher,
+                            PublicationYear,
+                            Category,
+                            TotalCopies,
+                            AvailableCopies,
+                            Description,
+                            CreatedDate
+                        FROM Books
+                        WHERE (p_SearchTerm IS NULL OR p_SearchTerm = '' OR 
+                               Title LIKE CONCAT('%', p_SearchTerm, '%') OR 
+                               Author LIKE CONCAT('%', p_SearchTerm, '%') OR 
+                               ISBN LIKE CONCAT('%', p_SearchTerm, '%'))
+                        AND (p_Category IS NULL OR p_Category = '' OR Category = p_Category)
+                        ORDER BY CreatedDate DESC;
+                    END";
+
+                // sp_UpdateBook
+                string spUpdateBook = @"
+                    DROP PROCEDURE IF EXISTS sp_UpdateBook;
+                    CREATE PROCEDURE sp_UpdateBook(
+                        IN p_BookId INT,
+                        IN p_ISBN VARCHAR(20),
+                        IN p_Title VARCHAR(255),
+                        IN p_Author VARCHAR(255),
+                        IN p_Publisher VARCHAR(255),
+                        IN p_PublicationYear INT,
+                        IN p_Category VARCHAR(100),
+                        IN p_TotalCopies INT,
+                        IN p_AvailableCopies INT,
+                        IN p_Description TEXT
+                    )
+                    BEGIN
+                        UPDATE Books 
+                        SET ISBN = p_ISBN, 
+                            Title = p_Title, 
+                            Author = p_Author, 
+                            Publisher = NULLIF(p_Publisher, ''), 
+                            PublicationYear = p_PublicationYear, 
+                            Category = p_Category, 
+                            TotalCopies = p_TotalCopies, 
+                            AvailableCopies = p_AvailableCopies, 
+                            Description = NULLIF(p_Description, '')
+                        WHERE BookId = p_BookId;
+                        
+                        SELECT ROW_COUNT() AS RowsAffected;
+                    END";
+
+                // sp_DeleteBook
+                string spDeleteBook = @"
+                    DROP PROCEDURE IF EXISTS sp_DeleteBook;
+                    CREATE PROCEDURE sp_DeleteBook(IN p_BookId INT)
+                    BEGIN
+                        DECLARE v_ActiveBorrowings INT;
+                        DECLARE v_TotalBorrowings INT;
+                        
+                        -- Check for active borrowings
+                        SELECT COUNT(*) INTO v_ActiveBorrowings
+                        FROM Borrowings 
+                        WHERE BookId = p_BookId AND ReturnDate IS NULL;
+                        
+                        IF v_ActiveBorrowings > 0 THEN
+                            SIGNAL SQLSTATE '45000'
+                            SET MESSAGE_TEXT = CONCAT('Cannot delete book: There are ', v_ActiveBorrowings, ' active borrowing(s) for this book.');
+                        END IF;
+                        
+                        -- Check for any borrowings (to maintain history)
+                        SELECT COUNT(*) INTO v_TotalBorrowings
+                        FROM Borrowings 
+                        WHERE BookId = p_BookId;
+                        
+                        IF v_TotalBorrowings > 0 THEN
+                            SIGNAL SQLSTATE '45000'
+                            SET MESSAGE_TEXT = CONCAT('Cannot delete book: This book has borrowing history (', v_TotalBorrowings, ' record(s)).');
+                        END IF;
+                        
+                        DELETE FROM Books WHERE BookId = p_BookId;
+                        
+                        SELECT ROW_COUNT() AS RowsAffected;
+                    END";
+
+                // sp_AddCopies
+                string spAddCopies = @"
+                    DROP PROCEDURE IF EXISTS sp_AddCopies;
+                    CREATE PROCEDURE sp_AddCopies(
+                        IN p_BookId INT,
+                        IN p_CopiesToAdd INT
+                    )
+                    BEGIN
+                        UPDATE Books 
+                        SET TotalCopies = TotalCopies + p_CopiesToAdd,
+                            AvailableCopies = AvailableCopies + p_CopiesToAdd
+                        WHERE BookId = p_BookId;
+                        
+                        SELECT ROW_COUNT() AS RowsAffected;
+                    END";
+
+                // sp_GetAllCategories
+                string spGetAllCategories = @"
+                    DROP PROCEDURE IF EXISTS sp_GetAllCategories;
+                    CREATE PROCEDURE sp_GetAllCategories()
+                    BEGIN
+                        SELECT DISTINCT Category 
+                        FROM Books 
+                        WHERE Category IS NOT NULL AND Category != '' 
+                        ORDER BY Category;
+                    END";
+
+                // sp_GetBookStatistics
+                string spGetBookStatistics = @"
+                    DROP PROCEDURE IF EXISTS sp_GetBookStatistics;
+                    CREATE PROCEDURE sp_GetBookStatistics()
+                    BEGIN
+                        SELECT 
+                            COUNT(*) AS TotalTitles,
+                            COALESCE(SUM(TotalCopies), 0) AS TotalCopies,
+                            COALESCE(SUM(AvailableCopies), 0) AS AvailableCopies,
+                            COUNT(DISTINCT Category) AS Categories
+                        FROM Books;
+                    END";
+
+                // Execute all procedures
+                using (var command = new MySqlCommand(spAddBook, connection))
+                {
+                    command.ExecuteNonQuery();
+                }
+                using (var command = new MySqlCommand(spGetAllBooks, connection))
+                {
+                    command.ExecuteNonQuery();
+                }
+                using (var command = new MySqlCommand(spGetBookById, connection))
+                {
+                    command.ExecuteNonQuery();
+                }
+                using (var command = new MySqlCommand(spSearchBooks, connection))
+                {
+                    command.ExecuteNonQuery();
+                }
+                using (var command = new MySqlCommand(spUpdateBook, connection))
+                {
+                    command.ExecuteNonQuery();
+                }
+                using (var command = new MySqlCommand(spDeleteBook, connection))
+                {
+                    command.ExecuteNonQuery();
+                }
+                using (var command = new MySqlCommand(spAddCopies, connection))
+                {
+                    command.ExecuteNonQuery();
+                }
+                using (var command = new MySqlCommand(spGetAllCategories, connection))
+                {
+                    command.ExecuteNonQuery();
+                }
+                using (var command = new MySqlCommand(spGetBookStatistics, connection))
+                {
+                    command.ExecuteNonQuery();
+                }
+
+                System.Diagnostics.Debug.WriteLine("Created/Updated all book-related stored procedures");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error creating/updating book stored procedures: {ex.Message}");
             }
         }
 
@@ -688,23 +953,43 @@ namespace LMS_Library_Management_System.Service
                     command.Parameters.AddWithValue("p_LastName", "User");
                     command.Parameters.AddWithValue("p_Role", 1); // Administrator
                     command.Parameters.AddWithValue("p_Department", (object)DBNull.Value); // No department for default admin
+                    command.Parameters.AddWithValue("p_Phone", (object)DBNull.Value);
 
                     command.ExecuteNonQuery();
                 }
             }
-            catch
+            catch (MySqlException mysqlEx)
             {
-                // If stored procedure doesn't support Department parameter, try without it
-                using (var command = new MySqlCommand("sp_CreateUser", connection))
+                // If duplicate email (error 1062), admin already exists - ignore
+                if (mysqlEx.Number == 1062)
                 {
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.Parameters.AddWithValue("p_Email", "admin@library.com");
-                    command.Parameters.AddWithValue("p_PasswordHash", hashedPassword);
-                    command.Parameters.AddWithValue("p_FirstName", "Admin");
-                    command.Parameters.AddWithValue("p_LastName", "User");
-                    command.Parameters.AddWithValue("p_Role", 1); // Administrator
+                    System.Diagnostics.Debug.WriteLine("Default admin user already exists, skipping creation.");
+                    return;
+                }
+                // If stored procedure doesn't support Department/Phone parameters, try without them
+                try
+                {
+                    using (var command = new MySqlCommand("sp_CreateUser", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("p_Email", "admin@library.com");
+                        command.Parameters.AddWithValue("p_PasswordHash", hashedPassword);
+                        command.Parameters.AddWithValue("p_FirstName", "Admin");
+                        command.Parameters.AddWithValue("p_LastName", "User");
+                        command.Parameters.AddWithValue("p_Role", 1); // Administrator
 
-                    command.ExecuteNonQuery();
+                        command.ExecuteNonQuery();
+                    }
+                }
+                catch (MySqlException mysqlEx2)
+                {
+                    // If duplicate email, admin already exists - ignore
+                    if (mysqlEx2.Number == 1062)
+                    {
+                        System.Diagnostics.Debug.WriteLine("Default admin user already exists, skipping creation.");
+                        return;
+                    }
+                    throw;
                 }
             }
         }
@@ -751,23 +1036,43 @@ namespace LMS_Library_Management_System.Service
                     command.Parameters.AddWithValue("p_LastName", "Staff");
                     command.Parameters.AddWithValue("p_Role", 2); // Staff
                     command.Parameters.AddWithValue("p_Department", (object)DBNull.Value); // No department for default staff
+                    command.Parameters.AddWithValue("p_Phone", (object)DBNull.Value);
 
                     command.ExecuteNonQuery();
                 }
             }
-            catch
+            catch (MySqlException mysqlEx)
             {
-                // If stored procedure doesn't support Department parameter, try without it
-                using (var command = new MySqlCommand("sp_CreateUser", connection))
+                // If duplicate email (error 1062), staff already exists - ignore
+                if (mysqlEx.Number == 1062)
                 {
-                    command.CommandType = CommandType.StoredProcedure;
-                    command.Parameters.AddWithValue("p_Email", "staff@library.com");
-                    command.Parameters.AddWithValue("p_PasswordHash", hashedPassword);
-                    command.Parameters.AddWithValue("p_FirstName", "Library");
-                    command.Parameters.AddWithValue("p_LastName", "Staff");
-                    command.Parameters.AddWithValue("p_Role", 2); // Staff
+                    System.Diagnostics.Debug.WriteLine("Default staff user already exists, skipping creation.");
+                    return;
+                }
+                // If stored procedure doesn't support Department/Phone parameters, try without them
+                try
+                {
+                    using (var command = new MySqlCommand("sp_CreateUser", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("p_Email", "staff@library.com");
+                        command.Parameters.AddWithValue("p_PasswordHash", hashedPassword);
+                        command.Parameters.AddWithValue("p_FirstName", "Library");
+                        command.Parameters.AddWithValue("p_LastName", "Staff");
+                        command.Parameters.AddWithValue("p_Role", 2); // Staff
 
-                    command.ExecuteNonQuery();
+                        command.ExecuteNonQuery();
+                    }
+                }
+                catch (MySqlException mysqlEx2)
+                {
+                    // If duplicate email, staff already exists - ignore
+                    if (mysqlEx2.Number == 1062)
+                    {
+                        System.Diagnostics.Debug.WriteLine("Default staff user already exists, skipping creation.");
+                        return;
+                    }
+                    throw;
                 }
             }
         }
