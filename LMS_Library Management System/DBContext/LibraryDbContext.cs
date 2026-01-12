@@ -2,7 +2,6 @@ using System;
 using System.Data;
 using MySql.Data.MySqlClient;
 using LMS_Library_Management_System.Helper;
-
 namespace LMS_Library_Management_System.DBContext
 {
     public class LibraryDbContext : IDisposable

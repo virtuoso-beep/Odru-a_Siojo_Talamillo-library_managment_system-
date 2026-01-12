@@ -508,6 +508,39 @@ END";
                                 return -1;
                             }
 
+                            // Create individual copies in BookCopies table
+                            EnsureBookCopiesTableExists(connection, transaction);
+                            
+                            // Get the book's created date
+                            DateTime createdDate = DateTime.Now;
+                            using (var getDateCmd = new MySqlCommand("SELECT CreatedDate FROM Books WHERE BookId = @BookId", connection, transaction))
+                            {
+                                getDateCmd.Parameters.AddWithValue("@BookId", bookId);
+                                object dateResult = getDateCmd.ExecuteScalar();
+                                if (dateResult != null && dateResult != DBNull.Value)
+                                {
+                                    createdDate = Convert.ToDateTime(dateResult);
+                                }
+                            }
+                            
+                            for (int i = 1; i <= totalCopies; i++)
+                            {
+                                string accessionNumber = $"ACC-{createdDate.Year}-{bookId:D5}-{i:D3}";
+                                
+                                string insertCopyQuery = @"
+                                    INSERT INTO BookCopies (BookId, AccessionNumber, Location, `Condition`, Status, CreatedDate)
+                                    VALUES (@BookId, @AccessionNumber, 'Main Library', 'Good', 'Available', NOW())";
+                                
+                                using (var insertCopyCmd = new MySqlCommand(insertCopyQuery, connection, transaction))
+                                {
+                                    insertCopyCmd.Parameters.AddWithValue("@BookId", bookId);
+                                    insertCopyCmd.Parameters.AddWithValue("@AccessionNumber", accessionNumber);
+                                    insertCopyCmd.ExecuteNonQuery();
+                                }
+                            }
+                            
+                            System.Diagnostics.Debug.WriteLine($"Created {totalCopies} individual copies for BookId = {bookId}");
+
                             // Commit transaction
                             transaction.Commit();
                             System.Diagnostics.Debug.WriteLine($"Book created successfully: BookId = {bookId}");
@@ -1125,7 +1158,7 @@ END";
                                     transaction.Rollback();
                                     return false;
                                 }
-                                catch (Exception ex)
+                                catch (Exception)
                                 {
                                     transaction.Rollback();
                                     throw;
@@ -1268,6 +1301,45 @@ END";
                             
                             if (rowsAffected > 0)
                             {
+                                // Create individual copies in BookCopies table
+                                EnsureBookCopiesTableExists(connection, transaction);
+                                
+                                // Get the book's created date and current copy count
+                                DateTime createdDate = DateTime.Now;
+                                int existingCopies = 0;
+                                using (var getInfoCmd = new MySqlCommand("SELECT CreatedDate, (SELECT COUNT(*) FROM BookCopies WHERE BookId = @BookId) AS ExistingCopies FROM Books WHERE BookId = @BookId", connection, transaction))
+                                {
+                                    getInfoCmd.Parameters.AddWithValue("@BookId", bookId);
+                                    using (var reader = getInfoCmd.ExecuteReader())
+                                    {
+                                        if (reader.Read())
+                                        {
+                                            if (reader["CreatedDate"] != DBNull.Value)
+                                                createdDate = reader.GetDateTime("CreatedDate");
+                                            existingCopies = reader.GetInt32("ExistingCopies");
+                                        }
+                                    }
+                                }
+                                
+                                // Create new individual copies
+                                for (int i = 1; i <= copiesToAdd; i++)
+                                {
+                                    string accessionNumber = $"ACC-{createdDate.Year}-{bookId:D5}-{existingCopies + i:D3}";
+                                    
+                                    string insertCopyQuery = @"
+                                        INSERT INTO BookCopies (BookId, AccessionNumber, Location, `Condition`, Status, CreatedDate)
+                                        VALUES (@BookId, @AccessionNumber, 'Main Library', 'Good', 'Available', NOW())";
+                                    
+                                    using (var insertCopyCmd = new MySqlCommand(insertCopyQuery, connection, transaction))
+                                    {
+                                        insertCopyCmd.Parameters.AddWithValue("@BookId", bookId);
+                                        insertCopyCmd.Parameters.AddWithValue("@AccessionNumber", accessionNumber);
+                                        insertCopyCmd.ExecuteNonQuery();
+                                    }
+                                }
+                                
+                                System.Diagnostics.Debug.WriteLine($"Created {copiesToAdd} individual copies in BookCopies for BookId = {bookId}");
+                                
                                 transaction.Commit();
                                 System.Diagnostics.Debug.WriteLine($"Copies added successfully: BookId = {bookId}, CopiesAdded = {copiesToAdd}, RowsAffected = {rowsAffected}");
                                 return true;
@@ -1308,6 +1380,45 @@ END";
                                                 
                                                 if (rowsAffected > 0)
                                                 {
+                                                    // Create individual copies in BookCopies table
+                                                    EnsureBookCopiesTableExists(connection, retryTransaction);
+                                                    
+                                                    // Get the book's created date and current copy count
+                                                    DateTime createdDate = DateTime.Now;
+                                                    int existingCopies = 0;
+                                                    using (var getInfoCmd = new MySqlCommand("SELECT CreatedDate, (SELECT COUNT(*) FROM BookCopies WHERE BookId = @BookId) AS ExistingCopies FROM Books WHERE BookId = @BookId", connection, retryTransaction))
+                                                    {
+                                                        getInfoCmd.Parameters.AddWithValue("@BookId", bookId);
+                                                        using (var reader = getInfoCmd.ExecuteReader())
+                                                        {
+                                                            if (reader.Read())
+                                                            {
+                                                                if (reader["CreatedDate"] != DBNull.Value)
+                                                                    createdDate = reader.GetDateTime("CreatedDate");
+                                                                existingCopies = reader.GetInt32("ExistingCopies");
+                                                            }
+                                                        }
+                                                    }
+                                                    
+                                                    // Create new individual copies
+                                                    for (int i = 1; i <= copiesToAdd; i++)
+                                                    {
+                                                        string accessionNumber = $"ACC-{createdDate.Year}-{bookId:D5}-{existingCopies + i:D3}";
+                                                        
+                                                        string insertCopyQuery = @"
+                                                            INSERT INTO BookCopies (BookId, AccessionNumber, Location, `Condition`, Status, CreatedDate)
+                                                            VALUES (@BookId, @AccessionNumber, 'Main Library', 'Good', 'Available', NOW())";
+                                                        
+                                                        using (var insertCopyCmd = new MySqlCommand(insertCopyQuery, connection, retryTransaction))
+                                                        {
+                                                            insertCopyCmd.Parameters.AddWithValue("@BookId", bookId);
+                                                            insertCopyCmd.Parameters.AddWithValue("@AccessionNumber", accessionNumber);
+                                                            insertCopyCmd.ExecuteNonQuery();
+                                                        }
+                                                    }
+                                                    
+                                                    System.Diagnostics.Debug.WriteLine($"Created {copiesToAdd} individual copies in BookCopies for BookId = {bookId}");
+                                                    
                                                     retryTransaction.Commit();
                                                     System.Diagnostics.Debug.WriteLine($"Copies added successfully using direct SQL fallback: BookId = {bookId}");
                                                     return true;
@@ -1379,7 +1490,7 @@ END";
                                     transaction.Rollback();
                                     return false;
                                 }
-                                catch (Exception ex)
+                                catch (Exception)
                                 {
                                     transaction.Rollback();
                                     throw;
@@ -1650,6 +1761,63 @@ END";
             }
             
             return stats;
+        }
+        
+        /// <summary>
+        /// Ensures the BookCopies table exists, creates it if it doesn't
+        /// </summary>
+        private void EnsureBookCopiesTableExists(MySqlConnection connection, MySqlTransaction transaction = null)
+        {
+            try
+            {
+                // Ensure we're using the correct database
+                using (var useDbCmd = new MySqlCommand("USE LMS_DB", connection, transaction))
+                {
+                    useDbCmd.ExecuteNonQuery();
+                }
+                
+                string checkTableQuery = @"
+                    SELECT COUNT(*) 
+                    FROM information_schema.tables 
+                    WHERE table_schema = 'LMS_DB' 
+                    AND table_name = 'BookCopies'";
+                
+                using (var checkCmd = new MySqlCommand(checkTableQuery, connection, transaction))
+                {
+                    int tableExists = Convert.ToInt32(checkCmd.ExecuteScalar());
+                    if (tableExists == 0)
+                    {
+                        // Create BookCopies table
+                        string createTableQuery = @"
+                            CREATE TABLE BookCopies (
+                                CopyId INT PRIMARY KEY AUTO_INCREMENT,
+                                BookId INT NOT NULL,
+                                AccessionNumber VARCHAR(50) UNIQUE NOT NULL,
+                                Location VARCHAR(255) DEFAULT 'Main Library',
+                                `Condition` VARCHAR(50) DEFAULT 'Good',
+                                Status VARCHAR(50) DEFAULT 'Available',
+                                CreatedDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                LastUpdatedDate DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                FOREIGN KEY (BookId) REFERENCES Books(BookId) ON DELETE CASCADE,
+                                INDEX idx_BookId (BookId),
+                                INDEX idx_Status (Status),
+                                INDEX idx_Condition (`Condition`),
+                                INDEX idx_AccessionNumber (AccessionNumber)
+                            )";
+                        
+                        using (var createCmd = new MySqlCommand(createTableQuery, connection, transaction))
+                        {
+                            createCmd.ExecuteNonQuery();
+                            System.Diagnostics.Debug.WriteLine("BookCopies table created successfully");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error ensuring BookCopies table exists: {ex.Message}");
+                // Don't throw - allow the process to continue
+            }
         }
     }
 }

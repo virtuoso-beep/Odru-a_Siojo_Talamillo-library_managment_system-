@@ -84,6 +84,64 @@ namespace LMS_Library_Management_System.Service
             return null;
         }
 
+        public MemberData GetMemberById(int memberId)
+        {
+            try
+            {
+                using (var connection = MYSqlHelper.CreateConnection())
+                {
+                    string query = @"
+                        SELECT 
+                            m.MemberId,
+                            m.MemberNumber,
+                            m.MemberType,
+                            m.Phone,
+                            m.Address,
+                            m.Department,
+                            m.Status,
+                            m.RegistrationDate,
+                            u.FirstName,
+                            u.LastName,
+                            u.Email
+                        FROM Members m
+                        INNER JOIN Users u ON m.UserId = u.UserId
+                        WHERE m.MemberId = @MemberId";
+                    
+                    using (var command = new MySqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@MemberId", memberId);
+                        
+                        using (var reader = command.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                return new MemberData
+                                {
+                                    MemberId = reader.GetInt32("MemberId"),
+                                    MemberNumber = reader.GetString("MemberNumber"),
+                                    FirstName = reader.GetString("FirstName"),
+                                    LastName = reader.GetString("LastName"),
+                                    Email = reader.GetString("Email"),
+                                    MemberType = reader.GetString("MemberType"),
+                                    Phone = reader.IsDBNull(reader.GetOrdinal("Phone")) ? "" : reader.GetString("Phone"),
+                                    Address = reader.IsDBNull(reader.GetOrdinal("Address")) ? "" : reader.GetString("Address"),
+                                    Department = reader.IsDBNull(reader.GetOrdinal("Department")) ? "" : reader.GetString("Department"),
+                                    Status = reader.GetInt32("Status"),
+                                    RegistrationDate = reader.GetDateTime("RegistrationDate")
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting member by ID: {ex.Message}");
+            }
+            
+            return null;
+        }
+
         /// <summary>
         /// Updates an existing member in the database
         /// </summary>

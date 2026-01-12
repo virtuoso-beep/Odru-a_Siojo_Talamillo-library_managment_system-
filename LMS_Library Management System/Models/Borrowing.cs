@@ -8,6 +8,8 @@ namespace LMS_Library_Management_System.Models
     public class Borrowing
     {
         public int BorrowingId { get; set; }
+        public int MemberId { get; set; }
+        public int BookId { get; set; }
         public string BookTitle { get; set; }
         public string Author { get; set; }
         public DateTime BorrowDate { get; set; }

@@ -5,7 +5,9 @@ using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using System.Text;
 using System.Text.RegularExpressions;
+using MySql.Data.MySqlClient;
 using LMS_Library_Management_System.Forms.Authentication;
 using LMS_Library_Management_System.Helper;
 using static LMS_Library_Management_System.Helper.PlaceholderTextHelper;
@@ -14,6 +16,7 @@ using LMS_Library_Management_System.Models;
 using LMS_Library_Management_System.Interfaces;
 
 using System.Windows.Forms.DataVisualization.Charting;
+using System.Drawing.Printing;
 
 namespace LMS_Library_Management_System.Forms.Dashboard
 {
@@ -22,10 +25,13 @@ namespace LMS_Library_Management_System.Forms.Dashboard
         // Dynamic view panels
 
         private Panel pnlSearchView;
-        private Panel pnlSearchContent;
+        private Panel pnlSearchResultsContainer;
         private TextBox txtSearchInput;
         private Button btnTriggerSearch;
         private Button btnSearchFilters;
+        private Label lblSearchResultsCount;
+        private bool isGridView = true;
+        private ComboBox cmbSearchCategoryFilter;
         private Panel pnlSettingsView;
         private Panel pnlSettingsSubNav;
         private Panel pnlSettingsContent;
@@ -46,6 +52,8 @@ namespace LMS_Library_Management_System.Forms.Dashboard
         private bool _isLoadingMembersData = false;
         private bool _isProcessingAction = false;
         private Service.UserManagementService _userManagementService;
+        private CirculationService _circulationService;
+        private MemberService _memberService;
         private UserRole _currentUserManagementRole = UserRole.Administrator;
         public AdminDashboardForm()
         {
@@ -55,6 +63,8 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             this.Size = new Size(1400, 700);
             this.MinimumSize = new Size(1200, 600);
             _userManagementService = new Service.UserManagementService();
+            _circulationService = new CirculationService();
+            _memberService = new MemberService();
             InitializeDashboard();
         }
 
@@ -4961,9 +4971,11 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 BackColor = Color.Transparent,
                 Tag = "CirculationStatsPanel"
             };
-            Panel cardCurrentlyBorrowed = CreateCatalogStatCard("📚", "0", "Currently Borrowed", Color.FromArgb(33, 150, 243), new Point(0, 0));
-            Panel cardOverdue = CreateCatalogStatCard("⚠️", "0", "Overdue", Color.FromArgb(244, 67, 54), new Point(200, 0));
-            Panel cardReturnedToday = CreateCatalogStatCard("✓", "0", "Returned Today", Color.FromArgb(76, 175, 80), new Point(400, 0));
+            // Load statistics
+            var stats = _circulationService.GetBorrowingStatistics();
+            Panel cardCurrentlyBorrowed = CreateCatalogStatCard("📚", stats.CurrentlyBorrowed.ToString(), "Currently Borrowed", Color.FromArgb(33, 150, 243), new Point(0, 0), "CurrentlyBorrowed");
+            Panel cardOverdue = CreateCatalogStatCard("⚠️", stats.Overdue.ToString(), "Overdue", Color.FromArgb(244, 67, 54), new Point(200, 0), "Overdue");
+            Panel cardReturnedToday = CreateCatalogStatCard("✓", stats.ReturnedToday.ToString(), "Returned Today", Color.FromArgb(76, 175, 80), new Point(400, 0), "ReturnedToday");
             statsPanel.Controls.AddRange(new Control[] { cardCurrentlyBorrowed, cardOverdue, cardReturnedToday });
             var searchBarComponents = CreateConsistentSearchBar("🔍 Search transactions...", 800);
             Panel searchPanel = searchBarComponents.panel;
@@ -5018,7 +5030,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             };
             btnReturn.FlatAppearance.BorderSize = 1;
             btnReturn.FlatAppearance.BorderColor = ThemeConstants.PrimaryMaroon;
-            btnReturn.Click += (s, e) => ShowFeatureMessage("Return", "Return functionality will be implemented.");
+            btnReturn.Click += (s, e) => ShowReturnBookDialog();
             DataGridView dgvBorrowings = new DataGridView
             {
                 Location = new Point(30, 340),
@@ -5066,7 +5078,200 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             dgvBorrowings.Columns["Status"].Width = 100;
             dgvBorrowings.Columns["Fine"].Width = 80;
             dgvBorrowings.Columns["BorrowingId"].Visible = false;
+            
+            // Add Actions column with buttons
+            DataGridViewButtonColumn btnReturnColumn = new DataGridViewButtonColumn();
+            btnReturnColumn.Name = "ReturnAction";
+            btnReturnColumn.HeaderText = "Actions";
+            btnReturnColumn.Text = "Return";
+            btnReturnColumn.UseColumnTextForButtonValue = false;
+            btnReturnColumn.Width = 150;
+            dgvBorrowings.Columns.Add(btnReturnColumn);
+            
+            // Load borrowing data
+            LoadBorrowingsDataAdmin(dgvBorrowings, "All");
+            
+            // Filter change event
+            cmbStatusFilter.SelectedIndexChanged += (s, e) =>
+            {
+                string filter = cmbStatusFilter.SelectedItem.ToString().Replace(" Status", "");
+                LoadBorrowingsDataAdmin(dgvBorrowings, filter);
+            };
+            
+            // Search event
+            txtSearchBorrowings.TextChanged += (s, e) =>
+            {
+                FilterBorrowingsDataAdmin(dgvBorrowings, txtSearchBorrowings.Text);
+            };
+            
+            // Cell painting for status and fine
+            dgvBorrowings.CellPainting += (s, e) =>
+            {
+                if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
+                {
+                    if (dgvBorrowings.Columns[e.ColumnIndex].Name == "Status")
+                    {
+                        e.Paint(e.CellBounds, DataGridViewPaintParts.All & ~DataGridViewPaintParts.ContentForeground);
+                        
+                        string status = e.Value?.ToString() ?? "";
+                        Color badgeColor = Color.LightBlue;
+                        Color textColor = Color.DarkBlue;
+                        
+                        if (status == "Active")
+                        {
+                            badgeColor = Color.FromArgb(220, 240, 255);
+                            textColor = Color.FromArgb(50, 120, 200);
+                        }
+                        else if (status == "Overdue")
+                        {
+                            badgeColor = Color.FromArgb(255, 230, 230);
+                            textColor = Color.FromArgb(200, 50, 50);
+                        }
+                        else if (status == "Returned")
+                        {
+                            badgeColor = Color.FromArgb(220, 255, 230);
+                            textColor = Color.FromArgb(50, 150, 50);
+                        }
+                        
+                        Rectangle badgeRect = new Rectangle(
+                            e.CellBounds.X + 10,
+                            e.CellBounds.Y + 8,
+                            e.CellBounds.Width - 20,
+                            e.CellBounds.Height - 16
+                        );
+                        
+                        using (SolidBrush brush = new SolidBrush(badgeColor))
+                        {
+                            e.Graphics.FillRectangle(brush, badgeRect);
+                        }
+                        
+                        using (StringFormat sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                        using (SolidBrush textBrush = new SolidBrush(textColor))
+                        {
+                            e.Graphics.DrawString(status, new Font("Segoe UI", 8.5F, FontStyle.Bold), textBrush, badgeRect, sf);
+                        }
+                        
+                        e.Handled = true;
+                    }
+                    else if (dgvBorrowings.Columns[e.ColumnIndex].Name == "Fine" && e.Value != null && e.Value.ToString() != "-")
+                    {
+                        e.Paint(e.CellBounds, DataGridViewPaintParts.All & ~DataGridViewPaintParts.ContentForeground);
+                        
+                        using (StringFormat sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                        using (SolidBrush textBrush = new SolidBrush(Color.FromArgb(200, 50, 50)))
+                        {
+                            e.Graphics.DrawString(e.Value.ToString(), new Font("Segoe UI", 9F, FontStyle.Bold), textBrush, e.CellBounds, sf);
+                        }
+                        
+                        e.Handled = true;
+                    }
+                }
+            };
+            
+            // Cell click event for action buttons
+            dgvBorrowings.CellContentClick += (s, e) =>
+            {
+                if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
+                {
+                    if (dgvBorrowings.Columns[e.ColumnIndex].Name == "ReturnAction")
+                    {
+                        int borrowingId = Convert.ToInt32(dgvBorrowings.Rows[e.RowIndex].Cells["BorrowingId"].Value);
+                        string status = dgvBorrowings.Rows[e.RowIndex].Cells["Status"].Value.ToString();
+                        
+                        if (status == "Active" || status == "Overdue")
+                        {
+                            ShowReturnBookDialog();
+                        }
+                    }
+                }
+            };
+            
             pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnCheckout, btnReturn, statsPanel, searchPanel, dgvBorrowings });
+        }
+        
+        private void LoadBorrowingsDataAdmin(DataGridView dgv, string filter)
+        {
+            dgv.Rows.Clear();
+            
+            try
+            {
+                var allBorrowings = _circulationService.GetAllBorrowingsForDisplay();
+                
+                foreach (var borrowing in allBorrowings)
+                {
+                    // Apply filter
+                    if (filter != "All" && borrowing.Status != filter)
+                        continue;
+                    
+                    string accessionNumber = $"ACC-{borrowing.BorrowDate.Year}-{borrowing.BorrowingId.ToString().PadLeft(5, '0')}";
+                    string borrowDate = borrowing.BorrowDate.ToString("MMM dd, yyyy");
+                    string dueDate = borrowing.DueDate.ToString("MMM dd, yyyy");
+                    string fine = borrowing.FineAmount > 0 ? $"${borrowing.FineAmount:F0}" : "-";
+                    string status = borrowing.Status;
+                    
+                    if (borrowing.ReturnDate.HasValue)
+                    {
+                        status = "Returned";
+                    }
+                    else if (borrowing.IsOverdue)
+                    {
+                        status = "Overdue";
+                    }
+                    
+                    int rowIndex = dgv.Rows.Add(
+                        borrowing.BorrowingId,
+                        accessionNumber,
+                        borrowing.BookTitle,
+                        borrowing.MemberName,
+                        borrowDate,
+                        dueDate,
+                        status,
+                        fine
+                    );
+                    
+                    // Set button text based on status
+                    if (status == "Returned")
+                    {
+                        dgv.Rows[rowIndex].Cells["ReturnAction"].Value = borrowing.ReturnDate.HasValue ? borrowing.ReturnDate.Value.ToString("MMM dd") : "Returned";
+                        dgv.Rows[rowIndex].Cells["ReturnAction"].ReadOnly = true;
+                    }
+                    else
+                    {
+                        dgv.Rows[rowIndex].Cells["ReturnAction"].Value = "⏎ Return  🔄 Renew";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading borrowings: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        
+        private void FilterBorrowingsDataAdmin(DataGridView dgv, string searchText)
+        {
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                foreach (DataGridViewRow row in dgv.Rows)
+                {
+                    row.Visible = true;
+                }
+                return;
+            }
+            
+            searchText = searchText.ToLower();
+            foreach (DataGridViewRow row in dgv.Rows)
+            {
+                bool visible = false;
+                foreach (DataGridViewCell cell in row.Cells)
+                {
+                    if (cell.Value != null && cell.Value.ToString().ToLower().Contains(searchText))
+                    {
+                        visible = true;
+                        break;
+                    }
+                }
+                row.Visible = visible;
+            }
         }
 
         private void ShowReservationsView()
@@ -5113,10 +5318,12 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 BackColor = Color.Transparent,
                 Tag = "ReservationsStatsPanel"
             };
-            Panel cardPending = CreateCatalogStatCard("🕒", "0", "Pending", Color.FromArgb(255, 193, 7), new Point(0, 0));
-            Panel cardReady = CreateCatalogStatCard("🔔", "0", "Ready for Pickup", Color.FromArgb(76, 175, 80), new Point(200, 0));
-            Panel cardFulfilled = CreateCatalogStatCard("✓", "0", "Fulfilled", Color.FromArgb(33, 150, 243), new Point(400, 0));
-            Panel cardExpired = CreateCatalogStatCard("✗", "0", "Expired", Color.FromArgb(158, 158, 158), new Point(600, 0));
+            // Load statistics first
+            var reservationStats = GetReservationStatistics();
+            Panel cardPending = CreateCatalogStatCard("🕒", reservationStats.Pending.ToString(), "Pending", Color.FromArgb(255, 193, 7), new Point(0, 0), "ReservationPending");
+            Panel cardReady = CreateCatalogStatCard("🔔", reservationStats.Ready.ToString(), "Ready for Pickup", Color.FromArgb(76, 175, 80), new Point(200, 0), "ReservationReady");
+            Panel cardFulfilled = CreateCatalogStatCard("✓", reservationStats.Fulfilled.ToString(), "Fulfilled", Color.FromArgb(33, 150, 243), new Point(400, 0), "ReservationFulfilled");
+            Panel cardExpired = CreateCatalogStatCard("✗", reservationStats.Expired.ToString(), "Expired", Color.FromArgb(158, 158, 158), new Point(600, 0), "ReservationExpired");
             statsPanel.Controls.AddRange(new Control[] { cardPending, cardReady, cardFulfilled, cardExpired });
             var searchBarComponents = CreateConsistentSearchBar("🔍 Search reservations...", 920);
             Panel searchPanel = searchBarComponents.panel;
@@ -5147,7 +5354,228 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             dgvReservations.Columns["ReservationDate"].Width = 150;
             dgvReservations.Columns["Status"].Width = 120;
             dgvReservations.Columns["ReservationId"].Visible = false;
+            
+            // Load reservations data
+            LoadReservationsData(dgvReservations);
+            UpdateReservationStats(statsPanel);
+            RefreshReservationStatistics();
+            
+            // Search functionality
+            txtSearchReservations.TextChanged += (s, e) =>
+            {
+                FilterReservationsData(dgvReservations, txtSearchReservations.Text);
+            };
+            
             pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnNewReservation, statsPanel, searchPanel, dgvReservations });
+        }
+        
+        private void UpdateReservationStats(Panel statsPanel)
+        {
+            try
+            {
+                EnsureReservationsTableExists();
+                
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Ensure we're using the correct database
+                    using (var useDbCmd = new MySqlCommand("USE LMS_DB", connection))
+                    {
+                        useDbCmd.ExecuteNonQuery();
+                    }
+                    
+                    // Update expired reservations first
+                    string updateExpiredQuery = @"
+                        UPDATE Reservations 
+                        SET Status = 'Expired' 
+                        WHERE Status != 'Fulfilled' 
+                        AND Status != 'Expired' 
+                        AND Expires < NOW()";
+                    
+                    using (var updateCmd = new MySqlCommand(updateExpiredQuery, connection))
+                    {
+                        updateCmd.ExecuteNonQuery();
+                    }
+                    
+                    // Update "Ready" status for reservations where book is now available
+                    string updateReadyQuery = @"
+                        UPDATE Reservations r
+                        INNER JOIN Books b ON r.BookId = b.BookId
+                        SET r.Status = 'Ready'
+                        WHERE r.Status = 'Pending'
+                        AND b.AvailableCopies > 0";
+                    
+                    using (var updateReadyCmd = new MySqlCommand(updateReadyQuery, connection))
+                    {
+                        updateReadyCmd.ExecuteNonQuery();
+                    }
+                    
+                    // Get counts for each status
+                    string statsQuery = @"
+                        SELECT 
+                            SUM(CASE WHEN Status = 'Pending' THEN 1 ELSE 0 END) AS Pending,
+                            SUM(CASE WHEN Status = 'Ready' THEN 1 ELSE 0 END) AS Ready,
+                            SUM(CASE WHEN Status = 'Fulfilled' THEN 1 ELSE 0 END) AS Fulfilled,
+                            SUM(CASE WHEN Status = 'Expired' THEN 1 ELSE 0 END) AS Expired
+                        FROM Reservations";
+                    
+                    using (var cmd = new MySqlCommand(statsQuery, connection))
+                    {
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                int pending = reader["Pending"] == DBNull.Value ? 0 : Convert.ToInt32(reader["Pending"]);
+                                int ready = reader["Ready"] == DBNull.Value ? 0 : Convert.ToInt32(reader["Ready"]);
+                                int fulfilled = reader["Fulfilled"] == DBNull.Value ? 0 : Convert.ToInt32(reader["Fulfilled"]);
+                                int expired = reader["Expired"] == DBNull.Value ? 0 : Convert.ToInt32(reader["Expired"]);
+                                
+                                // Update stat cards using tags
+                                foreach (Control control in statsPanel.Controls)
+                                {
+                                    if (control is Panel card)
+                                    {
+                                        foreach (Control ctrl in card.Controls)
+                                        {
+                                            if (ctrl is Label lbl && lbl.Font.Bold)
+                                            {
+                                                // Set tag if not set
+                                                if (string.IsNullOrEmpty(lbl.Tag?.ToString()))
+                                                {
+                                                    if (lbl.Text.Contains("Pending") || card.Location.X == 0) lbl.Tag = "ReservationPending";
+                                                    else if (lbl.Text.Contains("Ready") || card.Location.X == 200) lbl.Tag = "ReservationReady";
+                                                    else if (lbl.Text.Contains("Fulfilled") || card.Location.X == 400) lbl.Tag = "ReservationFulfilled";
+                                                    else if (lbl.Text.Contains("Expired") || card.Location.X == 600) lbl.Tag = "ReservationExpired";
+                                                }
+                                                
+                                                // Update by tag
+                                                string tag = lbl.Tag?.ToString();
+                                                if (tag == "ReservationPending") lbl.Text = pending.ToString();
+                                                else if (tag == "ReservationReady") lbl.Text = ready.ToString();
+                                                else if (tag == "ReservationFulfilled") lbl.Text = fulfilled.ToString();
+                                                else if (tag == "ReservationExpired") lbl.Text = expired.ToString();
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating reservation stats: {ex.Message}");
+            }
+        }
+        
+        private void LoadReservationsData(DataGridView dgv)
+        {
+            dgv.Rows.Clear();
+            
+            try
+            {
+                EnsureReservationsTableExists();
+                
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Ensure we're using the correct database
+                    using (var useDbCmd = new MySqlCommand("USE LMS_DB", connection))
+                    {
+                        useDbCmd.ExecuteNonQuery();
+                    }
+                    
+                    // Update expired reservations first
+                    string updateExpiredQuery = @"
+                        UPDATE Reservations 
+                        SET Status = 'Expired' 
+                        WHERE Status != 'Fulfilled' 
+                        AND Status != 'Expired' 
+                        AND Expires < NOW()";
+                    
+                    using (var updateCmd = new MySqlCommand(updateExpiredQuery, connection))
+                    {
+                        updateCmd.ExecuteNonQuery();
+                    }
+                    
+                    // Update "Ready" status for reservations where book is now available
+                    string updateReadyQuery = @"
+                        UPDATE Reservations r
+                        INNER JOIN Books b ON r.BookId = b.BookId
+                        SET r.Status = 'Ready'
+                        WHERE r.Status = 'Pending'
+                        AND b.AvailableCopies > 0";
+                    
+                    using (var updateReadyCmd = new MySqlCommand(updateReadyQuery, connection))
+                    {
+                        updateReadyCmd.ExecuteNonQuery();
+                    }
+                    
+                    string query = @"
+                        SELECT 
+                            r.ReservationId,
+                            bk.Title AS BookTitle,
+                            CONCAT(u.FirstName, ' ', u.LastName) AS MemberName,
+                            r.ReservedOn AS ReservationDate,
+                            CASE 
+                                WHEN r.Status = 'Pending' AND bk.AvailableCopies > 0 THEN 'Ready'
+                                WHEN r.Status != 'Fulfilled' AND r.Status != 'Expired' AND r.Expires < NOW() THEN 'Expired'
+                                ELSE r.Status
+                            END AS Status
+                        FROM Reservations r
+                        INNER JOIN Books bk ON r.BookId = bk.BookId
+                        INNER JOIN Members m ON r.MemberId = m.MemberId
+                        INNER JOIN Users u ON m.UserId = u.UserId
+                        ORDER BY r.ReservedOn DESC";
+                    
+                    using (var command = new MySqlCommand(query, connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string reservationDate = reader.GetDateTime("ReservationDate").ToString("MMM dd, yyyy");
+                                string status = reader.GetString("Status");
+                                
+                                dgv.Rows.Add(
+                                    reader.GetInt32("ReservationId"),
+                                    reader.GetString("BookTitle"),
+                                    reader.GetString("MemberName"),
+                                    reservationDate,
+                                    status
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading reservations: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        
+        private void FilterReservationsData(DataGridView dgv, string searchText)
+        {
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                LoadReservationsData(dgv);
+                return;
+            }
+            
+            string lowerSearch = searchText.ToLower();
+            foreach (DataGridViewRow row in dgv.Rows)
+            {
+                bool visible = false;
+                foreach (DataGridViewCell cell in row.Cells)
+                {
+                    if (cell.Value != null && cell.Value.ToString().ToLower().Contains(lowerSearch))
+                    {
+                        visible = true;
+                        break;
+                    }
+                }
+                row.Visible = visible;
+            }
         }
 
         private void ShowFinesView()
@@ -5194,16 +5622,87 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 BackColor = Color.Transparent,
                 Tag = "FinesStatsPanel"
             };
-            Panel cardPendingFines = CreateCatalogStatCard("⚠️", "₱0.00", "Pending Fines", ThemeConstants.PrimaryMaroon, new Point(0, 0));
-            Panel cardCollected = CreateCatalogStatCard("✓", "₱0.00", "Collected", Color.FromArgb(76, 175, 80), new Point(200, 0));
-            Panel cardWaived = CreateCatalogStatCard("✗", "₱0.00", "Waived", Color.FromArgb(33, 150, 243), new Point(400, 0));
-            Panel cardPendingCases = CreateCatalogStatCard("₱", "0", "Pending Cases", Color.FromArgb(255, 193, 7), new Point(600, 0));
+            // Load statistics first
+            var finesStats = GetFinesStatistics();
+            Panel cardPendingFines = CreateCatalogStatCard("⚠️", $"₱{finesStats.PendingFines:N2}", "Pending Fines", ThemeConstants.PrimaryMaroon, new Point(0, 0), "PendingFines");
+            Panel cardCollected = CreateCatalogStatCard("✓", $"₱{finesStats.Collected:N2}", "Collected", Color.FromArgb(76, 175, 80), new Point(200, 0), "CollectedFines");
+            Panel cardWaived = CreateCatalogStatCard("✗", $"₱{finesStats.Waived:N2}", "Waived", Color.FromArgb(33, 150, 243), new Point(400, 0), "WaivedFines");
+            Panel cardPendingCases = CreateCatalogStatCard("₱", finesStats.PendingCases.ToString(), "Pending Cases", Color.FromArgb(255, 193, 7), new Point(600, 0), "PendingCases");
             statsPanel.Controls.AddRange(new Control[] { cardPendingFines, cardCollected, cardWaived, cardPendingCases });
-            var searchBarComponents = CreateConsistentSearchBar("🔍 Search fines...", 920);
-            Panel searchPanel = searchBarComponents.panel;
-            TextBox txtSearchFines = searchBarComponents.textBox;
-            Button btnSearchFines = searchBarComponents.button;
-            searchPanel.Location = new Point(30, 250);
+            // Search panel with search bar and filter tabs
+            Panel searchPanel = new Panel
+            {
+                Location = new Point(30, 250),
+                Size = new Size(pnlMainContent.Width - 60, 70),
+                BackColor = Color.White,
+                BorderStyle = BorderStyle.None
+            };
+            searchPanel.Paint += (s, e) =>
+            {
+                using (var shadowBrush = new SolidBrush(Color.FromArgb(15, 0, 0, 0)))
+                {
+                    e.Graphics.FillRectangle(shadowBrush, 3, 3, searchPanel.Width - 3, searchPanel.Height - 3);
+                }
+                using (var bgBrush = new SolidBrush(Color.FromArgb(252, 252, 252)))
+                {
+                    e.Graphics.FillRectangle(bgBrush, 0, 0, searchPanel.Width, searchPanel.Height);
+                }
+                using (var borderPen = new Pen(Color.FromArgb(220, 220, 220), 1))
+                {
+                    e.Graphics.DrawRectangle(borderPen, 0, 0, searchPanel.Width - 1, searchPanel.Height - 1);
+                }
+            };
+            
+            // Search bar on the left
+            Panel searchContainer = new Panel
+            {
+                Location = new Point(20, 15),
+                Size = new Size(320, 40),
+                BackColor = Color.FromArgb(245, 245, 245),
+                BorderStyle = BorderStyle.None
+            };
+            searchContainer.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, searchContainer.Width - 1, searchContainer.Height - 1), 8))
+                {
+                    e.Graphics.FillPath(new SolidBrush(Color.FromArgb(245, 245, 245)), path);
+                }
+            };
+            
+            Label searchIcon = new Label
+            {
+                Text = "🔍",
+                Font = new Font("Segoe UI", 12F),
+                Location = new Point(10, 10),
+                Size = new Size(25, 20),
+                ForeColor = Color.FromArgb(150, 150, 150),
+                TextAlign = ContentAlignment.MiddleCenter,
+                BackColor = Color.Transparent
+            };
+            searchContainer.Controls.Add(searchIcon);
+            
+            TextBox txtSearchFines = new TextBox
+            {
+                Location = new Point(40, 8),
+                Size = new Size(260, 24),
+                Font = new Font("Segoe UI", 10F),
+                BorderStyle = BorderStyle.None,
+                BackColor = Color.FromArgb(245, 245, 245)
+            };
+            txtSearchFines.SetPlaceholder("Search fines...");
+            searchContainer.Controls.Add(txtSearchFines);
+            
+            // Filter tabs on the right
+            Panel filterPanel = new Panel
+            {
+                Location = new Point(searchPanel.Width - 400, 20),
+                Size = new Size(380, 40),
+                BackColor = Color.Transparent,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            
+            // Declare DataGridView first
             DataGridView dgvFines = new DataGridView
             {
                 Location = new Point(30, 340),
@@ -5214,27 +5713,682 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 AllowUserToDeleteRows = false,
                 ReadOnly = true,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None,
+                RowHeadersVisible = false,
+                ColumnHeadersHeight = 40,
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+                GridColor = Color.FromArgb(240, 240, 240)
             };
+            dgvFines.RowTemplate.Height = 50;
+            
+            string[] filterOptions = { "All", "Pending", "Paid", "Waived" };
+            Button[] filterButtons = new Button[4];
+            string selectedFilter = "All";
+            
+            for (int i = 0; i < filterOptions.Length; i++)
+            {
+                filterButtons[i] = new Button
+                {
+                    Text = filterOptions[i],
+                    Location = new Point(i * 90, 0),
+                    Size = new Size(80, 35),
+                    Font = new Font("Segoe UI", 9.5F, FontStyle.Regular),
+                    FlatStyle = FlatStyle.Flat,
+                    Cursor = Cursors.Hand,
+                    Tag = filterOptions[i]
+                };
+                filterButtons[i].FlatAppearance.BorderSize = 0;
+                
+                if (i == 0)
+                {
+                    filterButtons[i].BackColor = ThemeConstants.PrimaryMaroon;
+                    filterButtons[i].ForeColor = Color.White;
+                }
+                else
+                {
+                    filterButtons[i].BackColor = Color.White;
+                    filterButtons[i].ForeColor = Color.FromArgb(60, 60, 60);
+                }
+                
+                filterButtons[i].Paint += (s, e) =>
+                {
+                    Button btn = s as Button;
+                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btn.Width - 1, btn.Height - 1), 6))
+                    {
+                        e.Graphics.FillPath(new SolidBrush(btn.BackColor), path);
+                        TextRenderer.DrawText(e.Graphics, btn.Text, btn.Font, new Rectangle(0, 0, btn.Width, btn.Height), btn.ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                    }
+                };
+                
+                filterButtons[i].Click += (s, e) =>
+                {
+                    Button clickedBtn = s as Button;
+                    selectedFilter = clickedBtn.Tag.ToString();
+                    
+                    foreach (var btn in filterButtons)
+                    {
+                        if (btn == clickedBtn)
+                        {
+                            btn.BackColor = ThemeConstants.PrimaryMaroon;
+                            btn.ForeColor = Color.White;
+                        }
+                        else
+                        {
+                            btn.BackColor = Color.White;
+                            btn.ForeColor = Color.FromArgb(60, 60, 60);
+                        }
+                        btn.Invalidate();
+                    }
+                    
+                    LoadFinesData(dgvFines, selectedFilter, txtSearchFines.Text);
+                };
+                
+                filterPanel.Controls.Add(filterButtons[i]);
+            }
+            
+            // Configure columns - Full design: Member, Book/Reason, Type, Amount, Paid, Status, Date, Actions
             dgvFines.Columns.Add("FineId", "ID");
             dgvFines.Columns.Add("MemberName", "Member");
-            dgvFines.Columns.Add("BookTitle", "Book");
+            dgvFines.Columns.Add("BookReason", "Book/Reason");
+            dgvFines.Columns.Add("Type", "Type");
             dgvFines.Columns.Add("Amount", "Amount");
+            dgvFines.Columns.Add("Paid", "Paid");
             dgvFines.Columns.Add("Status", "Status");
-            dgvFines.Columns.Add("DueDate", "Due Date");
-            dgvFines.Columns["FineId"].Width = 80;
-            dgvFines.Columns["MemberName"].Width = 200;
-            dgvFines.Columns["BookTitle"].Width = 250;
-            dgvFines.Columns["Amount"].Width = 100;
-            dgvFines.Columns["Status"].Width = 120;
-            dgvFines.Columns["DueDate"].Width = 120;
+            dgvFines.Columns.Add("Date", "Date");
+            dgvFines.Columns.Add("Actions", "Actions");
+            
             dgvFines.Columns["FineId"].Visible = false;
+            dgvFines.Columns["MemberName"].Width = 150;
+            dgvFines.Columns["BookReason"].Width = 200;
+            dgvFines.Columns["Type"].Width = 100;
+            dgvFines.Columns["Amount"].Width = 100;
+            dgvFines.Columns["Paid"].Width = 100;
+            dgvFines.Columns["Status"].Width = 120;
+            dgvFines.Columns["Date"].Width = 120;
+            dgvFines.Columns["Actions"].Width = 200;
+            
+            // Custom cell painting for badges and styling
+            dgvFines.CellPainting += (s, e) =>
+            {
+                if (e.RowIndex < 0) return;
+                
+                if (e.ColumnIndex == dgvFines.Columns["Type"].Index || e.ColumnIndex == dgvFines.Columns["Status"].Index)
+                {
+                    e.PaintBackground(e.CellBounds, false);
+                    
+                    string cellValue = e.Value?.ToString() ?? "";
+                    Color badgeColor = Color.White;
+                    Color textColor = Color.Black;
+                    
+                    if (e.ColumnIndex == dgvFines.Columns["Type"].Index)
+                    {
+                        if (cellValue.Contains("Overdue"))
+                        {
+                            badgeColor = Color.FromArgb(255, 193, 7); // Yellow
+                            textColor = Color.Black;
+                        }
+                        else if (cellValue.Contains("Lost"))
+                        {
+                            badgeColor = Color.FromArgb(255, 87, 34); // Light Red
+                            textColor = Color.White;
+                        }
+                        else if (cellValue.Contains("Damaged"))
+                        {
+                            badgeColor = Color.FromArgb(255, 152, 0); // Orange
+                            textColor = Color.White;
+                        }
+                        else
+                        {
+                            badgeColor = Color.FromArgb(158, 158, 158); // Gray
+                            textColor = Color.White;
+                        }
+                    }
+                    else if (e.ColumnIndex == dgvFines.Columns["Status"].Index)
+                    {
+                        if (cellValue.Contains("Paid"))
+                        {
+                            badgeColor = Color.FromArgb(76, 175, 80); // Green
+                            textColor = Color.White;
+                        }
+                        else if (cellValue.Contains("Pending"))
+                        {
+                            badgeColor = Color.FromArgb(255, 152, 0); // Orange
+                            textColor = Color.White;
+                        }
+                        else if (cellValue.Contains("Waived"))
+                        {
+                            badgeColor = Color.FromArgb(33, 150, 243); // Blue
+                            textColor = Color.White;
+                        }
+                    }
+                    
+                    Rectangle badgeRect = new Rectangle(e.CellBounds.X + 5, e.CellBounds.Y + 10, e.CellBounds.Width - 10, 25);
+                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                    using (GraphicsPath path = CreateRoundedRectangle(badgeRect, 12))
+                    {
+                        e.Graphics.FillPath(new SolidBrush(badgeColor), path);
+                    }
+                    
+                    // Add icon for status
+                    if (e.ColumnIndex == dgvFines.Columns["Status"].Index)
+                    {
+                        string icon = "";
+                        if (cellValue.Contains("Paid")) icon = "✓ ";
+                        else if (cellValue.Contains("Pending")) icon = "🕒 ";
+                        
+                        TextRenderer.DrawText(e.Graphics, icon + cellValue, dgvFines.Font, badgeRect, textColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                    }
+                    else
+                    {
+                        TextRenderer.DrawText(e.Graphics, cellValue, dgvFines.Font, badgeRect, textColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                    }
+                    
+                    e.Handled = true;
+                }
+                else if (e.ColumnIndex == dgvFines.Columns["Paid"].Index)
+                {
+                    e.PaintBackground(e.CellBounds, false);
+                    string cellValue = e.Value?.ToString() ?? "$0.00";
+                    Color textColor = Color.FromArgb(76, 175, 80); // Green
+                    TextRenderer.DrawText(e.Graphics, cellValue, new Font(dgvFines.Font, FontStyle.Regular), e.CellBounds, textColor, TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+                    e.Handled = true;
+                }
+                else if (e.ColumnIndex == dgvFines.Columns["Amount"].Index)
+                {
+                    e.PaintBackground(e.CellBounds, false);
+                    string cellValue = e.Value?.ToString() ?? "$0.00";
+                    TextRenderer.DrawText(e.Graphics, cellValue, dgvFines.Font, e.CellBounds, Color.Black, TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+                    e.Handled = true;
+                }
+                else if (e.ColumnIndex == dgvFines.Columns["Actions"].Index)
+                {
+                    e.PaintBackground(e.CellBounds, false);
+                    string status = dgvFines.Rows[e.RowIndex].Cells["Status"].Value?.ToString() ?? "";
+                    string dateStr = dgvFines.Rows[e.RowIndex].Cells["Date"].Value?.ToString() ?? "";
+                    
+                    if (status.Contains("Paid"))
+                    {
+                        // Show "Paid [Date]" text
+                        string paidText = $"Paid {dateStr}";
+                        TextRenderer.DrawText(e.Graphics, paidText, dgvFines.Font, e.CellBounds, Color.FromArgb(120, 120, 120), TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+                    }
+                    else
+                    {
+                        // Show Pay button and Waive link
+                        Rectangle payBtnRect = new Rectangle(e.CellBounds.X + 5, e.CellBounds.Y + 10, 60, 25);
+                        Rectangle waiveRect = new Rectangle(e.CellBounds.X + 75, e.CellBounds.Y + 15, 50, 20);
+                        
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        using (GraphicsPath path = CreateRoundedRectangle(payBtnRect, 6))
+                        {
+                            e.Graphics.FillPath(new SolidBrush(ThemeConstants.PrimaryMaroon), path);
+                        }
+                        TextRenderer.DrawText(e.Graphics, "💳 Pay", new Font(dgvFines.Font, FontStyle.Bold), payBtnRect, Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                        
+                        TextRenderer.DrawText(e.Graphics, "Waive", dgvFines.Font, waiveRect, Color.FromArgb(33, 150, 243), TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+                    }
+                    e.Handled = true;
+                }
+            };
+            
+            // Handle action buttons
+            dgvFines.CellClick += (s, e) =>
+            {
+                if (e.ColumnIndex == dgvFines.Columns["Actions"].Index && e.RowIndex >= 0)
+                {
+                    string status = dgvFines.Rows[e.RowIndex].Cells["Status"].Value?.ToString() ?? "";
+                    if (status.Contains("Pending"))
+                    {
+                        Rectangle cellRect = dgvFines.GetCellDisplayRectangle(e.ColumnIndex, e.RowIndex, false);
+                        Point clickPoint = dgvFines.PointToClient(Control.MousePosition);
+                        
+                        int relativeX = clickPoint.X - cellRect.X;
+                        int relativeY = clickPoint.Y - cellRect.Y;
+                        
+                        Rectangle payBtnRect = new Rectangle(5, 10, 60, 25);
+                        Rectangle waiveRect = new Rectangle(75, 15, 50, 20);
+                        
+                        Point relativePoint = new Point(relativeX, relativeY);
+                        
+                        if (payBtnRect.Contains(relativePoint))
+                        {
+                            int fineId = Convert.ToInt32(dgvFines.Rows[e.RowIndex].Cells["FineId"].Value);
+                            string memberName = dgvFines.Rows[e.RowIndex].Cells["MemberName"].Value?.ToString() ?? "";
+                            string bookReason = dgvFines.Rows[e.RowIndex].Cells["BookReason"].Value?.ToString() ?? "";
+                            string amountStr = dgvFines.Rows[e.RowIndex].Cells["Amount"].Value?.ToString() ?? "₱0.00";
+                            string paidStr = dgvFines.Rows[e.RowIndex].Cells["Paid"].Value?.ToString() ?? "₱0.00";
+                            
+                            decimal totalFine = decimal.Parse(amountStr.Replace("₱", "").Replace(",", ""), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture);
+                            decimal alreadyPaid = decimal.Parse(paidStr.Replace("₱", "").Replace(",", ""), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture);
+                            
+                            using (var dialog = new RecordPaymentDialog(fineId, memberName, bookReason, totalFine, alreadyPaid))
+                            {
+                                if (dialog.ShowDialog(this) == DialogResult.OK && dialog.PaymentProcessed)
+                                {
+                                    // Refresh fines data and statistics
+                                    LoadFinesData(dgvFines, selectedFilter, txtSearchFines.Text);
+                                    RefreshFinesStatistics();
+                                }
+                            }
+                        }
+                        else if (waiveRect.Contains(relativePoint))
+                        {
+                            int fineId = Convert.ToInt32(dgvFines.Rows[e.RowIndex].Cells["FineId"].Value);
+                            string memberName = dgvFines.Rows[e.RowIndex].Cells["MemberName"].Value?.ToString() ?? "";
+                            string amountStr = dgvFines.Rows[e.RowIndex].Cells["Amount"].Value?.ToString() ?? "₱0.00";
+                            
+                            decimal amountToWaive = decimal.Parse(amountStr.Replace("₱", "").Replace(",", ""), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture);
+                            
+                            using (var dialog = new WaiveFineDialog(fineId, memberName, amountToWaive))
+                            {
+                                if (dialog.ShowDialog(this) == DialogResult.OK && dialog.FineWaived)
+                                {
+                                    // Refresh fines data and statistics
+                                    LoadFinesData(dgvFines, selectedFilter, txtSearchFines.Text);
+                                    RefreshFinesStatistics();
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+            
+            txtSearchFines.TextChanged += (s, e) =>
+            {
+                LoadFinesData(dgvFines, selectedFilter, txtSearchFines.Text);
+            };
+            
+            searchPanel.Controls.Add(searchContainer);
+            searchPanel.Controls.Add(filterPanel);
+            
+            // Load fines data
+            LoadFinesData(dgvFines, selectedFilter, "");
+            
+            // Set tags on cards and refresh statistics
+            SetFinesCardTags(statsPanel);
+            RefreshFinesStatistics();
             pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnAddFine, statsPanel, searchPanel, dgvFines });
+        }
+
+        /// <summary>
+        /// Sets tags on fines statistics cards for easy updating
+        /// </summary>
+        private void SetFinesCardTags(Panel statsPanel)
+        {
+            foreach (Control card in statsPanel.Controls)
+            {
+                if (card is Panel cardPanel)
+                {
+                    foreach (Control ctrl in cardPanel.Controls)
+                    {
+                        if (ctrl is Label lbl && lbl.Font.Bold)
+                        {
+                            // Set tag based on card location
+                            if (cardPanel.Location.X == 0) lbl.Tag = "PendingFines";
+                            else if (cardPanel.Location.X == 200) lbl.Tag = "CollectedFines";
+                            else if (cardPanel.Location.X == 400) lbl.Tag = "WaivedFines";
+                            else if (cardPanel.Location.X == 600) lbl.Tag = "PendingCases";
+                        }
+                    }
+                }
+            }
+        }
+        
+        private void LoadFinesData(DataGridView dgv, string filter, string searchText)
+        {
+            dgv.Rows.Clear();
+            
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Ensure PaidAmount column exists before querying
+                    EnsurePaidAmountColumnExists(connection);
+                    
+                    string query = @"
+                        SELECT 
+                            f.FineId,
+                            COALESCE(CONCAT(u.FirstName, ' ', u.LastName), m.MemberNumber, 'Unknown Member') AS MemberName,
+                            CASE 
+                                WHEN bk.Title IS NOT NULL THEN bk.Title
+                                WHEN f.Reason LIKE '% - %' THEN 
+                                    SUBSTRING_INDEX(SUBSTRING_INDEX(f.Reason, ' - ', -1), ' (', 1)
+                                WHEN f.Reason IS NOT NULL AND f.Reason != '' THEN f.Reason
+                                ELSE 'N/A'
+                            END AS BookReason,
+                            CASE 
+                                WHEN f.Reason LIKE '%Lost%' OR f.Reason LIKE '%lost%' THEN 'Lost'
+                                WHEN f.Reason LIKE '%Damaged%' OR f.Reason LIKE '%damaged%' THEN 'Damaged'
+                                WHEN f.Reason LIKE '%Overdue%' OR f.Reason LIKE '%overdue%' OR f.Reason IS NULL THEN 'Overdue'
+                                ELSE 'Other'
+                            END AS Type,
+                            f.Amount,
+                            COALESCE(f.PaidAmount, CASE WHEN f.Status = 'Paid' THEN f.Amount ELSE 0 END) AS PaidAmount,
+                            CASE 
+                                WHEN f.Status = 'Unpaid' THEN 'Pending'
+                                ELSE f.Status
+                            END AS Status,
+                            COALESCE(f.PaidDate, br.DueDate, f.CreatedDate) AS FineDate,
+                            f.Reason
+                        FROM Fines f
+                        INNER JOIN Members m ON f.MemberId = m.MemberId
+                        LEFT JOIN Users u ON m.UserId = u.UserId
+                        LEFT JOIN Borrowings br ON f.BorrowingId = br.BorrowingId
+                        LEFT JOIN Books bk ON br.BookId = bk.BookId
+                        WHERE 1=1";
+                    
+                    // Apply filter
+                    if (!string.IsNullOrEmpty(filter) && filter != "All")
+                    {
+                        if (filter == "Pending")
+                        {
+                            query += " AND f.Status = 'Unpaid'";
+                        }
+                        else if (filter == "Paid")
+                        {
+                            query += " AND f.Status = 'Paid'";
+                        }
+                        else if (filter == "Waived")
+                        {
+                            query += " AND f.Status = 'Waived'";
+                        }
+                    }
+                    // If filter is "All" or empty, no additional WHERE clause is added - shows all fines
+                    
+                    // Apply search filter - search by member name
+                    if (!string.IsNullOrWhiteSpace(searchText))
+                    {
+                        query += " AND (u.FirstName LIKE @Search OR u.LastName LIKE @Search OR CONCAT(u.FirstName, ' ', u.LastName) LIKE @Search OR m.MemberNumber LIKE @Search)";
+                    }
+                    
+                    query += " ORDER BY f.CreatedDate DESC";
+                    
+                    using (var command = new MySqlCommand(query, connection))
+                    {
+                        if (!string.IsNullOrWhiteSpace(searchText))
+                        {
+                            command.Parameters.AddWithValue("@Search", $"%{searchText}%");
+                        }
+                        
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                try
+                                {
+                                    int fineId = reader.GetInt32("FineId");
+                                    string memberName = reader.GetString("MemberName");
+                                    string bookReason = reader.GetString("BookReason");
+                                    string type = reader.GetString("Type");
+                                    decimal amount = reader.GetDecimal("Amount");
+                                    decimal paidAmount = reader.GetDecimal("PaidAmount");
+                                    string status = reader.GetString("Status");
+                                    DateTime fineDate = reader.GetDateTime("FineDate");
+                                    string reason = reader.IsDBNull(reader.GetOrdinal("Reason")) ? "" : reader.GetString("Reason");
+                                    
+                                    // Format display reason
+                                    string displayReason = bookReason;
+                                    if (!string.IsNullOrEmpty(reason) && reason != bookReason && !bookReason.Contains(reason))
+                                    {
+                                        displayReason = $"{bookReason}\n{reason}";
+                                    }
+                                    
+                                    // Format date
+                                    string dateStr = fineDate.ToString("MMM dd, yyyy");
+                                    
+                                    // Format amounts
+                                    string amountStr = $"₱{amount:N2}";
+                                    string paidStr = $"₱{paidAmount:N2}";
+                                    
+                                    // Add row with all columns: FineId, MemberName, BookReason, Type, Amount, Paid, Status, Date, Actions
+                                    dgv.Rows.Add(fineId, memberName, displayReason, type, amountStr, paidStr, status, dateStr, "");
+                                }
+                                catch (Exception rowEx)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"Error reading fine row: {rowEx.Message}");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading fines: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        
+        private void RefreshFinesView()
+        {
+            // Find the DataGridView and search textbox in the fines view and refresh it
+            DataGridView finesDgv = null;
+            TextBox searchTextBox = null;
+            
+            foreach (Control control in pnlMainContent.Controls)
+            {
+                if (control is DataGridView dgv)
+                {
+                    if (dgv.Columns.Contains("FineId") && dgv.Columns.Contains("MemberName"))
+                    {
+                        finesDgv = dgv;
+                    }
+                }
+                else if (control is Panel searchPanel)
+                {
+                    // Look for search textbox in the search panel
+                    foreach (Control subControl in searchPanel.Controls)
+                    {
+                        if (subControl is TextBox txt)
+                        {
+                            // Check if it's a search textbox by checking the Tag for PlaceholderData
+                            if (txt.Tag is PlaceholderTextHelper.PlaceholderData placeholderData && 
+                                placeholderData.PlaceholderText != null && 
+                                placeholderData.PlaceholderText.Contains("Search"))
+                            {
+                                searchTextBox = txt;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if (finesDgv != null)
+            {
+                string currentSearch = "";
+                string currentFilter = "All";
+                
+                if (searchTextBox != null)
+                {
+                    // Get actual text, excluding placeholder
+                    if (searchTextBox.Tag is PlaceholderTextHelper.PlaceholderData data && 
+                        searchTextBox.Text == data.PlaceholderText)
+                    {
+                        currentSearch = "";
+                    }
+                    else
+                    {
+                        currentSearch = searchTextBox.Text ?? "";
+                    }
+                }
+                
+                // Find the active filter button
+                foreach (Control panel in pnlMainContent.Controls)
+                {
+                    if (panel is Panel searchPanel)
+                    {
+                        foreach (Control ctrl in searchPanel.Controls)
+                        {
+                            if (ctrl is Panel filterPanel)
+                            {
+                                foreach (Control btn in filterPanel.Controls)
+                                {
+                                    if (btn is Button filterBtn)
+                                    {
+                                        // Check if this button is active (has maroon background and white text)
+                                        if (filterBtn.BackColor == ThemeConstants.PrimaryMaroon && filterBtn.ForeColor == Color.White)
+                                        {
+                                            currentFilter = filterBtn.Tag?.ToString() ?? "All";
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                LoadFinesData(finesDgv, currentFilter, currentSearch);
+            }
+            else
+            {
+                // If not found, reload the entire view
+                ShowFinesView();
+            }
+        }
+
+        private void EnsureBookCopiesTableExists()
+        {
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Ensure we're using the correct database
+                    using (var useDbCmd = new MySqlCommand("USE LMS_DB", connection))
+                    {
+                        useDbCmd.ExecuteNonQuery();
+                    }
+                    
+                    string checkTableQuery = @"
+                        SELECT COUNT(*) 
+                        FROM information_schema.tables 
+                        WHERE table_schema = 'LMS_DB' 
+                        AND table_name = 'BookCopies'";
+                    
+                    using (var checkCmd = new MySqlCommand(checkTableQuery, connection))
+                    {
+                        int tableExists = Convert.ToInt32(checkCmd.ExecuteScalar());
+                        if (tableExists == 0)
+                        {
+                            // Create BookCopies table
+                            string createTableQuery = @"
+                                CREATE TABLE BookCopies (
+                                    CopyId INT PRIMARY KEY AUTO_INCREMENT,
+                                    BookId INT NOT NULL,
+                                    AccessionNumber VARCHAR(50) UNIQUE NOT NULL,
+                                    Location VARCHAR(255) DEFAULT 'Main Library',
+                                    `Condition` VARCHAR(50) DEFAULT 'Good',
+                                    Status VARCHAR(50) DEFAULT 'Available',
+                                    CreatedDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                    LastUpdatedDate DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                    FOREIGN KEY (BookId) REFERENCES Books(BookId) ON DELETE CASCADE,
+                                    INDEX idx_BookId (BookId),
+                                    INDEX idx_Status (Status),
+                                    INDEX idx_Condition (`Condition`),
+                                    INDEX idx_AccessionNumber (AccessionNumber)
+                                )";
+                            
+                            using (var createCmd = new MySqlCommand(createTableQuery, connection))
+                            {
+                                createCmd.ExecuteNonQuery();
+                                System.Diagnostics.Debug.WriteLine("BookCopies table created successfully");
+                            }
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine("BookCopies table already exists");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error ensuring BookCopies table exists: {ex.Message}");
+                MessageBox.Show($"Error creating BookCopies table: {ex.Message}\n\nPlease ensure the database connection is working properly.", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        
+        private void InitializeBookCopiesFromBooks()
+        {
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Ensure we're using the correct database
+                    using (var useDbCmd = new MySqlCommand("USE LMS_DB", connection))
+                    {
+                        useDbCmd.ExecuteNonQuery();
+                    }
+                    
+                    // Get all books and their copy counts
+                    string booksQuery = @"
+                        SELECT 
+                            b.BookId,
+                            b.TotalCopies,
+                            b.CreatedDate,
+                            COUNT(bc.CopyId) AS ExistingCopies
+                        FROM Books b
+                        LEFT JOIN BookCopies bc ON b.BookId = bc.BookId
+                        GROUP BY b.BookId, b.TotalCopies, b.CreatedDate";
+                    
+                    using (var booksCmd = new MySqlCommand(booksQuery, connection))
+                    {
+                        using (var reader = booksCmd.ExecuteReader())
+                        {
+                            List<(int BookId, int TotalCopies, int ExistingCopies, DateTime CreatedDate)> booksToSync = new List<(int, int, int, DateTime)>();
+                            
+                            while (reader.Read())
+                            {
+                                int bookId = reader.GetInt32("BookId");
+                                int totalCopies = reader.GetInt32("TotalCopies");
+                                int existingCopies = reader.GetInt32("ExistingCopies");
+                                DateTime createdDate = reader.GetDateTime("CreatedDate");
+                                
+                                if (existingCopies < totalCopies)
+                                {
+                                    booksToSync.Add((bookId, totalCopies, existingCopies, createdDate));
+                                }
+                            }
+                            
+                            // Create missing copies
+                            foreach (var book in booksToSync)
+                            {
+                                int copiesToCreate = book.TotalCopies - book.ExistingCopies;
+                                
+                                for (int i = 1; i <= copiesToCreate; i++)
+                                {
+                                    string accessionNumber = $"ACC-{book.CreatedDate.Year}-{book.BookId:D5}-{book.ExistingCopies + i:D3}";
+                                    
+                                    string insertQuery = @"
+                                        INSERT INTO BookCopies (BookId, AccessionNumber, Location, `Condition`, Status)
+                                        VALUES (@BookId, @AccessionNumber, 'Main Library', 'Good', 'Available')";
+                                    
+                                    using (var insertCmd = new MySqlCommand(insertQuery, connection))
+                                    {
+                                        insertCmd.Parameters.AddWithValue("@BookId", book.BookId);
+                                        insertCmd.Parameters.AddWithValue("@AccessionNumber", accessionNumber);
+                                        insertCmd.ExecuteNonQuery();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error initializing BookCopies: {ex.Message}");
+            }
         }
 
         private void ShowInventoryView()
         {
+            // Ensure BookCopies table exists
+            EnsureBookCopiesTableExists();
+            
+            // Initialize BookCopies if needed (sync with Books table)
+            InitializeBookCopiesFromBooks();
+            
             RestoreOriginalControls();
             ShowDashboardControls(false);
             ClearDynamicControls();
@@ -5256,6 +6410,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 ForeColor = Color.FromArgb(100, 100, 100),
                 BackColor = Color.Transparent
             };
+            
             Button btnExportInventory = new Button
             {
                 Text = "Export Inventory",
@@ -5269,7 +6424,8 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
             btnExportInventory.FlatAppearance.BorderSize = 0;
-            btnExportInventory.Click += (s, e) => ShowFeatureMessage("Export", "Export functionality will be implemented.");
+            btnExportInventory.Click += (s, e) => GenerateInventoryReport();
+            
             Panel statsPanel = new Panel
             {
                 Location = new Point(30, 150),
@@ -5277,22 +6433,106 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 BackColor = Color.Transparent,
                 Tag = "InventoryStatsPanel"
             };
-            Panel cardTotalTitles = CreateCatalogStatCard("📚", "0", "Total Titles", ThemeConstants.PrimaryMaroon, new Point(0, 0));
-            Panel cardTotalCopies = CreateCatalogStatCard("📖", "0", "Total Copies", Color.White, new Point(250, 0));
-            Panel cardAvailable = CreateCatalogStatCard("✓", "0", "Available", Color.FromArgb(76, 175, 80), new Point(500, 0));
-            Panel cardBorrowed = CreateCatalogStatCard("📗", "0", "Borrowed", Color.FromArgb(33, 150, 243), new Point(0, 80));
-            Panel cardDamaged = CreateCatalogStatCard("⚠", "0", "Damaged", Color.FromArgb(255, 193, 7), new Point(250, 80));
-            Panel cardLost = CreateCatalogStatCard("❌", "0", "Lost", Color.FromArgb(244, 67, 54), new Point(500, 80));
+            // Load statistics first
+            var inventoryStats = GetInventoryStatistics();
+            Panel cardTotalTitles = CreateCatalogStatCard("📚", inventoryStats.TotalTitles.ToString(), "Total Titles", ThemeConstants.PrimaryMaroon, new Point(0, 0), "TotalTitles");
+            Panel cardTotalCopies = CreateCatalogStatCard("📖", inventoryStats.TotalCopies.ToString(), "Total Copies", Color.White, new Point(250, 0), "TotalCopies");
+            Panel cardAvailable = CreateCatalogStatCard("✓", inventoryStats.Available.ToString(), "Available", Color.FromArgb(76, 175, 80), new Point(500, 0), "Available");
+            Panel cardBorrowed = CreateCatalogStatCard("📗", inventoryStats.Borrowed.ToString(), "Borrowed", Color.FromArgb(33, 150, 243), new Point(0, 80), "Borrowed");
+            Panel cardDamaged = CreateCatalogStatCard("⚠", inventoryStats.Damaged.ToString(), "Damaged", Color.FromArgb(255, 193, 7), new Point(250, 80), "Damaged");
+            Panel cardLost = CreateCatalogStatCard("❌", inventoryStats.Lost.ToString(), "Lost", Color.FromArgb(244, 67, 54), new Point(500, 80), "Lost");
             statsPanel.Controls.AddRange(new Control[] { cardTotalTitles, cardTotalCopies, cardAvailable, cardBorrowed, cardDamaged, cardLost });
-            var searchBarComponents = CreateConsistentSearchBar("🔍 Search inventory...", 920);
+            
+            // Collection by Category Section
+            Panel categoryPanel = new Panel
+            {
+                Location = new Point(30, 330),
+                Size = new Size(pnlMainContent.Width - 60, 120),
+                BackColor = Color.White,
+                BorderStyle = BorderStyle.None
+            };
+            
+            categoryPanel.Paint += (s, e) =>
+            {
+                using (var shadowBrush = new SolidBrush(Color.FromArgb(15, 0, 0, 0)))
+                {
+                    e.Graphics.FillRectangle(shadowBrush, 3, 3, categoryPanel.Width - 3, categoryPanel.Height - 3);
+                }
+                using (var bgBrush = new SolidBrush(Color.White))
+                {
+                    e.Graphics.FillRectangle(bgBrush, 0, 0, categoryPanel.Width, categoryPanel.Height);
+                }
+                using (var borderPen = new Pen(Color.FromArgb(220, 220, 220), 1))
+                {
+                    e.Graphics.DrawRectangle(borderPen, 0, 0, categoryPanel.Width - 1, categoryPanel.Height - 1);
+                }
+            };
+            
+            Label lblCategoryTitle = new Label
+            {
+                Text = "📊 Collection by Category",
+                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(40, 40, 40),
+                Location = new Point(20, 15),
+                AutoSize = true
+            };
+            
+            Label lblCategorySubtitle = new Label
+            {
+                Text = "Availability distribution across categories.",
+                Font = new Font("Segoe UI", 9F),
+                ForeColor = Color.FromArgb(120, 120, 120),
+                Location = new Point(20, 40),
+                AutoSize = true
+            };
+            
+            categoryPanel.Controls.Add(lblCategoryTitle);
+            categoryPanel.Controls.Add(lblCategorySubtitle);
+            
+            // Load category data and create progress bars
+            LoadCategoryDistribution(categoryPanel);
+            
+            var searchBarComponents = CreateConsistentSearchBar("🔍 Search by title, accession number, or location...", 920);
             Panel searchPanel = searchBarComponents.panel;
             TextBox txtSearchInventory = searchBarComponents.textBox;
             Button btnSearchInventory = searchBarComponents.button;
-            searchPanel.Location = new Point(30, 330);
+            searchPanel.Location = new Point(30, 470);
+            
+            // Status filter dropdown
+            Panel filterPanel = new Panel
+            {
+                Location = new Point(searchPanel.Width - 150, 15),
+                Size = new Size(130, 30),
+                BackColor = Color.Transparent,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            
+            ComboBox cmbStatusFilter = new ComboBox
+            {
+                Location = new Point(0, 0),
+                Size = new Size(130, 30),
+                Font = new Font("Segoe UI", 9F),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                FlatStyle = FlatStyle.Flat
+            };
+            cmbStatusFilter.Items.AddRange(new string[] { "All Status", "Available", "Borrowed", "Damaged", "Lost", "For Repair" });
+            cmbStatusFilter.SelectedIndex = 0;
+            filterPanel.Controls.Add(cmbStatusFilter);
+            searchPanel.Controls.Add(filterPanel);
+            
+            // Container panel for DataGridView to enable full stack display
+            Panel dgvContainer = new Panel
+            {
+                Location = new Point(30, 560),
+                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 590),
+                BackColor = Color.White,
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+                Padding = new Padding(0)
+            };
+            
             DataGridView dgvInventory = new DataGridView
             {
-                Location = new Point(30, 420),
-                Size = new Size(pnlMainContent.Width - 60, pnlMainContent.Height - 450),
+                Dock = DockStyle.Fill,
                 BackgroundColor = Color.White,
                 BorderStyle = BorderStyle.None,
                 AllowUserToAddRows = false,
@@ -5300,19 +6540,1256 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                 ReadOnly = true,
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
+                RowHeadersVisible = false
             };
-            dgvInventory.Columns.Add("AccessionNumber", "Accession #");
+            
+            dgvInventory.Columns.Add("CopyId", "ID");
+            dgvInventory.Columns.Add("CopyNumber", "Copy ID");
             dgvInventory.Columns.Add("BookTitle", "Book Title");
+            dgvInventory.Columns.Add("AccessionNumber", "Accession #");
             dgvInventory.Columns.Add("Location", "Location");
             dgvInventory.Columns.Add("Condition", "Condition");
             dgvInventory.Columns.Add("Status", "Status");
+            dgvInventory.Columns.Add("Actions", "Actions");
+            
+            dgvInventory.Columns["CopyId"].Visible = false;
+            dgvInventory.Columns["CopyNumber"].Width = 80;
+            dgvInventory.Columns["BookTitle"].Width = 250;
+            dgvInventory.Columns["BookTitle"].DefaultCellStyle.WrapMode = DataGridViewTriState.True;
             dgvInventory.Columns["AccessionNumber"].Width = 150;
-            dgvInventory.Columns["BookTitle"].Width = 300;
-            dgvInventory.Columns["Location"].Width = 200;
+            dgvInventory.Columns["Location"].Width = 180;
             dgvInventory.Columns["Condition"].Width = 120;
             dgvInventory.Columns["Status"].Width = 120;
-            pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnExportInventory, statsPanel, searchPanel, dgvInventory });
+            dgvInventory.Columns["Actions"].Width = 100;
+            
+            // Enable row height auto-sizing for multi-line content
+            dgvInventory.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
+            dgvInventory.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
+            
+            // Status filter change handler
+            string selectedStatusFilter = "All Status";
+            cmbStatusFilter.SelectedIndexChanged += (s, e) =>
+            {
+                selectedStatusFilter = cmbStatusFilter.SelectedItem?.ToString() ?? "All Status";
+                LoadInventoryData(dgvInventory, txtSearchInventory.Text, selectedStatusFilter);
+            };
+            
+            // Load inventory data
+            LoadInventoryData(dgvInventory, "", selectedStatusFilter);
+            UpdateInventoryStats(statsPanel);
+            
+            // Search functionality
+            txtSearchInventory.TextChanged += (s, e) =>
+            {
+                LoadInventoryData(dgvInventory, txtSearchInventory.Text, selectedStatusFilter);
+            };
+            
+            // Add context menu for actions
+            ContextMenuStrip contextMenu = new ContextMenuStrip();
+            ToolStripMenuItem markLost = new ToolStripMenuItem("Mark as Lost");
+            ToolStripMenuItem markDamaged = new ToolStripMenuItem("Mark as Damaged");
+            ToolStripMenuItem markRepair = new ToolStripMenuItem("Mark for Repair");
+            ToolStripMenuItem updateLocation = new ToolStripMenuItem("Update Location");
+            
+            markLost.Click += (s, e) => MarkCopyStatus(dgvInventory, "Lost");
+            markDamaged.Click += (s, e) => MarkCopyStatus(dgvInventory, "Damaged");
+            markRepair.Click += (s, e) => MarkCopyStatus(dgvInventory, "For Repair");
+            updateLocation.Click += (s, e) => UpdateCopyLocation(dgvInventory);
+            
+            contextMenu.Items.AddRange(new ToolStripItem[] { markLost, markDamaged, markRepair, updateLocation });
+            dgvInventory.ContextMenuStrip = contextMenu;
+            
+            // Handle cell click for actions - Edit button (pencil icon)
+            dgvInventory.CellClick += (s, e) =>
+            {
+                if (e.ColumnIndex == dgvInventory.Columns["Actions"].Index && e.RowIndex >= 0)
+                {
+                    // Get copy data from the row
+                    int copyId = Convert.ToInt32(dgvInventory.Rows[e.RowIndex].Cells["CopyId"].Value);
+                    string bookTitle = dgvInventory.Rows[e.RowIndex].Cells["BookTitle"].Value?.ToString() ?? "";
+                    string copyNumberStr = dgvInventory.Rows[e.RowIndex].Cells["CopyNumber"].Value?.ToString() ?? "Copy #1";
+                    string status = dgvInventory.Rows[e.RowIndex].Cells["Status"].Value?.ToString() ?? "Available";
+                    string location = dgvInventory.Rows[e.RowIndex].Cells["Location"].Value?.ToString() ?? "";
+                    
+                    // Extract copy number
+                    int copyNumber = 1;
+                    if (copyNumberStr.Contains("#"))
+                    {
+                        string numStr = copyNumberStr.Replace("Copy #", "").Trim();
+                        int.TryParse(numStr, out copyNumber);
+                    }
+                    
+                    // Extract status (remove emoji if present)
+                    string cleanStatus = status;
+                    if (status.Contains("Available")) cleanStatus = "Available";
+                    else if (status.Contains("Borrowed")) cleanStatus = "Borrowed";
+                    else if (status.Contains("Damaged")) cleanStatus = "Damaged";
+                    else if (status.Contains("Lost")) cleanStatus = "Lost";
+                    else if (status.Contains("For Repair")) cleanStatus = "For Repair";
+                    
+                    // Extract location (remove emoji if present)
+                    string cleanLocation = location.Replace("📍", "").Trim();
+                    
+                    // Get book ID from database
+                    int bookId = 0;
+                    try
+                    {
+                        using (var connection = Helper.MYSqlHelper.CreateConnection())
+                        {
+                            using (var cmd = new MySqlCommand("SELECT BookId FROM BookCopies WHERE CopyId = @CopyId", connection))
+                            {
+                                cmd.Parameters.AddWithValue("@CopyId", copyId);
+                                object result = cmd.ExecuteScalar();
+                                if (result != null)
+                                {
+                                    bookId = Convert.ToInt32(result);
+                                }
+                            }
+                        }
+                    }
+                    catch { }
+                    
+                    // Extract book title (remove author if present)
+                    string titleOnly = bookTitle;
+                    if (bookTitle.Contains("\n"))
+                    {
+                        titleOnly = bookTitle.Split('\n')[0];
+                    }
+                    
+                    // Show edit dialog
+                    using (var dialog = new EditBookCopyDialog(copyId, bookId, titleOnly, copyNumber, cleanStatus, cleanLocation))
+                    {
+                        if (dialog.ShowDialog(this) == DialogResult.OK && dialog.ChangesSaved)
+                        {
+                            // Refresh inventory data
+                            LoadInventoryData(dgvInventory, txtSearchInventory.Text, selectedStatusFilter);
+                            UpdateInventoryStats(statsPanel);
+                        }
+                    }
+                }
+            };
+            
+            // Add DataGridView to container panel
+            dgvContainer.Controls.Add(dgvInventory);
+            
+            // Set tags on cards and refresh statistics
+            SetInventoryCardTags(statsPanel);
+            RefreshInventoryStatistics();
+            pnlMainContent.Controls.AddRange(new Control[] { titleLabel, subtitleLabel, btnExportInventory, statsPanel, categoryPanel, searchPanel, dgvContainer });
+        }
+
+        /// <summary>
+        /// Sets tags on inventory statistics cards for easy updating
+        /// </summary>
+        private void SetInventoryCardTags(Panel statsPanel)
+        {
+            foreach (Control card in statsPanel.Controls)
+            {
+                if (card is Panel cardPanel)
+                {
+                    foreach (Control ctrl in cardPanel.Controls)
+                    {
+                        if (ctrl is Label lbl && lbl.Font.Bold)
+                        {
+                            // Set tag based on card location
+                            Point loc = cardPanel.Location;
+                            if (loc.X == 0 && loc.Y == 0) lbl.Tag = "TotalTitles";
+                            else if (loc.X == 250 && loc.Y == 0) lbl.Tag = "TotalCopies";
+                            else if (loc.X == 500 && loc.Y == 0) lbl.Tag = "Available";
+                            else if (loc.X == 0 && loc.Y == 80) lbl.Tag = "Borrowed";
+                            else if (loc.X == 250 && loc.Y == 80) lbl.Tag = "Damaged";
+                            else if (loc.X == 500 && loc.Y == 80) lbl.Tag = "Lost";
+                        }
+                    }
+                }
+            }
+        }
+        
+        private void LoadCategoryDistribution(Panel categoryPanel)
+        {
+            try
+            {
+                // Ensure table exists first
+                EnsureBookCopiesTableExists();
+                
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Ensure we're using the correct database
+                    using (var useDbCmd = new MySqlCommand("USE LMS_DB", connection))
+                    {
+                        useDbCmd.ExecuteNonQuery();
+                    }
+                    
+                    string query = @"
+                        SELECT 
+                            b.Category,
+                            COUNT(bc.CopyId) AS TotalCopies,
+                            SUM(CASE WHEN bc.Status = 'Available' THEN 1 ELSE 0 END) AS AvailableCopies
+                        FROM Books b
+                        LEFT JOIN BookCopies bc ON b.BookId = bc.BookId
+                        WHERE b.Category IS NOT NULL AND b.Category != ''
+                        GROUP BY b.Category
+                        ORDER BY TotalCopies DESC
+                        LIMIT 10";
+                    
+                    using (var command = new MySqlCommand(query, connection))
+                    {
+                        int yPos = 70;
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string category = reader.GetString("Category");
+                                int total = reader.GetInt32("TotalCopies");
+                                int available = reader.GetInt32("AvailableCopies");
+                                
+                                if (total == 0) continue;
+                                
+                                Label lblCategory = new Label
+                                {
+                                    Text = category,
+                                    Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                                    ForeColor = Color.FromArgb(60, 60, 60),
+                                    Location = new Point(20, yPos),
+                                    Size = new Size(100, 20),
+                                    AutoSize = false
+                                };
+                                
+                                Label lblRatio = new Label
+                                {
+                                    Text = $"{available}/{total} available",
+                                    Font = new Font("Segoe UI", 8F),
+                                    ForeColor = Color.FromArgb(120, 120, 120),
+                                    Location = new Point(130, yPos),
+                                    Size = new Size(100, 20),
+                                    AutoSize = false
+                                };
+                                
+                                Panel progressBar = new Panel
+                                {
+                                    Location = new Point(240, yPos + 2),
+                                    Size = new Size(300, 16),
+                                    BackColor = Color.FromArgb(240, 240, 240),
+                                    BorderStyle = BorderStyle.None
+                                };
+                                
+                                float percentage = total > 0 ? (float)available / total : 0;
+                                int filledWidth = (int)(progressBar.Width * percentage);
+                                
+                                progressBar.Paint += (s, e) =>
+                                {
+                                    e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                                    using (var bgBrush = new SolidBrush(Color.FromArgb(240, 240, 240)))
+                                    {
+                                        e.Graphics.FillRectangle(bgBrush, 0, 0, progressBar.Width, progressBar.Height);
+                                    }
+                                    using (var fillBrush = new SolidBrush(ThemeConstants.PrimaryMaroon))
+                                    {
+                                        e.Graphics.FillRectangle(fillBrush, 0, 0, filledWidth, progressBar.Height);
+                                    }
+                                };
+                                
+                                categoryPanel.Controls.Add(lblCategory);
+                                categoryPanel.Controls.Add(lblRatio);
+                                categoryPanel.Controls.Add(progressBar);
+                                
+                                yPos += 25;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading category distribution: {ex.Message}");
+            }
+        }
+        
+        private void LoadInventoryData(DataGridView dgv, string searchText, string statusFilter = "All Status")
+        {
+            dgv.Rows.Clear();
+            
+            try
+            {
+                // Ensure table exists first
+                EnsureBookCopiesTableExists();
+                
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    if (connection == null)
+                    {
+                        System.Diagnostics.Debug.WriteLine("ERROR: Database connection is null!");
+                        MessageBox.Show("Cannot connect to database. Please check your database connection.", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    
+                    if (connection.State != System.Data.ConnectionState.Open)
+                    {
+                        connection.Open();
+                    }
+                    System.Diagnostics.Debug.WriteLine($"Database connection state: {connection.State}");
+                    
+                    // Ensure we're using the correct database
+                    using (var useDbCmd = new MySqlCommand("USE LMS_DB", connection))
+                    {
+                        useDbCmd.ExecuteNonQuery();
+                    }
+                    
+                    // First, check if there's any data in BookCopies table
+                    using (var countCmd = new MySqlCommand("SELECT COUNT(*) FROM BookCopies", connection))
+                    {
+                        int totalCopies = Convert.ToInt32(countCmd.ExecuteScalar());
+                        System.Diagnostics.Debug.WriteLine($"Total BookCopies in database: {totalCopies}");
+                        
+                        if (totalCopies == 0)
+                        {
+                            System.Diagnostics.Debug.WriteLine("BookCopies table is empty. No inventory items to display.");
+                            int messageRowIndex = dgv.Rows.Add(
+                                -1, // CopyId
+                                "", // CopyNumber
+                                "No inventory items found.\nThe BookCopies table is empty.\nPlease add book copies to the system.", // BookTitle
+                                "", // AccessionNumber
+                                "", // Location
+                                "", // Condition
+                                "", // Status
+                                ""  // Actions
+                            );
+                            dgv.Rows[messageRowIndex].ReadOnly = true;
+                            dgv.Rows[messageRowIndex].DefaultCellStyle.ForeColor = Color.Gray;
+                            dgv.Rows[messageRowIndex].Cells["BookTitle"].Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                            return;
+                        }
+                    }
+                    
+                    // Check if there are any books in Books table
+                    using (var booksCountCmd = new MySqlCommand("SELECT COUNT(*) FROM Books", connection))
+                    {
+                        int totalBooks = Convert.ToInt32(booksCountCmd.ExecuteScalar());
+                        System.Diagnostics.Debug.WriteLine($"Total Books in database: {totalBooks}");
+                    }
+                    
+                    string query = @"
+                        SELECT 
+                            bc.CopyId,
+                            bc.AccessionNumber,
+                            b.Title,
+                            b.Author,
+                            bc.Location,
+                            bc.`Condition`,
+                            bc.Status,
+                            (SELECT COUNT(*) FROM BookCopies bc2 WHERE bc2.BookId = bc.BookId AND bc2.CopyId <= bc.CopyId) AS CopyNumber
+                        FROM BookCopies bc
+                        INNER JOIN Books b ON bc.BookId = b.BookId
+                        WHERE 1=1";
+                    
+                    if (!string.IsNullOrWhiteSpace(searchText))
+                    {
+                        query += " AND (b.Title LIKE @Search OR b.Author LIKE @Search OR bc.AccessionNumber LIKE @Search OR bc.Location LIKE @Search)";
+                    }
+                    
+                    if (statusFilter != "All Status")
+                    {
+                        query += " AND bc.Status = @StatusFilter";
+                    }
+                    
+                    query += " ORDER BY b.Title, bc.CopyId";
+                    
+                    System.Diagnostics.Debug.WriteLine($"Executing query: {query}");
+                    System.Diagnostics.Debug.WriteLine($"Search text: '{searchText}', Status filter: '{statusFilter}'");
+                    
+                    using (var command = new MySqlCommand(query, connection))
+                    {
+                        if (!string.IsNullOrWhiteSpace(searchText))
+                        {
+                            command.Parameters.AddWithValue("@Search", $"%{searchText}%");
+                        }
+                        if (statusFilter != "All Status")
+                        {
+                            command.Parameters.AddWithValue("@StatusFilter", statusFilter);
+                        }
+                        
+                        using (var reader = command.ExecuteReader())
+                        {
+                            int rowCount = 0;
+                            int errorCount = 0;
+                            
+                            while (reader.Read())
+                            {
+                                try
+                                {
+                                    int copyId = reader.GetInt32("CopyId");
+                                    int copyNumber = reader.GetInt32("CopyNumber");
+                                    string condition = reader.IsDBNull(reader.GetOrdinal("Condition")) ? "Good" : reader.GetString("Condition");
+                                    string status = reader.IsDBNull(reader.GetOrdinal("Status")) ? "Available" : reader.GetString("Status");
+                                    string location = reader.IsDBNull(reader.GetOrdinal("Location")) ? "Main Library" : reader.GetString("Location");
+                                    string title = reader.IsDBNull(reader.GetOrdinal("Title")) ? "Unknown" : reader.GetString("Title");
+                                    string author = reader.IsDBNull(reader.GetOrdinal("Author")) ? "Unknown" : reader.GetString("Author");
+                                    string accessionNumber = reader.IsDBNull(reader.GetOrdinal("AccessionNumber")) ? "N/A" : reader.GetString("AccessionNumber");
+                                    
+                                    System.Diagnostics.Debug.WriteLine($"Reading row {rowCount + 1}: CopyId={copyId}, Title={title}, Author={author}, Status={status}");
+                                    
+                                    // Format status with icon
+                                    string statusDisplay = status;
+                                    if (status == "Available")
+                                    {
+                                        statusDisplay = "🟢 Available";
+                                    }
+                                    else if (status == "Borrowed")
+                                    {
+                                        statusDisplay = "📗 Borrowed";
+                                    }
+                                    else if (status == "Damaged")
+                                    {
+                                        statusDisplay = "⚠️ Damaged";
+                                    }
+                                    else if (status == "Lost")
+                                    {
+                                        statusDisplay = "❌ Lost";
+                                    }
+                                    else if (status == "For Repair")
+                                    {
+                                        statusDisplay = "🔧 For Repair";
+                                    }
+                                    
+                                    // Format book title with author below (like in the image)
+                                    string bookTitleDisplay = $"{title}\n{author}";
+                                    
+                                    int rowIndex = dgv.Rows.Add(
+                                        copyId,
+                                        $"Copy #{copyNumber}",
+                                        bookTitleDisplay,
+                                        accessionNumber,
+                                        $"📍 {location}",
+                                        condition,
+                                        statusDisplay,
+                                        "✏️"
+                                    );
+                                    
+                                    // Make the Book Title cell display multiple lines
+                                    dgv.Rows[rowIndex].Cells["BookTitle"].Style.WrapMode = DataGridViewTriState.True;
+                                    rowCount++;
+                                }
+                                catch (Exception rowEx)
+                                {
+                                    errorCount++;
+                                    System.Diagnostics.Debug.WriteLine($"ERROR reading inventory row {rowCount + errorCount}: {rowEx.Message}");
+                                    System.Diagnostics.Debug.WriteLine($"Stack trace: {rowEx.StackTrace}");
+                                    // Continue to next row
+                                }
+                            }
+                            
+                            System.Diagnostics.Debug.WriteLine($"Successfully loaded {rowCount} inventory items into DataGridView (with {errorCount} errors)");
+                            
+                            if (rowCount == 0 && errorCount == 0)
+                            {
+                                System.Diagnostics.Debug.WriteLine("Query returned no rows. This might be due to:");
+                                System.Diagnostics.Debug.WriteLine("1. No matching records based on search/filter criteria");
+                                System.Diagnostics.Debug.WriteLine("2. BookCopies records exist but don't have matching Books records (orphaned records)");
+                                
+                                // Check for orphaned BookCopies (copies without matching books)
+                                using (var orphanCheckCmd = new MySqlCommand(
+                                    "SELECT COUNT(*) FROM BookCopies bc LEFT JOIN Books b ON bc.BookId = b.BookId WHERE b.BookId IS NULL", 
+                                    connection))
+                                {
+                                    int orphanedCount = Convert.ToInt32(orphanCheckCmd.ExecuteScalar());
+                                    if (orphanedCount > 0)
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"WARNING: Found {orphanedCount} orphaned BookCopies records (no matching Books)");
+                                    }
+                                }
+                                
+                                // Add a message row to inform the user
+                                int messageRowIndex = dgv.Rows.Add(
+                                    -1, // CopyId
+                                    "", // CopyNumber
+                                    "No inventory items found matching your criteria.\nTry adjusting your search or filter settings.", // BookTitle
+                                    "", // AccessionNumber
+                                    "", // Location
+                                    "", // Condition
+                                    "", // Status
+                                    ""  // Actions
+                                );
+                                // Make the message row non-selectable and style it
+                                dgv.Rows[messageRowIndex].ReadOnly = true;
+                                dgv.Rows[messageRowIndex].DefaultCellStyle.ForeColor = Color.Gray;
+                                dgv.Rows[messageRowIndex].Cells["BookTitle"].Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                            }
+                        }
+                    }
+                    
+                    // Format condition and status columns
+                    dgv.CellFormatting += (s, e) =>
+                    {
+                        if (e.ColumnIndex == dgv.Columns["Condition"].Index && e.Value != null)
+                        {
+                            string condition = e.Value.ToString();
+                            if (condition == "Good")
+                            {
+                                e.CellStyle.ForeColor = Color.FromArgb(33, 150, 243);
+                            }
+                            else if (condition == "Damaged")
+                            {
+                                e.CellStyle.ForeColor = Color.FromArgb(255, 193, 7);
+                            }
+                            else if (condition == "Lost")
+                            {
+                                e.CellStyle.ForeColor = Color.FromArgb(244, 67, 54);
+                            }
+                        }
+                        
+                        if (e.ColumnIndex == dgv.Columns["Status"].Index && e.Value != null)
+                        {
+                            string status = e.Value.ToString();
+                            if (status.Contains("Available"))
+                            {
+                                e.CellStyle.ForeColor = Color.FromArgb(76, 175, 80);
+                            }
+                            else if (status.Contains("Borrowed"))
+                            {
+                                e.CellStyle.ForeColor = Color.FromArgb(33, 150, 243);
+                            }
+                            else if (status.Contains("Lost"))
+                            {
+                                e.CellStyle.ForeColor = Color.FromArgb(244, 67, 54);
+                            }
+                            else if (status.Contains("Damaged") || status.Contains("Repair"))
+                            {
+                                e.CellStyle.ForeColor = Color.FromArgb(255, 193, 7);
+                            }
+                        }
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading inventory: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        
+        private void UpdateInventoryStats(Panel statsPanel)
+        {
+            try
+            {
+                // Ensure table exists first
+                EnsureBookCopiesTableExists();
+                
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Ensure we're using the correct database
+                    using (var useDbCmd = new MySqlCommand("USE LMS_DB", connection))
+                    {
+                        useDbCmd.ExecuteNonQuery();
+                    }
+                    
+                    // Get total titles
+                    string titlesQuery = "SELECT COUNT(DISTINCT BookId) FROM BookCopies";
+                    int totalTitles = 0;
+                    using (var cmd = new MySqlCommand(titlesQuery, connection))
+                    {
+                        object result = cmd.ExecuteScalar();
+                        if (result != null) totalTitles = Convert.ToInt32(result);
+                    }
+                    
+                    // Get total copies
+                    string copiesQuery = "SELECT COUNT(*) FROM BookCopies";
+                    int totalCopies = 0;
+                    using (var cmd = new MySqlCommand(copiesQuery, connection))
+                    {
+                        object result = cmd.ExecuteScalar();
+                        if (result != null) totalCopies = Convert.ToInt32(result);
+                    }
+                    
+                    // Get available
+                    string availableQuery = "SELECT COUNT(*) FROM BookCopies WHERE Status = 'Available'";
+                    int available = 0;
+                    using (var cmd = new MySqlCommand(availableQuery, connection))
+                    {
+                        object result = cmd.ExecuteScalar();
+                        if (result != null) available = Convert.ToInt32(result);
+                    }
+                    
+                    // Get borrowed
+                    string borrowedQuery = "SELECT COUNT(*) FROM BookCopies WHERE Status = 'Borrowed'";
+                    int borrowed = 0;
+                    using (var cmd = new MySqlCommand(borrowedQuery, connection))
+                    {
+                        object result = cmd.ExecuteScalar();
+                        if (result != null) borrowed = Convert.ToInt32(result);
+                    }
+                    
+                    // Get damaged
+                    string damagedQuery = "SELECT COUNT(*) FROM BookCopies WHERE `Condition` = 'Damaged' OR Status = 'Damaged'";
+                    int damaged = 0;
+                    using (var cmd = new MySqlCommand(damagedQuery, connection))
+                    {
+                        object result = cmd.ExecuteScalar();
+                        if (result != null) damaged = Convert.ToInt32(result);
+                    }
+                    
+                    // Get lost
+                    string lostQuery = "SELECT COUNT(*) FROM BookCopies WHERE Status = 'Lost'";
+                    int lost = 0;
+                    using (var cmd = new MySqlCommand(lostQuery, connection))
+                    {
+                        object result = cmd.ExecuteScalar();
+                        if (result != null) lost = Convert.ToInt32(result);
+                    }
+                    
+                    // Update stat cards
+                    foreach (Control control in statsPanel.Controls)
+                    {
+                        if (control is Panel card)
+                        {
+                            foreach (Control ctrl in card.Controls)
+                            {
+                                if (ctrl is Label lbl && lbl.Font.Bold)
+                                {
+                                    if (lbl.Text.Contains("Total Titles")) lbl.Text = totalTitles.ToString();
+                                    else if (lbl.Text.Contains("Total Copies")) lbl.Text = totalCopies.ToString();
+                                    else if (lbl.Text.Contains("Available")) lbl.Text = available.ToString();
+                                    else if (lbl.Text.Contains("Borrowed")) lbl.Text = borrowed.ToString();
+                                    else if (lbl.Text.Contains("Damaged")) lbl.Text = damaged.ToString();
+                                    else if (lbl.Text.Contains("Lost")) lbl.Text = lost.ToString();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating inventory stats: {ex.Message}");
+            }
+        }
+        
+        private void MarkCopyStatus(DataGridView dgv, string status)
+        {
+            if (dgv.SelectedRows.Count == 0)
+            {
+                MessageBox.Show("Please select a book copy to update.", "No Selection", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            
+            DataGridViewRow selectedRow = dgv.SelectedRows[0];
+            int copyId = Convert.ToInt32(selectedRow.Cells["CopyId"].Value);
+            string accessionNumber = selectedRow.Cells["AccessionNumber"].Value.ToString();
+            string bookTitle = selectedRow.Cells["BookTitle"].Value.ToString();
+            
+            string condition = status;
+            if (status == "Lost")
+            {
+                condition = "Lost";
+            }
+            else if (status == "Damaged")
+            {
+                condition = "Damaged";
+            }
+            else if (status == "For Repair")
+            {
+                condition = "Damaged";
+            }
+            
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    string updateQuery = @"
+                        UPDATE BookCopies 
+                        SET Status = @Status, 
+                            `Condition` = @Condition,
+                            LastUpdatedDate = NOW()
+                        WHERE CopyId = @CopyId";
+                    
+                    using (var command = new MySqlCommand(updateQuery, connection))
+                    {
+                        command.Parameters.AddWithValue("@Status", status);
+                        command.Parameters.AddWithValue("@Condition", condition);
+                        command.Parameters.AddWithValue("@CopyId", copyId);
+                        command.ExecuteNonQuery();
+                    }
+                }
+                
+                MessageBox.Show($"Book copy {accessionNumber} ({bookTitle}) has been marked as {status}.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                
+                // Refresh the view
+                ComboBox statusFilter = null;
+                TextBox searchBox = null;
+                foreach (Control ctrl in pnlMainContent.Controls)
+                {
+                    if (ctrl is Panel searchPanel)
+                    {
+                        foreach (Control subCtrl in searchPanel.Controls)
+                        {
+                            if (subCtrl is ComboBox cmb && cmb.Items.Contains("All Status"))
+                            {
+                                statusFilter = cmb;
+                            }
+                            if (subCtrl is TextBox txt && txt.Tag is PlaceholderTextHelper.PlaceholderData placeholderData && placeholderData.PlaceholderText != null && placeholderData.PlaceholderText.Contains("Search"))
+                            {
+                                searchBox = txt;
+                            }
+                        }
+                    }
+                }
+                
+                string currentSearch = searchBox?.Text ?? "";
+                string currentFilter = statusFilter?.SelectedItem?.ToString() ?? "All Status";
+                LoadInventoryData(dgv, currentSearch, currentFilter);
+                
+                Panel statsPanel = pnlMainContent.Controls.OfType<Panel>().FirstOrDefault(p => p.Tag?.ToString() == "InventoryStatsPanel");
+                if (statsPanel != null)
+                {
+                    UpdateInventoryStats(statsPanel);
+                }
+                
+                // Refresh category panel
+                Panel catPanel = pnlMainContent.Controls.OfType<Panel>().FirstOrDefault(p => p.Controls.Count > 0 && p.Controls[0] is Label && p.Controls[0].Text.Contains("Collection by Category"));
+                if (catPanel != null)
+                {
+                    // Clear existing category controls (except title and subtitle)
+                    var controlsToRemove = catPanel.Controls.Cast<Control>().Where(c => !(c is Label && (c.Text.Contains("Collection by Category") || c.Text.Contains("Availability distribution")))).ToList();
+                    foreach (var ctrl in controlsToRemove)
+                    {
+                        catPanel.Controls.Remove(ctrl);
+                    }
+                    LoadCategoryDistribution(catPanel);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error updating copy status: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        
+        private void UpdateCopyLocation(DataGridView dgv)
+        {
+            if (dgv.SelectedRows.Count == 0)
+            {
+                MessageBox.Show("Please select a book copy to update.", "No Selection", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            
+            DataGridViewRow selectedRow = dgv.SelectedRows[0];
+            int copyId = Convert.ToInt32(selectedRow.Cells["CopyId"].Value);
+            string currentLocation = selectedRow.Cells["Location"].Value?.ToString() ?? "Main Library";
+            string accessionNumber = selectedRow.Cells["AccessionNumber"].Value.ToString();
+            
+            // Show dialog to update location
+            Form locationForm = new Form
+            {
+                Size = new Size(400, 200),
+                FormBorderStyle = FormBorderStyle.None,
+                StartPosition = FormStartPosition.CenterParent,
+                BackColor = Color.FromArgb(248, 247, 242),
+                ShowInTaskbar = false
+            };
+            
+            locationForm.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, locationForm.Width - 1, locationForm.Height - 1), 10))
+                {
+                    locationForm.Region = new Region(path);
+                    using (Pen p = new Pen(Color.FromArgb(220, 220, 220), 1))
+                    {
+                        e.Graphics.DrawPath(p, path);
+                    }
+                }
+            };
+            
+            Label lblTitle = new Label
+            {
+                Text = "Update Location",
+                Font = new Font("Segoe UI", 18F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(101, 67, 33),
+                Location = new Point(30, 20),
+                AutoSize = true
+            };
+            
+            Label lblAccession = new Label
+            {
+                Text = $"Accession: {accessionNumber}",
+                Font = new Font("Segoe UI", 9.5F),
+                ForeColor = Color.FromArgb(120, 120, 120),
+                Location = new Point(30, 50),
+                AutoSize = true
+            };
+            
+            Label lblLocation = new Label
+            {
+                Text = "Location:",
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(60, 60, 60),
+                Location = new Point(30, 85),
+                AutoSize = true
+            };
+            
+            TextBox txtLocation = new TextBox
+            {
+                Location = new Point(30, 110),
+                Size = new Size(340, 25),
+                Font = new Font("Segoe UI", 10F),
+                Text = currentLocation
+            };
+            
+            Button btnCancel = new Button
+            {
+                Text = "Cancel",
+                Size = new Size(90, 35),
+                Location = new Point(200, 150),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(80, 80, 80),
+                Font = new Font("Segoe UI", 9.5F),
+                Cursor = Cursors.Hand
+            };
+            btnCancel.FlatAppearance.BorderSize = 1;
+            btnCancel.FlatAppearance.BorderColor = Color.FromArgb(220, 220, 220);
+            btnCancel.Click += (s, e) => locationForm.Close();
+            
+            Button btnSave = new Button
+            {
+                Text = "Update",
+                Size = new Size(90, 35),
+                Location = new Point(300, 150),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(128, 0, 32),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9.5F),
+                Cursor = Cursors.Hand
+            };
+            btnSave.FlatAppearance.BorderSize = 0;
+            btnSave.Click += (s, e) =>
+            {
+                if (string.IsNullOrWhiteSpace(txtLocation.Text))
+                {
+                    MessageBox.Show("Please enter a location.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                
+                try
+                {
+                    using (var connection = Helper.MYSqlHelper.CreateConnection())
+                    {
+                        string updateQuery = @"
+                            UPDATE BookCopies 
+                            SET Location = @Location,
+                                LastUpdatedDate = NOW()
+                            WHERE CopyId = @CopyId";
+                        
+                        using (var command = new MySqlCommand(updateQuery, connection))
+                        {
+                            command.Parameters.AddWithValue("@Location", txtLocation.Text.Trim());
+                            command.Parameters.AddWithValue("@CopyId", copyId);
+                            command.ExecuteNonQuery();
+                        }
+                    }
+                    
+                    MessageBox.Show("Location updated successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    locationForm.DialogResult = DialogResult.OK;
+                    locationForm.Close();
+                    
+                    // Refresh the view
+                    ComboBox statusFilter = null;
+                    TextBox searchBox = null;
+                    foreach (Control ctrl in pnlMainContent.Controls)
+                    {
+                        if (ctrl is Panel searchPanel)
+                        {
+                            foreach (Control subCtrl in searchPanel.Controls)
+                            {
+                                if (subCtrl is ComboBox cmb && cmb.Items.Contains("All Status"))
+                                {
+                                    statusFilter = cmb;
+                                }
+                                if (subCtrl is TextBox txt && txt.Tag is PlaceholderTextHelper.PlaceholderData placeholderData && placeholderData.PlaceholderText != null && placeholderData.PlaceholderText.Contains("Search"))
+                                {
+                                    searchBox = txt;
+                                }
+                            }
+                        }
+                    }
+                    
+                    string currentSearch = searchBox?.Text ?? "";
+                    string currentFilter = statusFilter?.SelectedItem?.ToString() ?? "All Status";
+                    LoadInventoryData(dgv, currentSearch, currentFilter);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error updating location: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            };
+            
+            locationForm.Controls.AddRange(new Control[] { lblTitle, lblAccession, lblLocation, txtLocation, btnCancel, btnSave });
+            locationForm.ShowDialog(this);
+        }
+        
+        private void ShowStockVerificationDialog()
+        {
+            Form verifyForm = new Form
+            {
+                Size = new Size(600, 500),
+                FormBorderStyle = FormBorderStyle.None,
+                StartPosition = FormStartPosition.CenterParent,
+                BackColor = Color.FromArgb(248, 247, 242),
+                ShowInTaskbar = false
+            };
+            
+            verifyForm.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, verifyForm.Width - 1, verifyForm.Height - 1), 10))
+                {
+                    verifyForm.Region = new Region(path);
+                    using (Pen p = new Pen(Color.FromArgb(220, 220, 220), 1))
+                    {
+                        e.Graphics.DrawPath(p, path);
+                    }
+                }
+            };
+            
+            Label btnClose = new Label
+            {
+                Text = "✕",
+                Font = new Font("Segoe UI", 14F),
+                ForeColor = Color.FromArgb(150, 150, 150),
+                Location = new Point(verifyForm.Width - 45, 15),
+                Size = new Size(35, 35),
+                Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            btnClose.Click += (s, e) => verifyForm.Close();
+            btnClose.MouseEnter += (s, e) => btnClose.ForeColor = Color.FromArgb(80, 80, 80);
+            btnClose.MouseLeave += (s, e) => btnClose.ForeColor = Color.FromArgb(150, 150, 150);
+            
+            Label lblTitle = new Label
+            {
+                Text = "Stock Verification Report",
+                Font = new Font("Segoe UI", 18F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(101, 67, 33),
+                Location = new Point(30, 20),
+                AutoSize = true
+            };
+            
+            DataGridView dgvVerification = new DataGridView
+            {
+                Location = new Point(30, 70),
+                Size = new Size(540, 350),
+                BackgroundColor = Color.White,
+                BorderStyle = BorderStyle.None,
+                AllowUserToAddRows = false,
+                ReadOnly = true,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect
+            };
+            
+            dgvVerification.Columns.Add("BookTitle", "Book Title");
+            dgvVerification.Columns.Add("Expected", "Expected Copies");
+            dgvVerification.Columns.Add("Actual", "Actual Copies");
+            dgvVerification.Columns.Add("Difference", "Difference");
+            dgvVerification.Columns["BookTitle"].Width = 250;
+            dgvVerification.Columns["Expected"].Width = 120;
+            dgvVerification.Columns["Actual"].Width = 120;
+            dgvVerification.Columns["Difference"].Width = 120;
+            
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    string query = @"
+                        SELECT 
+                            b.Title AS BookTitle,
+                            b.TotalCopies AS Expected,
+                            COUNT(bc.CopyId) AS Actual,
+                            (b.TotalCopies - COUNT(bc.CopyId)) AS Difference
+                        FROM Books b
+                        LEFT JOIN BookCopies bc ON b.BookId = bc.BookId
+                        GROUP BY b.BookId, b.Title, b.TotalCopies
+                        HAVING Difference != 0 OR Actual = 0
+                        ORDER BY ABS(Difference) DESC";
+                    
+                    using (var command = new MySqlCommand(query, connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                int difference = reader.GetInt32("Difference");
+                                string diffStr = difference > 0 ? $"+{difference}" : difference.ToString();
+                                
+                                dgvVerification.Rows.Add(
+                                    reader.GetString("BookTitle"),
+                                    reader.GetInt32("Expected"),
+                                    reader.GetInt32("Actual"),
+                                    diffStr
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading verification data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            
+            Button btnCloseDialog = new Button
+            {
+                Text = "Close",
+                Size = new Size(100, 35),
+                Location = new Point(470, 430),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(128, 0, 32),
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9.5F),
+                Cursor = Cursors.Hand
+            };
+            btnCloseDialog.FlatAppearance.BorderSize = 0;
+            btnCloseDialog.Click += (s, e) => verifyForm.Close();
+            
+            verifyForm.Controls.AddRange(new Control[] { btnClose, lblTitle, dgvVerification, btnCloseDialog });
+            verifyForm.ShowDialog(this);
+        }
+        
+        private void GenerateInventoryReport()
+        {
+            try
+            {
+                // Ensure table exists
+                EnsureBookCopiesTableExists();
+                
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Ensure we're using the correct database
+                    using (var useDbCmd = new MySqlCommand("USE LMS_DB", connection))
+                    {
+                        useDbCmd.ExecuteNonQuery();
+                    }
+                    
+                    // Show save dialog
+                    SaveFileDialog saveDialog = new SaveFileDialog
+                    {
+                        Filter = "CSV Files (*.csv)|*.csv|Text Files (*.txt)|*.txt|All Files (*.*)|*.*",
+                        FileName = $"InventoryReport_{DateTime.Now:yyyyMMdd_HHmmss}",
+                        Title = "Export Inventory Report"
+                    };
+                    
+                    if (saveDialog.ShowDialog() != DialogResult.OK)
+                    {
+                        return;
+                    }
+                    
+                    string filePath = saveDialog.FileName;
+                    string extension = Path.GetExtension(filePath).ToLower();
+                    
+                    if (extension == ".csv")
+                    {
+                        // Export as CSV
+                        ExportInventoryToCSV(connection, filePath);
+                    }
+                    else
+                    {
+                        // Export as formatted text
+                        ExportInventoryToText(connection, filePath);
+                    }
+                    
+                    MessageBox.Show($"Inventory report exported successfully!\n\nSaved to: {filePath}", "Export Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error generating report: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        
+        private void ExportInventoryToCSV(MySqlConnection connection, string filePath)
+        {
+            using (var writer = new StreamWriter(filePath))
+            {
+                // Write CSV header matching the Excel template format
+                writer.WriteLine("Row Number,Title,Author,ISBN,Subtitle,Editor,Publisher,Publication Year,Edition,Category,Language,NumberOfPages,PhysicalDescription,Location,CallNumber,AccessionNo,BookType,TotalCopies");
+                
+                string query = @"
+                    SELECT 
+                        b.Title,
+                        b.Author,
+                        COALESCE(b.ISBN, '') AS ISBN,
+                        '' AS Subtitle,
+                        '' AS Editor,
+                        COALESCE(b.Publisher, '') AS Publisher,
+                        COALESCE(b.PublicationYear, 0) AS PublicationYear,
+                        '' AS Edition,
+                        COALESCE(b.Category, '') AS Category,
+                        'English' AS Language,
+                        '' AS NumberOfPages,
+                        '' AS PhysicalDescription,
+                        bc.Location,
+                        '' AS CallNumber,
+                        bc.AccessionNumber AS AccessionNo,
+                        'Circulation' AS BookType,
+                        b.TotalCopies
+                    FROM BookCopies bc
+                    INNER JOIN Books b ON bc.BookId = b.BookId
+                    ORDER BY b.Title, bc.AccessionNumber";
+                
+                using (var cmd = new MySqlCommand(query, connection))
+                {
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        int rowNum = 1;
+                        while (reader.Read())
+                        {
+                            string line = $"{rowNum}," +
+                                         $"\"{EscapeCSV(reader.GetString("Title"))}\"," +
+                                         $"\"{EscapeCSV(reader.GetString("Author"))}\"," +
+                                         $"\"{EscapeCSV(reader.GetString("ISBN"))}\"," +
+                                         $"\"{EscapeCSV(reader.GetString("Subtitle"))}\"," +
+                                         $"\"{EscapeCSV(reader.GetString("Editor"))}\"," +
+                                         $"\"{EscapeCSV(reader.GetString("Publisher"))}\"," +
+                                         $"{reader.GetInt32("PublicationYear")}," +
+                                         $"\"{EscapeCSV(reader.GetString("Edition"))}\"," +
+                                         $"\"{EscapeCSV(reader.GetString("Category"))}\"," +
+                                         $"\"{EscapeCSV(reader.GetString("Language"))}\"," +
+                                         $"\"{EscapeCSV(reader.GetString("NumberOfPages"))}\"," +
+                                         $"\"{EscapeCSV(reader.GetString("PhysicalDescription"))}\"," +
+                                         $"\"{EscapeCSV(reader.GetString("Location"))}\"," +
+                                         $"\"{EscapeCSV(reader.GetString("CallNumber"))}\"," +
+                                         $"\"{EscapeCSV(reader.GetString("AccessionNo"))}\"," +
+                                         $"\"{EscapeCSV(reader.GetString("BookType"))}\"," +
+                                         $"{reader.GetInt32("TotalCopies")}";
+                            writer.WriteLine(line);
+                            rowNum++;
+                        }
+                    }
+                }
+            }
+        }
+        
+        private void ExportInventoryToText(MySqlConnection connection, string filePath)
+        {
+            StringBuilder report = new StringBuilder();
+            
+            // Header
+            report.AppendLine("=".PadRight(80, '='));
+            report.AppendLine("LIBRARY MANAGEMENT SYSTEM - INVENTORY REPORT");
+            report.AppendLine("=".PadRight(80, '='));
+            report.AppendLine($"Generated: {DateTime.Now.ToString("MMMM dd, yyyy 'at' HH:mm:ss")}");
+            report.AppendLine($"Generated By: Administrator");
+            report.AppendLine();
+            
+            // Summary Section
+            string summaryQuery = @"
+                SELECT 
+                    COUNT(DISTINCT BookId) AS TotalTitles,
+                    COUNT(*) AS TotalCopies,
+                    SUM(CASE WHEN Status = 'Available' THEN 1 ELSE 0 END) AS Available,
+                    SUM(CASE WHEN Status = 'Borrowed' THEN 1 ELSE 0 END) AS Borrowed,
+                    SUM(CASE WHEN `Condition` = 'Damaged' OR Status = 'Damaged' THEN 1 ELSE 0 END) AS Damaged,
+                    SUM(CASE WHEN Status = 'Lost' THEN 1 ELSE 0 END) AS Lost
+                FROM BookCopies";
+            
+            using (var cmd = new MySqlCommand(summaryQuery, connection))
+            {
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        report.AppendLine("SUMMARY STATISTICS");
+                        report.AppendLine("-".PadRight(80, '-'));
+                        report.AppendLine($"Total Book Titles:        {reader.GetInt32("TotalTitles"),10:N0}");
+                        report.AppendLine($"Total Copies:             {reader.GetInt32("TotalCopies"),10:N0}");
+                        report.AppendLine($"Available Copies:         {reader.GetInt32("Available"),10:N0}");
+                        report.AppendLine($"Borrowed Copies:          {reader.GetInt32("Borrowed"),10:N0}");
+                        report.AppendLine($"Damaged Copies:           {reader.GetInt32("Damaged"),10:N0}");
+                        report.AppendLine($"Lost Copies:              {reader.GetInt32("Lost"),10:N0}");
+                        report.AppendLine();
+                    }
+                }
+            }
+            
+            // Category Distribution
+            report.AppendLine("CATEGORY DISTRIBUTION");
+            report.AppendLine("-".PadRight(80, '-'));
+            
+            string categoryQuery = @"
+                SELECT 
+                    b.Category,
+                    COUNT(bc.CopyId) AS TotalCopies,
+                    SUM(CASE WHEN bc.Status = 'Available' THEN 1 ELSE 0 END) AS AvailableCopies
+                FROM Books b
+                LEFT JOIN BookCopies bc ON b.BookId = bc.BookId
+                WHERE b.Category IS NOT NULL AND b.Category != ''
+                GROUP BY b.Category
+                ORDER BY TotalCopies DESC";
+            
+            using (var cmd = new MySqlCommand(categoryQuery, connection))
+            {
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string category = reader.GetString("Category");
+                        int total = reader.GetInt32("TotalCopies");
+                        int available = reader.GetInt32("AvailableCopies");
+                        int borrowed = total - available;
+                        
+                        report.AppendLine($"{category,-20} Total: {total,3} | Available: {available,3} | Borrowed: {borrowed,3}");
+                    }
+                }
+            }
+            report.AppendLine();
+            
+            // Detailed Inventory List
+            report.AppendLine("DETAILED INVENTORY LIST");
+            report.AppendLine("-".PadRight(80, '-'));
+            report.AppendLine($"{"Accession #",-20} {"Book Title",-30} {"Location",-20} {"Condition",-12} {"Status",-12}");
+            report.AppendLine("-".PadRight(80, '-'));
+            
+            string detailQuery = @"
+                SELECT 
+                    bc.AccessionNumber,
+                    CONCAT(b.Title, ' by ', b.Author) AS BookTitle,
+                    bc.Location,
+                    bc.`Condition`,
+                    bc.Status
+                FROM BookCopies bc
+                INNER JOIN Books b ON bc.BookId = b.BookId
+                ORDER BY b.Title, bc.AccessionNumber";
+            
+            using (var cmd = new MySqlCommand(detailQuery, connection))
+            {
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string accession = reader.GetString("AccessionNumber");
+                        string bookTitle = reader.GetString("BookTitle");
+                        if (bookTitle.Length > 28) bookTitle = bookTitle.Substring(0, 25) + "...";
+                        string location = reader.GetString("Location");
+                        if (location.Length > 18) location = location.Substring(0, 15) + "...";
+                        string condition = reader.GetString("Condition");
+                        string status = reader.GetString("Status");
+                        
+                        report.AppendLine($"{accession,-20} {bookTitle,-30} {location,-20} {condition,-12} {status,-12}");
+                    }
+                }
+            }
+            
+            report.AppendLine();
+            report.AppendLine("-".PadRight(80, '-'));
+            report.AppendLine($"End of Report - {DateTime.Now.ToString("MMMM dd, yyyy 'at' HH:mm:ss")}");
+            report.AppendLine("=".PadRight(80, '='));
+            
+            // Write to file
+            File.WriteAllText(filePath, report.ToString());
+        }
+        
+        private string EscapeCSV(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return "";
+            
+            // Escape quotes by doubling them
+            return value.Replace("\"", "\"\"");
         }
 
         private Panel pnlReportsTabs;
@@ -5419,13 +7896,34 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             
 
-            Panel pnlDate = new Panel { Size = new Size(140, 36), Location = new Point(pnlHeader.Width - 350, 5), BackColor = Color.White, Anchor = AnchorStyles.Top | AnchorStyles.Right };
+            Panel pnlDate = new Panel { Size = new Size(160, 36), Location = new Point(pnlHeader.Width - 370, 5), BackColor = Color.White, Anchor = AnchorStyles.Top | AnchorStyles.Right };
 
             ComboBox cmbDate = new ComboBox { FlatStyle = FlatStyle.Flat, Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10), DropDownStyle = ComboBoxStyle.DropDownList };
 
             cmbDate.Items.Add("📅  Last 7 days");
+            cmbDate.Items.Add("📅  Last 14 days");
+            cmbDate.Items.Add("📅  Last 30 days");
+            cmbDate.Items.Add("📅  Last 90 days");
 
             cmbDate.SelectedIndex = 0;
+            
+            // Handle time range change
+            cmbDate.SelectedIndexChanged += (s, e) =>
+            {
+                // Refresh current report with new time range
+                if (pnlReportsTabs != null)
+                {
+                    foreach (Control ctrl in pnlReportsTabs.Controls)
+                    {
+                        if (ctrl is Button btn && btn.Font.Bold)
+                        {
+                            string tabName = btn.Tag?.ToString() ?? btn.Text;
+                            SwitchReportTab(tabName, btn);
+                            break;
+                        }
+                    }
+                }
+            };
 
             pnlDate.Controls.Add(cmbDate);
 
@@ -5438,8 +7936,16 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                  using(Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1)) e.Graphics.DrawPath(pen, path);
 
             };
+            
+            // Store time range selector for use in report methods
+            pnlDate.Tag = cmbDate;
+            _reportsTimeRangeCombo = cmbDate; // Store class-level reference
 
-
+            // Print button functionality
+            btnPrint.Click += (s, e) => PrintCurrentReport(cmbDate);
+            
+            // Export button functionality
+            btnExport.Click += (s, e) => ExportCurrentReport(cmbDate);
 
             pnlHeader.Controls.Add(btnExport);
 
@@ -5657,544 +8163,1331 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
 
 
+        private ComboBox _reportsTimeRangeCombo; // Store reference to time range combobox
+        
         private void ShowReportsCirculation()
-
         {
-
-             // 1. KPI Section
-
-            TableLayoutPanel tlpKPI = new TableLayoutPanel
-
+            // Get time range
+            int days = 7; // Default
+            if (_reportsTimeRangeCombo != null)
             {
-
-                Height = 100, 
-
-                ColumnCount = 5,
-
-                RowCount = 1,
-
-                BackColor = Color.Transparent,
-
-                Width = flpReportsContent.ClientSize.Width - 10,
-
-                Margin = new Padding(0, 0, 0, 20)
-
-            };
-
-            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
-
-            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
-
-            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
-
-            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
-
-            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
-
+                days = GetDaysFromTimeRange(_reportsTimeRangeCombo);
+            }
+            DateTime startDate = DateTime.Now.AddDays(-days);
             
+            // Load real statistics from database
+            var circulationService = new Service.CirculationService();
+            var stats = circulationService.GetBorrowingStatistics();
+            
+            // Get additional statistics from database
+            int totalCollection = 0;
+            int activeMembers = 0;
+            int totalTransactions = 0;
+            decimal finesCollected = 0;
+            
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Total Collection
+                    using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM Books", connection))
+                    {
+                        totalCollection = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+                    
+                    // Active Members
+                    using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM Members WHERE Status = 1", connection))
+                    {
+                        activeMembers = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+                    
+                    // Total Transactions (within time range)
+                    using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM Borrowings WHERE BorrowDate >= @StartDate", connection))
+                    {
+                        cmd.Parameters.AddWithValue("@StartDate", startDate);
+                        totalTransactions = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+                    
+                    // Fines Collected (within time range)
+                    using (var cmd = new MySqlCommand("SELECT COALESCE(SUM(FineAmount), 0) FROM Borrowings WHERE FineAmount > 0 AND ReturnDate IS NOT NULL AND BorrowDate >= @StartDate", connection))
+                    {
+                        cmd.Parameters.AddWithValue("@StartDate", startDate);
+                        object result = cmd.ExecuteScalar();
+                        if (result != null && result != DBNull.Value)
+                        {
+                            finesCollected = Convert.ToDecimal(result);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading circulation statistics: {ex.Message}");
+            }
 
-            tlpKPI.Controls.Add(CreateReportStatCard("Total Collection", "2,450", "📖", Color.White, Color.Black, false), 0, 0);
-
-            tlpKPI.Controls.Add(CreateReportStatCard("Active Members", "142", "👥", Color.White, Color.Black, false), 1, 0);
-
-            tlpKPI.Controls.Add(CreateReportStatCard("Transactions", "38", "↗", Color.White, Color.Black, false), 2, 0);
-
-            tlpKPI.Controls.Add(CreateReportStatCard("Fines Collected", "$1,250", "💲", Color.White, Color.Black, false), 3, 0);
-
-            tlpKPI.Controls.Add(CreateReportStatCard("Overdue", "12", "📅", Color.White, Color.Black, false), 4, 0);
-
+            // 1. KPI Section
+            TableLayoutPanel tlpKPI = new TableLayoutPanel
+            {
+                Height = 100, 
+                ColumnCount = 5,
+                RowCount = 1,
+                BackColor = Color.Transparent,
+                Width = flpReportsContent.ClientSize.Width - 10,
+                Margin = new Padding(0, 0, 0, 20)
+            };
+            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+            
+            tlpKPI.Controls.Add(CreateReportStatCard("Total Collection", totalCollection.ToString("N0"), "📖", Color.White, Color.Black, false), 0, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Active Members", activeMembers.ToString("N0"), "👥", Color.White, Color.Black, false), 1, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Transactions", totalTransactions.ToString("N0"), "↗", Color.White, Color.Black, false), 2, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Fines Collected", $"${finesCollected:N2}", "💲", Color.White, Color.Black, false), 3, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Overdue", stats.Overdue.ToString("N0"), "📅", Color.White, Color.Black, false), 4, 0);
             flpReportsContent.Controls.Add(tlpKPI);
 
-
-
             // 2. Charts Section (Daily Circulation + Top Books)
-
             TableLayoutPanel tlpCharts = new TableLayoutPanel
-
             {
-
                 Height = 350,
-
                 ColumnCount = 2,
-
                 RowCount = 1,
-
                 BackColor = Color.Transparent,
-
                 Width = flpReportsContent.ClientSize.Width - 10,
-
                 Margin = new Padding(0, 0, 0, 20)
-
             };
-
             tlpCharts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60F));
-
             tlpCharts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
 
-
-
             Panel pnlChart = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Margin = new Padding(0, 0, 20, 0) };
-
-            SetupChart(pnlChart, "Daily Circulation Trends");
-
+            LoadDailyCirculationChart(pnlChart);
             tlpCharts.Controls.Add(pnlChart, 0, 0);
 
-
-
             Panel pnlTopBooks = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Margin = new Padding(0, 0, 0, 0) };
-
-            SetupDistributionChart(pnlTopBooks, "Most Borrowed Books", new Dictionary<string, int> { 
-
-                {"The Great Gatsby", 45}, {"1984", 32}, {"To Kill a Mockingbird", 28}, {"Pride and Prejudice", 25}, {"The Hobbit", 20} 
-
-            }); 
-
+            LoadMostBorrowedBooksChart(pnlTopBooks);
             tlpCharts.Controls.Add(pnlTopBooks, 1, 0);
-
             flpReportsContent.Controls.Add(tlpCharts);
 
+            // 3. Overdue Grid - Full Stack
+            Panel pnlGridContainer = new Panel 
+            { 
+                Height = 400, // Initial height, will be adjusted by anchor
+                Width = flpReportsContent.ClientSize.Width - 10, 
+                BackColor = Color.White, 
+                Margin = new Padding(0, 0, 0, 30),
+                MinimumSize = new Size(0, 300)
+            };
+            
+            // Make the grid container fill remaining space when parent resizes
+            flpReportsContent.Parent.Resize += (s, e) =>
+            {
+                if (pnlGridContainer != null && flpReportsContent != null)
+                {
+                    int availableHeight = flpReportsContent.Parent.Height - 600;
+                    if (availableHeight > 300)
+                    {
+                        pnlGridContainer.Height = availableHeight;
+                    }
+                }
+            };
+            
+            Label lblGridTitle = new Label 
+            { 
+                Text = "Overdue Books", 
+                Font = new Font("Georgia", 14, FontStyle.Bold), 
+                Location = new Point(20, 20), 
+                AutoSize = true 
+            };
+            pnlGridContainer.Controls.Add(lblGridTitle);
+            
+            // Container for DataGridView to enable full stack
+            Panel dgvContainer = new Panel
+            {
+                Location = new Point(20, 60),
+                Size = new Size(pnlGridContainer.Width - 40, pnlGridContainer.Height - 80),
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+                BackColor = Color.White
+            };
+            
+            DataGridView dgv = CreateReportGrid();
+            dgv.Dock = DockStyle.Fill;
+            dgv.Columns.Add("Book", "Book");
+            dgv.Columns.Add("Member", "Member");
+            dgv.Columns.Add("BorrowDate", "Borrow Date");
+            dgv.Columns.Add("DueDate", "Due Date");
+            dgv.Columns.Add("DaysOverdue", "Days Overdue");
+            dgv.Columns.Add("Status", "Status");
+            
+            // Load overdue books from database
+            LoadOverdueBooksData(dgv);
+            
+            dgvContainer.Controls.Add(dgv);
+            pnlGridContainer.Controls.Add(dgvContainer);
+            flpReportsContent.Controls.Add(pnlGridContainer);
+        }
+        
+        private void LoadOverdueBooksData(DataGridView dgv)
+        {
+            dgv.Rows.Clear();
+            
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    string query = @"
+                        SELECT 
+                            b.BorrowingId,
+                            CONCAT(bk.Title, ' by ', bk.Author) AS BookTitle,
+                            CONCAT(u.FirstName, ' ', u.LastName) AS MemberName,
+                            b.BorrowDate,
+                            b.DueDate,
+                            DATEDIFF(NOW(), b.DueDate) AS DaysOverdue
+                        FROM Borrowings b
+                        INNER JOIN Books bk ON b.BookId = bk.BookId
+                        INNER JOIN Members m ON b.MemberId = m.MemberId
+                        INNER JOIN Users u ON m.UserId = u.UserId
+                        WHERE b.ReturnDate IS NULL 
+                        AND b.DueDate < NOW()
+                        ORDER BY b.DueDate ASC";
+                    
+                    using (var command = new MySqlCommand(query, connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string bookTitle = reader.IsDBNull(reader.GetOrdinal("BookTitle")) ? "Unknown" : reader.GetString("BookTitle");
+                                string memberName = reader.IsDBNull(reader.GetOrdinal("MemberName")) ? "Unknown" : reader.GetString("MemberName");
+                                DateTime borrowDate = reader.GetDateTime("BorrowDate");
+                                DateTime dueDate = reader.GetDateTime("DueDate");
+                                int daysOverdue = reader.GetInt32("DaysOverdue");
+                                
+                                dgv.Rows.Add(
+                                    bookTitle,
+                                    memberName,
+                                    borrowDate.ToString("MMM dd, yyyy"),
+                                    dueDate.ToString("MMM dd, yyyy"),
+                                    daysOverdue.ToString(),
+                                    $"Overdue ({daysOverdue} days)"
+                                );
+                            }
+                        }
+                    }
+                }
+                
+                if (dgv.Rows.Count == 0)
+                {
+                    dgv.Rows.Add("No overdue books found", "", "", "", "", "");
+                    dgv.Rows[0].DefaultCellStyle.ForeColor = Color.Gray;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading overdue books: {ex.Message}");
+                dgv.Rows.Add("Error loading data", ex.Message, "", "", "", "");
+            }
+        }
+        
+        private void LoadDailyCirculationChart(Panel panel)
+        {
+            try
+            {
+                // Get time range from dropdown
+                int days = 7; // Default
+                if (_reportsTimeRangeCombo != null)
+                {
+                    days = GetDaysFromTimeRange(_reportsTimeRangeCombo);
+                }
+                
+                Dictionary<string, int> borrowData = new Dictionary<string, int>();
+                Dictionary<string, int> returnData = new Dictionary<string, int>();
+                
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Get borrowings for selected time range
+                    string borrowQuery = $@"
+                        SELECT 
+                            DATE(BorrowDate) AS BorrowDate,
+                            COUNT(*) AS BorrowCount
+                        FROM Borrowings
+                        WHERE BorrowDate >= DATE_SUB(NOW(), INTERVAL {days} DAY)
+                        GROUP BY DATE(BorrowDate)
+                        ORDER BY BorrowDate ASC";
+                    
+                    using (var command = new MySqlCommand(borrowQuery, connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                DateTime date = reader.GetDateTime("BorrowDate");
+                                int count = reader.GetInt32("BorrowCount");
+                                borrowData[date.ToString("MMM dd")] = count;
+                            }
+                        }
+                    }
+                    
+                    // Get returns for selected time range
+                    string returnQuery = $@"
+                        SELECT 
+                            DATE(ReturnDate) AS ReturnDate,
+                            COUNT(*) AS ReturnCount
+                        FROM Borrowings
+                        WHERE ReturnDate >= DATE_SUB(NOW(), INTERVAL {days} DAY)
+                        AND ReturnDate IS NOT NULL
+                        GROUP BY DATE(ReturnDate)
+                        ORDER BY ReturnDate ASC";
+                    
+                    using (var command = new MySqlCommand(returnQuery, connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                DateTime date = reader.GetDateTime("ReturnDate");
+                                int count = reader.GetInt32("ReturnCount");
+                                returnData[date.ToString("MMM dd")] = count;
+                            }
+                        }
+                    }
+                }
+                
+                SetupChartWithData(panel, $"Daily Circulation Trends (Last {days} Days)", borrowData, returnData);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading daily circulation chart: {ex.Message}");
+                SetupChart(panel, "Daily Circulation Trends");
+            }
+        }
+        
+        private void SetupChartWithData(Panel pnl, string title, Dictionary<string, int> borrowData, Dictionary<string, int> returnData)
+        {
+            // Header Panel
+            Panel pnlHeader = new Panel { Dock = DockStyle.Top, Height = 80, BackColor = Color.Transparent };
+            Label lblTitle = new Label { Text = title, Font = new Font("Georgia", 14, FontStyle.Bold), Location = new Point(20, 20), AutoSize = true };
+            Label lblSub = new Label { Text = "Borrowings and returns over time", Font = new Font("Segoe UI", 9), ForeColor = Color.Gray, Location = new Point(22, 50), AutoSize = true };
+            pnlHeader.Controls.Add(lblTitle);
+            pnlHeader.Controls.Add(lblSub);
+            pnl.Controls.Add(pnlHeader);
 
+            Chart chart = new Chart();
+            chart.Dock = DockStyle.Fill;
 
-            // 3. Overdue Grid
+            ChartArea ca = new ChartArea();
+            ca.Name = "MainArea";
+            ca.BackColor = Color.White;
+            ca.AxisX.MajorGrid.LineColor = Color.FromArgb(245, 245, 245);
+            ca.AxisY.MajorGrid.LineColor = Color.FromArgb(245, 245, 245);
+            ca.AxisX.LineColor = Color.Gray;
+            ca.AxisY.LineColor = Color.Transparent;
+            ca.AxisX.LabelStyle.Font = new Font("Segoe UI", 8);
+            ca.AxisY.LabelStyle.Font = new Font("Segoe UI", 8);
+            ca.AxisX.LabelStyle.ForeColor = Color.Gray;
+            ca.AxisY.LabelStyle.ForeColor = Color.Gray;
+            chart.ChartAreas.Add(ca);
 
-            Panel pnlGrid = new Panel { Height = 300, Width = flpReportsContent.ClientSize.Width - 10, BackColor = Color.White, Margin = new Padding(0, 0, 0, 30) };
+            Series s1 = new Series
+            {
+                Name = "Borrowings",
+                Color = Color.Maroon,
+                ChartType = SeriesChartType.Spline,
+                BorderWidth = 3
+            };
+            
+            foreach (var item in borrowData)
+            {
+                s1.Points.AddXY(item.Key, item.Value);
+            }
 
-             Label lblGridTitle = new Label { Text = "Overdue Books", Font = new Font("Georgia", 14, FontStyle.Bold), Location = new Point(20, 20), AutoSize = true };
+            Series s2 = new Series
+            {
+                Name = "Returns",
+                Color = Color.Green,
+                ChartType = SeriesChartType.Spline,
+                BorderWidth = 3
+            };
+            
+            foreach (var item in returnData)
+            {
+                s2.Points.AddXY(item.Key, item.Value);
+            }
 
-             pnlGrid.Controls.Add(lblGridTitle);
-
-             
-
-             DataGridView dgv = CreateReportGrid();
-
-             dgv.Columns.Add("Book", "Book");
-
-             dgv.Columns.Add("Member", "Member");
-
-             dgv.Columns.Add("BorrowDate", "Borrow Date");
-
-             dgv.Columns.Add("DueDate", "Due Date");
-
-             dgv.Columns.Add("Status", "Status");
-
-             
-
-             dgv.Rows.Add("Pride and Prejudice", "Michael Brown", "Oct 15, 2024", "Nov 1, 2024", "Overdue (45 days)");
-
-             dgv.Rows.Add("The Catcher in the Rye", "Sarah Wilson", "Oct 20, 2024", "Nov 5, 2024", "Overdue (40 days)");
-
-             dgv.Rows.Add("Brave New World", "David Lee", "Nov 1, 2024", "Nov 15, 2024", "Overdue (30 days)");
-
-             
-
-             pnlGrid.Controls.Add(dgv);
-
-             flpReportsContent.Controls.Add(pnlGrid);
-
+            chart.Series.Add(s1);
+            chart.Series.Add(s2);
+            chart.Legends.Add(new Legend { Docking = Docking.Bottom, Alignment = StringAlignment.Center });
+            pnl.Controls.Add(chart);
+        }
+        
+        private void LoadMostBorrowedBooksChart(Panel panel)
+        {
+            try
+            {
+                Dictionary<string, int> bookData = new Dictionary<string, int>();
+                
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    string query = @"
+                        SELECT 
+                            CONCAT(bk.Title, ' by ', bk.Author) AS BookTitle,
+                            COUNT(*) AS BorrowCount
+                        FROM Borrowings b
+                        INNER JOIN Books bk ON b.BookId = bk.BookId
+                        GROUP BY b.BookId, bk.Title, bk.Author
+                        ORDER BY BorrowCount DESC
+                        LIMIT 5";
+                    
+                    using (var command = new MySqlCommand(query, connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string bookTitle = reader.GetString("BookTitle");
+                                int count = reader.GetInt32("BorrowCount");
+                                // Truncate long titles
+                                if (bookTitle.Length > 30)
+                                {
+                                    bookTitle = bookTitle.Substring(0, 27) + "...";
+                                }
+                                bookData[bookTitle] = count;
+                            }
+                        }
+                    }
+                }
+                
+                if (bookData.Count > 0)
+                {
+                    SetupDistributionChart(panel, "Most Borrowed Books", bookData);
+                }
+                else
+                {
+                    SetupDistributionChart(panel, "Most Borrowed Books", new Dictionary<string, int>());
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading most borrowed books chart: {ex.Message}");
+                SetupDistributionChart(panel, "Most Borrowed Books", new Dictionary<string, int>());
+            }
         }
 
 
 
         private void ShowReportsMembers()
-
         {
-
-             // 1. KPI Section
-
-            TableLayoutPanel tlpKPI = new TableLayoutPanel
-
+            // Get time range
+            int days = 7; // Default
+            if (_reportsTimeRangeCombo != null)
             {
-
-                Height = 100, 
-
-                ColumnCount = 4,
-
-                RowCount = 1,
-
-                BackColor = Color.Transparent,
-
-                Width = flpReportsContent.ClientSize.Width - 10,
-
-                Margin = new Padding(0, 0, 0, 20)
-
-            };
-
-            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-
-            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-
-            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-
-            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-
+                days = GetDaysFromTimeRange(_reportsTimeRangeCombo);
+            }
+            DateTime startDate = DateTime.Now.AddDays(-days);
             
+            // Load statistics from database
+            int totalMembers = 0;
+            int newMembers = 0;
+            int activeMembers = 0;
+            int suspendedMembers = 0;
+            Dictionary<string, int> memberTypeData = new Dictionary<string, int>();
+            Dictionary<string, int> memberStatusData = new Dictionary<string, int>();
+            
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Total Members
+                    using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM Members", connection))
+                    {
+                        totalMembers = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+                    
+                    // New Members (within time range)
+                    using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM Members WHERE RegistrationDate >= @StartDate", connection))
+                    {
+                        cmd.Parameters.AddWithValue("@StartDate", startDate);
+                        newMembers = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+                    
+                    // Active Members
+                    using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM Members WHERE Status = 1", connection))
+                    {
+                        activeMembers = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+                    
+                    // Suspended Members
+                    using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM Members WHERE Status = 0", connection))
+                    {
+                        suspendedMembers = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+                    
+                    // Member Distribution by Type
+                    string typeQuery = @"
+                        SELECT MemberType, COUNT(*) AS Count
+                        FROM Members
+                        GROUP BY MemberType";
+                    using (var cmd = new MySqlCommand(typeQuery, connection))
+                    {
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string memberType = reader.GetString("MemberType");
+                                int count = reader.GetInt32("Count");
+                                memberTypeData[memberType] = count;
+                            }
+                        }
+                    }
+                    
+                    // Membership Status
+                    string statusQuery = @"
+                        SELECT 
+                            CASE 
+                                WHEN Status = 1 THEN 'Active'
+                                WHEN Status = 0 THEN 'Suspended'
+                                ELSE 'Inactive'
+                            END AS Status,
+                            COUNT(*) AS Count
+                        FROM Members
+                        GROUP BY Status";
+                    using (var cmd = new MySqlCommand(statusQuery, connection))
+                    {
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string status = reader.GetString("Status");
+                                int count = reader.GetInt32("Count");
+                                memberStatusData[status] = count;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading members statistics: {ex.Message}");
+            }
 
-            tlpKPI.Controls.Add(CreateReportStatCard("Total Members", "524", "👥", Color.White, Color.Black, false), 0, 0);
-
-            tlpKPI.Controls.Add(CreateReportStatCard("New This Month", "32", "➕", Color.White, Color.Green, false), 1, 0);
-
-            tlpKPI.Controls.Add(CreateReportStatCard("Active Users", "412", "⚡", Color.White, Color.Blue, false), 2, 0);
-
-            tlpKPI.Controls.Add(CreateReportStatCard("Suspended", "8", "⛔", Color.White, Color.Red, false), 3, 0);
-
+            // 1. KPI Section
+            TableLayoutPanel tlpKPI = new TableLayoutPanel
+            {
+                Height = 100, 
+                ColumnCount = 4,
+                RowCount = 1,
+                BackColor = Color.Transparent,
+                Width = flpReportsContent.ClientSize.Width - 10,
+                Margin = new Padding(0, 0, 0, 20)
+            };
+            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            
+            tlpKPI.Controls.Add(CreateReportStatCard("Total Members", totalMembers.ToString("N0"), "👥", Color.White, Color.Black, false), 0, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard($"New (Last {days} days)", newMembers.ToString("N0"), "➕", Color.White, Color.Green, false), 1, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Active Users", activeMembers.ToString("N0"), "⚡", Color.White, Color.Blue, false), 2, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Suspended", suspendedMembers.ToString("N0"), "⛔", Color.White, Color.Red, false), 3, 0);
             flpReportsContent.Controls.Add(tlpKPI);
 
-
-
             // 2. Charts Section
-
             TableLayoutPanel tlpCharts = new TableLayoutPanel
-
             {
-
                 Height = 350,
-
                 ColumnCount = 2,
-
                 RowCount = 1,
-
                 BackColor = Color.Transparent,
-
                 Width = flpReportsContent.ClientSize.Width - 10,
-
                 Margin = new Padding(0, 0, 0, 20)
-
             };
-
             tlpCharts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-
             tlpCharts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-
-
 
             Panel pnlTypeChart = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Margin = new Padding(0, 0, 20, 0) };
-
-            SetupDistributionChart(pnlTypeChart, "Member Distribution by Type", new Dictionary<string, int> { 
-
-                {"Student", 350}, {"Faculty", 80}, {"Staff", 50}, {"Guest", 44} 
-
-            });
-
+            SetupDistributionChart(pnlTypeChart, "Member Distribution by Type", memberTypeData);
             tlpCharts.Controls.Add(pnlTypeChart, 0, 0);
 
-
-
             Panel pnlStatusChart = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Margin = new Padding(0, 0, 0, 0) };
-
-             SetupDistributionChart(pnlStatusChart, "Membership Status", new Dictionary<string, int> { 
-
-                {"Active", 412}, {"Expired", 80}, {"Suspended", 8}, {"Pending", 24} 
-
-            });
-
+            SetupDistributionChart(pnlStatusChart, "Membership Status", memberStatusData);
             tlpCharts.Controls.Add(pnlStatusChart, 1, 0);
-
             flpReportsContent.Controls.Add(tlpCharts);
 
-
-
-             // 3. Grid
-
-            Panel pnlGrid = new Panel { Height = 300, Width = flpReportsContent.ClientSize.Width - 10, BackColor = Color.White, Margin = new Padding(0, 0, 0, 30) };
-
-             Label lblGridTitle = new Label { Text = "Recent Member Activity", Font = new Font("Georgia", 14, FontStyle.Bold), Location = new Point(20, 20), AutoSize = true };
-
-             pnlGrid.Controls.Add(lblGridTitle);
-
-             
-
-             DataGridView dgv = CreateReportGrid();
-
-             dgv.Columns.Add("MemberId", "ID");
-
-             dgv.Columns.Add("Name", "Name");
-
-             dgv.Columns.Add("Activity", "Activity");
-
-             dgv.Columns.Add("Date", "Date");
-
-             
-
-             dgv.Rows.Add("MEM-2024-001", "John Doe", "Borrowed 'Clean Code'", "Just now");
-
-             dgv.Rows.Add("MEM-2024-045", "Alice Smith", "Returned 'Design Patterns'", "1 hour ago");
-
-             dgv.Rows.Add("MEM-2023-112", "Bob Jones", "Paid Fine ($5.00)", "2 hours ago");
-
-             
-
-             pnlGrid.Controls.Add(dgv);
-
-             flpReportsContent.Controls.Add(pnlGrid);
-
+            // 3. Grid - Full Stack
+            Panel pnlGridContainer = new Panel 
+            { 
+                Height = 400,
+                Width = flpReportsContent.ClientSize.Width - 10, 
+                BackColor = Color.White, 
+                Margin = new Padding(0, 0, 0, 30),
+                MinimumSize = new Size(0, 300)
+            };
+            
+            // Make the grid container fill remaining space when parent resizes
+            flpReportsContent.Parent.Resize += (s, e) =>
+            {
+                if (pnlGridContainer != null && flpReportsContent != null)
+                {
+                    int availableHeight = flpReportsContent.Parent.Height - 600;
+                    if (availableHeight > 300)
+                    {
+                        pnlGridContainer.Height = availableHeight;
+                    }
+                }
+            };
+            
+            Label lblGridTitle = new Label { Text = "Recent Member Activity", Font = new Font("Georgia", 14, FontStyle.Bold), Location = new Point(20, 20), AutoSize = true };
+            pnlGridContainer.Controls.Add(lblGridTitle);
+            
+            // Container for DataGridView to enable full stack
+            Panel dgvContainer = new Panel
+            {
+                Location = new Point(20, 60),
+                Size = new Size(pnlGridContainer.Width - 40, pnlGridContainer.Height - 80),
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+                BackColor = Color.White
+            };
+            
+            DataGridView dgv = CreateReportGrid();
+            dgv.Dock = DockStyle.Fill;
+            dgv.Columns.Add("MemberId", "Member ID");
+            dgv.Columns.Add("Name", "Name");
+            dgv.Columns.Add("Activity", "Activity");
+            dgv.Columns.Add("Date", "Date");
+            
+            // Load recent member activity from database
+            LoadRecentMemberActivity(dgv, startDate);
+            
+            dgvContainer.Controls.Add(dgv);
+            pnlGridContainer.Controls.Add(dgvContainer);
+            flpReportsContent.Controls.Add(pnlGridContainer);
+        }
+        
+        private void LoadRecentMemberActivity(DataGridView dgv, DateTime startDate)
+        {
+            dgv.Rows.Clear();
+            
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    string query = @"
+                        SELECT 
+                            m.MemberNumber AS MemberId,
+                            CONCAT(u.FirstName, ' ', u.LastName) AS MemberName,
+                            'Borrowed' AS ActivityType,
+                            bk.Title AS BookTitle,
+                            b.BorrowDate AS ActivityDate
+                        FROM Borrowings b
+                        INNER JOIN Members m ON b.MemberId = m.MemberId
+                        INNER JOIN Users u ON m.UserId = u.UserId
+                        INNER JOIN Books bk ON b.BookId = bk.BookId
+                        WHERE b.BorrowDate >= @StartDate
+                        
+                        UNION ALL
+                        
+                        SELECT 
+                            m.MemberNumber AS MemberId,
+                            CONCAT(u.FirstName, ' ', u.LastName) AS MemberName,
+                            'Returned' AS ActivityType,
+                            bk.Title AS BookTitle,
+                            b.ReturnDate AS ActivityDate
+                        FROM Borrowings b
+                        INNER JOIN Members m ON b.MemberId = m.MemberId
+                        INNER JOIN Users u ON m.UserId = u.UserId
+                        INNER JOIN Books bk ON b.BookId = bk.BookId
+                        WHERE b.ReturnDate >= @StartDate AND b.ReturnDate IS NOT NULL
+                        
+                        ORDER BY ActivityDate DESC
+                        LIMIT 50";
+                    
+                    using (var command = new MySqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@StartDate", startDate);
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string memberId = reader.GetString("MemberId");
+                                string memberName = reader.GetString("MemberName");
+                                string activityType = reader.GetString("ActivityType");
+                                string bookTitle = reader.GetString("BookTitle");
+                                DateTime activityDate = reader.GetDateTime("ActivityDate");
+                                
+                                string activity = $"{activityType} '{bookTitle}'";
+                                string timeAgo = GetTimeAgo(activityDate);
+                                
+                                dgv.Rows.Add(memberId, memberName, activity, timeAgo);
+                            }
+                        }
+                    }
+                }
+                
+                if (dgv.Rows.Count == 0)
+                {
+                    dgv.Rows.Add("No recent activity found", "", "", "");
+                    dgv.Rows[0].DefaultCellStyle.ForeColor = Color.Gray;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading recent member activity: {ex.Message}");
+                dgv.Rows.Add("Error loading data", ex.Message, "", "");
+            }
+        }
+        
+        private string GetTimeAgo(DateTime dateTime)
+        {
+            TimeSpan timeSpan = DateTime.Now - dateTime;
+            if (timeSpan.TotalMinutes < 1) return "Just now";
+            if (timeSpan.TotalMinutes < 60) return $"{(int)timeSpan.TotalMinutes} minute(s) ago";
+            if (timeSpan.TotalHours < 24) return $"{(int)timeSpan.TotalHours} hour(s) ago";
+            if (timeSpan.TotalDays < 7) return $"{(int)timeSpan.TotalDays} day(s) ago";
+            return dateTime.ToString("MMM dd, yyyy");
         }
 
 
 
         private void ShowReportsCollection()
-
         {
-
-             // 1. KPI Section
-
-            TableLayoutPanel tlpKPI = new TableLayoutPanel
-
+            // Get time range
+            int days = 7; // Default
+            if (_reportsTimeRangeCombo != null)
             {
-
-                Height = 100, 
-
-                ColumnCount = 4,
-
-                RowCount = 1,
-
-                BackColor = Color.Transparent,
-
-                Width = flpReportsContent.ClientSize.Width - 10,
-
-                Margin = new Padding(0, 0, 0, 20)
-
-            };
-
-            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-
-            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-
-            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-
-            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-
+                days = GetDaysFromTimeRange(_reportsTimeRangeCombo);
+            }
+            DateTime startDate = DateTime.Now.AddDays(-days);
             
+            // Load statistics from database
+            int totalTitles = 0;
+            int totalCopies = 0;
+            int availableCopies = 0;
+            int lostDamaged = 0;
+            Dictionary<string, int> categoryData = new Dictionary<string, int>();
+            Dictionary<string, int> popularCategoryData = new Dictionary<string, int>();
+            
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Total Titles
+                    using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM Books", connection))
+                    {
+                        totalTitles = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+                    
+                    // Total Copies
+                    using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM BookCopies", connection))
+                    {
+                        totalCopies = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+                    
+                    // Available Copies
+                    using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM BookCopies WHERE Status = 'Available'", connection))
+                    {
+                        availableCopies = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+                    
+                    // Lost/Damaged
+                    using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM BookCopies WHERE Status IN ('Lost', 'Damaged') OR `Condition` IN ('Lost', 'Damaged')", connection))
+                    {
+                        lostDamaged = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+                    
+                    // Collection by Category
+                    string categoryQuery = @"
+                        SELECT 
+                            COALESCE(Category, 'Uncategorized') AS Category,
+                            COUNT(*) AS Count
+                        FROM Books
+                        GROUP BY Category";
+                    using (var cmd = new MySqlCommand(categoryQuery, connection))
+                    {
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string category = reader.GetString("Category");
+                                int count = reader.GetInt32("Count");
+                                categoryData[category] = count;
+                            }
+                        }
+                    }
+                    
+                    // Most Popular Categories (by borrowings)
+                    string popularQuery = @"
+                        SELECT 
+                            COALESCE(b.Category, 'Uncategorized') AS Category,
+                            COUNT(DISTINCT br.BorrowingId) AS BorrowCount
+                        FROM Borrowings br
+                        INNER JOIN Books b ON br.BookId = b.BookId
+                        WHERE br.BorrowDate >= @StartDate
+                        GROUP BY b.Category
+                        ORDER BY BorrowCount DESC
+                        LIMIT 5";
+                    using (var cmd = new MySqlCommand(popularQuery, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@StartDate", startDate);
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string category = reader.GetString("Category");
+                                int count = reader.GetInt32("BorrowCount");
+                                popularCategoryData[category] = count;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading collection statistics: {ex.Message}");
+            }
 
-            tlpKPI.Controls.Add(CreateReportStatCard("Total Titles", "12,450", "📚", Color.White, Color.Black, false), 0, 0);
-
-            tlpKPI.Controls.Add(CreateReportStatCard("Total Copies", "15,200", "📖", Color.White, Color.Black, false), 1, 0);
-
-            tlpKPI.Controls.Add(CreateReportStatCard("Available", "11,500", "✅", Color.White, Color.Green, false), 2, 0);
-
-            tlpKPI.Controls.Add(CreateReportStatCard("Lost/Damaged", "45", "❌", Color.White, Color.Red, false), 3, 0);
-
+            // 1. KPI Section
+            TableLayoutPanel tlpKPI = new TableLayoutPanel
+            {
+                Height = 100, 
+                ColumnCount = 4,
+                RowCount = 1,
+                BackColor = Color.Transparent,
+                Width = flpReportsContent.ClientSize.Width - 10,
+                Margin = new Padding(0, 0, 0, 20)
+            };
+            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            
+            tlpKPI.Controls.Add(CreateReportStatCard("Total Titles", totalTitles.ToString("N0"), "📚", Color.White, Color.Black, false), 0, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Total Copies", totalCopies.ToString("N0"), "📖", Color.White, Color.Black, false), 1, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Available", availableCopies.ToString("N0"), "✅", Color.White, Color.Green, false), 2, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Lost/Damaged", lostDamaged.ToString("N0"), "❌", Color.White, Color.Red, false), 3, 0);
             flpReportsContent.Controls.Add(tlpKPI);
 
-
-
             // 2. Charts Section
-
             TableLayoutPanel tlpCharts = new TableLayoutPanel
-
             {
-
                 Height = 350,
-
                 ColumnCount = 2,
-
                 RowCount = 1,
-
                 BackColor = Color.Transparent,
-
                 Width = flpReportsContent.ClientSize.Width - 10,
-
                 Margin = new Padding(0, 0, 0, 20)
-
             };
-
             tlpCharts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60F));
-
             tlpCharts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
 
-
-
             Panel pnlCatChart = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Margin = new Padding(0, 0, 20, 0) };
-
-             SetupDistributionChart(pnlCatChart, "Collection by Category", new Dictionary<string, int> { 
-
-                {"Fiction", 4500}, {"Science", 2500}, {"History", 1500}, {"Technology", 2000}, {"Arts", 1000}, {"Others", 950}
-
-            });
-
+            SetupDistributionChart(pnlCatChart, "Collection by Category", categoryData);
             tlpCharts.Controls.Add(pnlCatChart, 0, 0);
 
-
-
             Panel pnlTopChart = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Margin = new Padding(0, 0, 0, 0) };
-
-             SetupDistributionChart(pnlTopChart, "Most Popular Categories", new Dictionary<string, int> { 
-
-                 {"Fiction", 120}, {"Technology", 95}, {"Science", 80}, {"History", 45}
-
-            });
-
+            SetupDistributionChart(pnlTopChart, $"Most Popular Categories (Last {days} days)", popularCategoryData);
             tlpCharts.Controls.Add(pnlTopChart, 1, 0);
-
             flpReportsContent.Controls.Add(tlpCharts);
 
-
-
-             // 3. Grid
-
-            Panel pnlGrid = new Panel { Height = 300, Width = flpReportsContent.ClientSize.Width - 10, BackColor = Color.White, Margin = new Padding(0, 0, 0, 30) };
-
-             Label lblGridTitle = new Label { Text = "Recent Acquisitions", Font = new Font("Georgia", 14, FontStyle.Bold), Location = new Point(20, 20), AutoSize = true };
-
-             pnlGrid.Controls.Add(lblGridTitle);
-
-             
-
-             DataGridView dgv = CreateReportGrid();
-
-             dgv.Columns.Add("Id", "Accession #");
-
-             dgv.Columns.Add("Title", "Title");
-
-             dgv.Columns.Add("Category", "Category");
-
-             dgv.Columns.Add("DateAdded", "Date Added");
-
-             
-
-             dgv.Rows.Add("ACC-2024-501", "Advanced AI Algorithms", "Technology", "Dec 10, 2024");
-
-             dgv.Rows.Add("ACC-2024-502", "Modern History of Europe", "History", "Dec 12, 2024");
-
-             dgv.Rows.Add("ACC-2024-503", "Quick Recipes", "Lifestyle", "Dec 14, 2024");
-
-             
-
-             pnlGrid.Controls.Add(dgv);
-
-             flpReportsContent.Controls.Add(pnlGrid);
-
+            // 3. Grid - Full Stack
+            Panel pnlGridContainer = new Panel 
+            { 
+                Height = 400,
+                Width = flpReportsContent.ClientSize.Width - 10, 
+                BackColor = Color.White, 
+                Margin = new Padding(0, 0, 0, 30),
+                MinimumSize = new Size(0, 300)
+            };
+            
+            // Make the grid container fill remaining space when parent resizes
+            flpReportsContent.Parent.Resize += (s, e) =>
+            {
+                if (pnlGridContainer != null && flpReportsContent != null)
+                {
+                    int availableHeight = flpReportsContent.Parent.Height - 600;
+                    if (availableHeight > 300)
+                    {
+                        pnlGridContainer.Height = availableHeight;
+                    }
+                }
+            };
+            
+            Label lblGridTitle = new Label { Text = "Recent Acquisitions", Font = new Font("Georgia", 14, FontStyle.Bold), Location = new Point(20, 20), AutoSize = true };
+            pnlGridContainer.Controls.Add(lblGridTitle);
+            
+            // Container for DataGridView to enable full stack
+            Panel dgvContainer = new Panel
+            {
+                Location = new Point(20, 60),
+                Size = new Size(pnlGridContainer.Width - 40, pnlGridContainer.Height - 80),
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+                BackColor = Color.White
+            };
+            
+            DataGridView dgv = CreateReportGrid();
+            dgv.Dock = DockStyle.Fill;
+            dgv.Columns.Add("Id", "Accession #");
+            dgv.Columns.Add("Title", "Title");
+            dgv.Columns.Add("Category", "Category");
+            dgv.Columns.Add("DateAdded", "Date Added");
+            
+            // Load recent acquisitions from database
+            LoadRecentAcquisitions(dgv, startDate);
+            
+            dgvContainer.Controls.Add(dgv);
+            pnlGridContainer.Controls.Add(dgvContainer);
+            flpReportsContent.Controls.Add(pnlGridContainer);
+        }
+        
+        private void LoadRecentAcquisitions(DataGridView dgv, DateTime startDate)
+        {
+            dgv.Rows.Clear();
+            
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    string query = @"
+                        SELECT DISTINCT
+                            bc.AccessionNumber AS AccessionNo,
+                            b.Title,
+                            COALESCE(b.Category, 'Uncategorized') AS Category,
+                            bc.CreatedDate AS DateAdded
+                        FROM BookCopies bc
+                        INNER JOIN Books b ON bc.BookId = b.BookId
+                        WHERE bc.CreatedDate >= @StartDate
+                        ORDER BY bc.CreatedDate DESC
+                        LIMIT 50";
+                    
+                    using (var command = new MySqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@StartDate", startDate);
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string accessionNo = reader.IsDBNull(reader.GetOrdinal("AccessionNo")) ? "N/A" : reader.GetString("AccessionNo");
+                                string title = reader.IsDBNull(reader.GetOrdinal("Title")) ? "Unknown" : reader.GetString("Title");
+                                string category = reader.IsDBNull(reader.GetOrdinal("Category")) ? "Uncategorized" : reader.GetString("Category");
+                                DateTime dateAdded = reader.GetDateTime("DateAdded");
+                                
+                                dgv.Rows.Add(accessionNo, title, category, dateAdded.ToString("MMM dd, yyyy"));
+                            }
+                        }
+                    }
+                }
+                
+                if (dgv.Rows.Count == 0)
+                {
+                    dgv.Rows.Add("No recent acquisitions found", "", "", "");
+                    dgv.Rows[0].DefaultCellStyle.ForeColor = Color.Gray;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading recent acquisitions: {ex.Message}");
+                dgv.Rows.Add("Error loading data", ex.Message, "", "");
+            }
         }
 
 
 
         private void ShowReportsFines()
-
         {
-
-             // 1. KPI Section
-
-            TableLayoutPanel tlpKPI = new TableLayoutPanel
-
+            // Get time range
+            int days = 7; // Default
+            if (_reportsTimeRangeCombo != null)
             {
-
-                Height = 100, 
-
-                ColumnCount = 4,
-
-                RowCount = 1,
-
-                BackColor = Color.Transparent,
-
-                Width = flpReportsContent.ClientSize.Width - 10,
-
-                Margin = new Padding(0, 0, 0, 20)
-
-            };
-
-            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-
-            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-
-            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-
-            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-
+                days = GetDaysFromTimeRange(_reportsTimeRangeCombo);
+            }
+            DateTime startDate = DateTime.Now.AddDays(-days);
             
+            // Load statistics from database
+            decimal totalCollected = 0;
+            decimal pendingFines = 0;
+            decimal waivedFines = 0;
+            int overdueCases = 0;
+            Dictionary<string, int> finesByReasonData = new Dictionary<string, int>();
+            Dictionary<string, decimal> dailyFinesData = new Dictionary<string, decimal>();
+            
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Ensure PaidAmount column exists
+                    EnsurePaidAmountColumnExists(connection);
+                    
+                    // Total Collected (paid fines within time range)
+                    string collectedQuery = @"
+                        SELECT COALESCE(SUM(COALESCE(f.PaidAmount, f.Amount)), 0) AS TotalCollected
+                        FROM Fines f
+                        WHERE f.Status = 'Paid' 
+                        AND f.PaidDate >= @StartDate";
+                    using (var cmd = new MySqlCommand(collectedQuery, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@StartDate", startDate);
+                        object result = cmd.ExecuteScalar();
+                        if (result != null && result != DBNull.Value)
+                        {
+                            totalCollected = Convert.ToDecimal(result);
+                        }
+                    }
+                    
+                    // Pending Fines (unpaid)
+                    string pendingQuery = @"
+                        SELECT COALESCE(SUM(f.Amount - COALESCE(f.PaidAmount, 0)), 0) AS PendingFines
+                        FROM Fines f
+                        WHERE f.Status = 'Unpaid' OR (f.Status = 'Paid' AND f.Amount > COALESCE(f.PaidAmount, 0))";
+                    using (var cmd = new MySqlCommand(pendingQuery, connection))
+                    {
+                        object result = cmd.ExecuteScalar();
+                        if (result != null && result != DBNull.Value)
+                        {
+                            pendingFines = Convert.ToDecimal(result);
+                        }
+                    }
+                    
+                    // Waived Fines
+                    string waivedQuery = @"
+                        SELECT COALESCE(SUM(f.Amount), 0) AS WaivedFines
+                        FROM Fines f
+                        WHERE f.Status = 'Waived'";
+                    using (var cmd = new MySqlCommand(waivedQuery, connection))
+                    {
+                        object result = cmd.ExecuteScalar();
+                        if (result != null && result != DBNull.Value)
+                        {
+                            waivedFines = Convert.ToDecimal(result);
+                        }
+                    }
+                    
+                    // Overdue Cases (fines that are unpaid and overdue)
+                    string overdueQuery = @"
+                        SELECT COUNT(*) AS OverdueCases
+                        FROM Fines f
+                        LEFT JOIN Borrowings br ON f.BorrowingId = br.BorrowingId
+                        WHERE f.Status = 'Unpaid' 
+                        AND (br.DueDate < NOW() OR f.CreatedDate < DATE_SUB(NOW(), INTERVAL 7 DAY))";
+                    using (var cmd = new MySqlCommand(overdueQuery, connection))
+                    {
+                        overdueCases = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+                    
+                    // Daily Fines Revenue (for chart)
+                    string dailyQuery = $@"
+                        SELECT 
+                            DATE(f.PaidDate) AS PaidDate,
+                            SUM(COALESCE(f.PaidAmount, f.Amount)) AS DailyTotal
+                        FROM Fines f
+                        WHERE f.Status = 'Paid' 
+                        AND f.PaidDate >= DATE_SUB(NOW(), INTERVAL {days} DAY)
+                        AND f.PaidDate IS NOT NULL
+                        GROUP BY DATE(f.PaidDate)
+                        ORDER BY PaidDate ASC";
+                    using (var cmd = new MySqlCommand(dailyQuery, connection))
+                    {
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                DateTime date = reader.GetDateTime("PaidDate");
+                                decimal dailyTotal = reader.GetDecimal("DailyTotal");
+                                dailyFinesData[date.ToString("MMM dd")] = dailyTotal;
+                            }
+                        }
+                    }
+                    
+                    // Fines by Reason/Type
+                    string reasonQuery = @"
+                        SELECT 
+                            CASE 
+                                WHEN f.Reason LIKE '%Lost%' OR f.Reason LIKE '%lost%' THEN 'Lost'
+                                WHEN f.Reason LIKE '%Damaged%' OR f.Reason LIKE '%damaged%' THEN 'Damaged'
+                                WHEN f.Reason LIKE '%Overdue%' OR f.Reason LIKE '%overdue%' OR f.Reason IS NULL THEN 'Overdue'
+                                ELSE 'Other'
+                            END AS Reason,
+                            COUNT(*) AS Count
+                        FROM Fines f
+                        WHERE f.CreatedDate >= @StartDate
+                        GROUP BY Reason";
+                    using (var cmd = new MySqlCommand(reasonQuery, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@StartDate", startDate);
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string reason = reader.GetString("Reason");
+                                int count = reader.GetInt32("Count");
+                                finesByReasonData[reason] = count;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading fines statistics: {ex.Message}");
+            }
 
-            tlpKPI.Controls.Add(CreateReportStatCard("Total Collected", "$12,450", "💰", Color.White, Color.Green, false), 0, 0);
-
-            tlpKPI.Controls.Add(CreateReportStatCard("Pending Fines", "$2,100", "⚠️", Color.White, Color.Orange, false), 1, 0);
-
-            tlpKPI.Controls.Add(CreateReportStatCard("Waived", "$540", "👋", Color.White, Color.Gray, false), 2, 0);
-
-            tlpKPI.Controls.Add(CreateReportStatCard("Overdue Cases", "45", "⚖️", Color.White, Color.Red, false), 3, 0);
-
+            // 1. KPI Section
+            TableLayoutPanel tlpKPI = new TableLayoutPanel
+            {
+                Height = 100, 
+                ColumnCount = 4,
+                RowCount = 1,
+                BackColor = Color.Transparent,
+                Width = flpReportsContent.ClientSize.Width - 10,
+                Margin = new Padding(0, 0, 0, 20)
+            };
+            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tlpKPI.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            
+            tlpKPI.Controls.Add(CreateReportStatCard("Total Collected", $"₱{totalCollected:N2}", "💰", Color.White, Color.Green, false), 0, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Pending Fines", $"₱{pendingFines:N2}", "⚠️", Color.White, Color.Orange, false), 1, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Waived", $"₱{waivedFines:N2}", "👋", Color.White, Color.Gray, false), 2, 0);
+            tlpKPI.Controls.Add(CreateReportStatCard("Overdue Cases", overdueCases.ToString("N0"), "⚖️", Color.White, Color.Red, false), 3, 0);
             flpReportsContent.Controls.Add(tlpKPI);
 
-
-
             // 2. Charts Section
-
             TableLayoutPanel tlpCharts = new TableLayoutPanel
-
             {
-
                 Height = 350,
-
                 ColumnCount = 2,
-
                 RowCount = 1,
-
                 BackColor = Color.Transparent,
-
                 Width = flpReportsContent.ClientSize.Width - 10,
-
                 Margin = new Padding(0, 0, 0, 20)
-
             };
-
             tlpCharts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60F));
-
             tlpCharts.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
 
-
-
             Panel pnlTrendChart = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Margin = new Padding(0, 0, 20, 0) };
-
-             SetupChart(pnlTrendChart, "Daily Revenue (Fines)"); // Reusing the spline chart for now
-
+            LoadDailyFinesChart(pnlTrendChart, days);
             tlpCharts.Controls.Add(pnlTrendChart, 0, 0);
 
-
-
             Panel pnlTypeChart = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Margin = new Padding(0, 0, 0, 0) };
-
-             SetupDistributionChart(pnlTypeChart, "Fines by Reason", new Dictionary<string, int> { 
-
-                 {"Late Return", 120}, {"Lost Book", 15}, {"Damaged Book", 8}, {"Other", 5}
-
-            });
-
+            SetupDistributionChart(pnlTypeChart, "Fines by Reason", finesByReasonData);
             tlpCharts.Controls.Add(pnlTypeChart, 1, 0);
-
             flpReportsContent.Controls.Add(tlpCharts);
 
+            // 3. Grid - Full Stack
+            Panel pnlGridContainer = new Panel 
+            { 
+                Height = 400,
+                Width = flpReportsContent.ClientSize.Width - 10, 
+                BackColor = Color.White, 
+                Margin = new Padding(0, 0, 0, 30),
+                MinimumSize = new Size(0, 300)
+            };
+            
+            // Make the grid container fill remaining space when parent resizes
+            flpReportsContent.Parent.Resize += (s, e) =>
+            {
+                if (pnlGridContainer != null && flpReportsContent != null)
+                {
+                    int availableHeight = flpReportsContent.Parent.Height - 600;
+                    if (availableHeight > 300)
+                    {
+                        pnlGridContainer.Height = availableHeight;
+                    }
+                }
+            };
+            
+            Label lblGridTitle = new Label { Text = "Unpaid Fines", Font = new Font("Georgia", 14, FontStyle.Bold), Location = new Point(20, 20), AutoSize = true };
+            pnlGridContainer.Controls.Add(lblGridTitle);
+            
+            // Container for DataGridView to enable full stack
+            Panel dgvContainer = new Panel
+            {
+                Location = new Point(20, 60),
+                Size = new Size(pnlGridContainer.Width - 40, pnlGridContainer.Height - 80),
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+                BackColor = Color.White
+            };
+            
+            DataGridView dgv = CreateReportGrid();
+            dgv.Dock = DockStyle.Fill;
+            dgv.Columns.Add("Member", "Member");
+            dgv.Columns.Add("Book", "Book");
+            dgv.Columns.Add("Reason", "Reason");
+            dgv.Columns.Add("Amount", "Amount");
+            dgv.Columns.Add("DueDate", "Due Date");
+            dgv.Columns.Add("Status", "Status");
+            
+            // Load unpaid fines from database
+            LoadUnpaidFines(dgv);
+            
+            dgvContainer.Controls.Add(dgv);
+            pnlGridContainer.Controls.Add(dgvContainer);
+            flpReportsContent.Controls.Add(pnlGridContainer);
+        }
+        
+        private void LoadDailyFinesChart(Panel panel, int days)
+        {
+            try
+            {
+                Dictionary<string, decimal> dailyData = new Dictionary<string, decimal>();
+                
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    string query = $@"
+                        SELECT 
+                            DATE(ReturnDate) AS ReturnDate,
+                            SUM(FineAmount) AS DailyTotal
+                        FROM Borrowings
+                        WHERE FineAmount > 0 
+                        AND ReturnDate >= DATE_SUB(NOW(), INTERVAL {days} DAY)
+                        AND ReturnDate IS NOT NULL
+                        GROUP BY DATE(ReturnDate)
+                        ORDER BY ReturnDate ASC";
+                    
+                    using (var command = new MySqlCommand(query, connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                DateTime date = reader.GetDateTime("ReturnDate");
+                                decimal dailyTotal = reader.GetDecimal("DailyTotal");
+                                dailyData[date.ToString("MMM dd")] = dailyTotal;
+                            }
+                        }
+                    }
+                }
+                
+                if (dailyData.Count > 0)
+                {
+                    SetupFinesRevenueChart(panel, $"Daily Revenue (Fines) - Last {days} Days", dailyData);
+                }
+                else
+                {
+                    SetupChart(panel, "Daily Revenue (Fines)");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading daily fines chart: {ex.Message}");
+                SetupChart(panel, "Daily Revenue (Fines)");
+            }
+        }
+        
+        private void SetupFinesRevenueChart(Panel pnl, string title, Dictionary<string, decimal> dailyData)
+        {
+            // Header Panel
+            Panel pnlHeader = new Panel { Dock = DockStyle.Top, Height = 80, BackColor = Color.Transparent };
+            Label lblTitle = new Label { Text = title, Font = new Font("Georgia", 14, FontStyle.Bold), Location = new Point(20, 20), AutoSize = true };
+            Label lblSub = new Label { Text = "Fines collected over time", Font = new Font("Segoe UI", 9), ForeColor = Color.Gray, Location = new Point(22, 50), AutoSize = true };
+            pnlHeader.Controls.Add(lblTitle);
+            pnlHeader.Controls.Add(lblSub);
+            pnl.Controls.Add(pnlHeader);
 
+            Chart chart = new Chart();
+            chart.Dock = DockStyle.Fill;
 
-             // 3. Grid
+            ChartArea ca = new ChartArea();
+            ca.Name = "MainArea";
+            ca.BackColor = Color.White;
+            ca.AxisX.MajorGrid.LineColor = Color.FromArgb(245, 245, 245);
+            ca.AxisY.MajorGrid.LineColor = Color.FromArgb(245, 245, 245);
+            ca.AxisX.LineColor = Color.Gray;
+            ca.AxisY.LineColor = Color.Transparent;
+            ca.AxisX.LabelStyle.Font = new Font("Segoe UI", 8);
+            ca.AxisY.LabelStyle.Font = new Font("Segoe UI", 8);
+            ca.AxisX.LabelStyle.ForeColor = Color.Gray;
+            ca.AxisY.LabelStyle.ForeColor = Color.Gray;
+            chart.ChartAreas.Add(ca);
 
-            Panel pnlGrid = new Panel { Height = 300, Width = flpReportsContent.ClientSize.Width - 10, BackColor = Color.White, Margin = new Padding(0, 0, 0, 30) };
+            Series s1 = new Series
+            {
+                Name = "Fines Collected",
+                Color = Color.Green,
+                ChartType = SeriesChartType.Spline,
+                BorderWidth = 3
+            };
+            
+            foreach (var item in dailyData)
+            {
+                s1.Points.AddXY(item.Key, (double)item.Value);
+            }
 
-             Label lblGridTitle = new Label { Text = "Unpaid Fines", Font = new Font("Georgia", 14, FontStyle.Bold), Location = new Point(20, 20), AutoSize = true };
-
-             pnlGrid.Controls.Add(lblGridTitle);
-
-             
-
-             DataGridView dgv = CreateReportGrid();
-
-             dgv.Columns.Add("Member", "Member");
-
-             dgv.Columns.Add("Reason", "Reason");
-
-             dgv.Columns.Add("Amount", "Amount");
-
-             dgv.Columns.Add("Status", "Status");
-
-             
-
-             dgv.Rows.Add("John Doe", "Late Return - Clean Code", "$5.00", "Pending");
-
-             dgv.Rows.Add("Jane Smith", "Damaged - History 101", "$15.00", "Pending");
-
-             dgv.Rows.Add("Mike Ross", "Lost - Law Basics", "$50.00", "Overdue");
-
-             
-
-             pnlGrid.Controls.Add(dgv);
-
-             flpReportsContent.Controls.Add(pnlGrid);
-
+            chart.Series.Add(s1);
+            chart.Legends.Add(new Legend { Docking = Docking.Bottom, Alignment = StringAlignment.Center });
+            pnl.Controls.Add(chart);
+        }
+        
+        private void LoadUnpaidFines(DataGridView dgv)
+        {
+            dgv.Rows.Clear();
+            
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    EnsurePaidAmountColumnExists(connection);
+                    
+                    string query = @"
+                        SELECT 
+                            COALESCE(CONCAT(u.FirstName, ' ', u.LastName), m.MemberNumber, 'Unknown Member') AS MemberName,
+                            CASE 
+                                WHEN bk.Title IS NOT NULL THEN bk.Title
+                                WHEN f.Reason IS NOT NULL AND f.Reason != '' THEN f.Reason
+                                ELSE 'N/A'
+                            END AS BookTitle,
+                            COALESCE(f.Reason, 'Overdue') AS Reason,
+                            f.Amount AS FineAmount,
+                            COALESCE(br.DueDate, f.CreatedDate) AS DueDate,
+                            CASE 
+                                WHEN f.Status = 'Unpaid' THEN 'Pending'
+                                ELSE f.Status
+                            END AS Status
+                        FROM Fines f
+                        INNER JOIN Members m ON f.MemberId = m.MemberId
+                        LEFT JOIN Users u ON m.UserId = u.UserId
+                        LEFT JOIN Borrowings br ON f.BorrowingId = br.BorrowingId
+                        LEFT JOIN Books bk ON br.BookId = bk.BookId
+                        WHERE f.Status = 'Unpaid' OR (f.Status = 'Paid' AND f.Amount > COALESCE(f.PaidAmount, 0))
+                        ORDER BY COALESCE(br.DueDate, f.CreatedDate) ASC";
+                    
+                    using (var command = new MySqlCommand(query, connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string memberName = reader.IsDBNull(reader.GetOrdinal("MemberName")) ? "Unknown" : reader.GetString("MemberName");
+                                string bookTitle = reader.IsDBNull(reader.GetOrdinal("BookTitle")) ? "Unknown" : reader.GetString("BookTitle");
+                                string reason = reader.IsDBNull(reader.GetOrdinal("Reason")) ? "Fine" : reader.GetString("Reason");
+                                decimal fineAmount = reader.GetDecimal("FineAmount");
+                                DateTime dueDate = reader.GetDateTime("DueDate");
+                                string status = reader.IsDBNull(reader.GetOrdinal("Status")) ? "Pending" : reader.GetString("Status");
+                                
+                                dgv.Rows.Add(
+                                    memberName,
+                                    bookTitle,
+                                    reason,
+                                    $"₱{fineAmount:N2}",
+                                    dueDate.ToString("MMM dd, yyyy"),
+                                    status
+                                );
+                            }
+                        }
+                    }
+                }
+                
+                if (dgv.Rows.Count == 0)
+                {
+                    dgv.Rows.Add("No unpaid fines found", "", "", "", "", "");
+                    dgv.Rows[0].DefaultCellStyle.ForeColor = Color.Gray;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading unpaid fines: {ex.Message}");
+                dgv.Rows.Add("Error loading data", ex.Message, "", "", "", "");
+            }
         }
 
 
@@ -6390,325 +9683,796 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
 
         private void SetupSearchView()
-
         {
-
             if (pnlSearchView != null && !pnlSearchView.IsDisposed) return;
 
             pnlSearchView = new Panel
-
             {
-
                 Dock = DockStyle.Fill,
-
                 BackColor = ThemeConstants.BackgroundLight,
-
                 Padding = new Padding(30)
-
             };
 
             Label lblTitle = new Label
-
             {
-
                 Text = "Search & Discovery",
-
-                Font = new Font("Georgia", 20F, FontStyle.Bold),
-
-                ForeColor = ThemeConstants.PrimaryMaroon,
-
+                Font = new Font("Georgia", 24F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(101, 67, 33), // Dark brown like in image
                 AutoSize = true,
-
                 Location = new Point(0, 0),
-
                 BackColor = Color.Transparent
-
             };
 
             Label lblSubtitle = new Label
-
             {
-
                 Text = "Find books, resources, and check availability",
-
                 Font = new Font("Segoe UI", 10F, FontStyle.Regular),
-
                 ForeColor = Color.Gray,
-
                 AutoSize = true,
-
-                Location = new Point(2, 35),
-
+                Location = new Point(2, 40),
                 BackColor = Color.Transparent
-
             };
 
+            // Search Bar Panel
             Panel pnlSearchBar = new Panel
-
             {
-
-                Size = new Size(pnlSearchView.Width - 60, 60),
-
-                Location = new Point(0, 70),
-
+                Size = new Size(pnlSearchView.Width - 60, 50),
+                Location = new Point(0, 80),
                 BackColor = Color.White,
-
-                Padding = new Padding(10),
-
+                Padding = new Padding(15),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
-
             };
-
+            
             pnlSearchBar.Paint += (s, e) =>
-
             {
-
-                using (Pen p = new Pen(Color.LightGray))
-
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlSearchBar.Width - 1, pnlSearchBar.Height - 1), 8))
+                using (Pen p = new Pen(Color.FromArgb(220, 220, 220), 1))
                 {
-
-                    e.Graphics.DrawRectangle(p, 0, 0, pnlSearchBar.Width - 1, pnlSearchBar.Height - 1);
-
+                    e.Graphics.DrawPath(p, path);
                 }
-
             };
 
-            btnTriggerSearch = new Button
-
-            {
-
-                Text = "🔍 Search",
-
-                Size = new Size(100, 40),
-
-                BackColor = ThemeConstants.PrimaryMaroon,
-
-                ForeColor = Color.White,
-
-                FlatStyle = FlatStyle.Flat,
-
-                Dock = DockStyle.Right,
-
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
-
-                Cursor = Cursors.Hand
-
+            // Search Icon
+            Label lblSearchIcon = new Label 
+            { 
+                Text = "🔍", 
+                Font = new Font("Segoe UI", 14F), 
+                Location = new Point(15, 13), 
+                AutoSize = true, 
+                ForeColor = Color.FromArgb(150, 150, 150), 
+                BackColor = Color.Transparent 
             };
 
-            btnTriggerSearch.FlatAppearance.BorderSize = 0;
-
-            btnSearchFilters = new Button
-
-            {
-
-                Text = "All Categories  ▼",
-
-                Size = new Size(100, 40),
-
-                BackColor = Color.White,
-
-                ForeColor = Color.Black,
-
-                FlatStyle = FlatStyle.Flat,
-
-                Dock = DockStyle.Right,
-
-                Font = new Font("Segoe UI", 10F),
-
-                Cursor = Cursors.Hand
-
-            };
-
-            btnSearchFilters.FlatAppearance.BorderSize = 0;
-
+            // Search Input
             txtSearchInput = new TextBox
-
             {
-
                 BorderStyle = BorderStyle.None,
-
-                Font = new Font("Segoe UI", 12F),
-
+                Font = new Font("Segoe UI", 11F),
                 ForeColor = Color.Gray,
+                Location = new Point(45, 12),
+                Width = pnlSearchBar.Width - 350,
+                Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top,
+                BackColor = Color.White
+            };
+            txtSearchInput.SetPlaceholder("Search by title, author, ISBN, subject...");
 
-                Text = "Search by title, author, ISBN, subject...",
-
-                Location = new Point(40, 18),
-
-                Width = 500,
-
-                Anchor = AnchorStyles.Left | AnchorStyles.Right
-
+            // Filters Button
+            btnSearchFilters = new Button
+            {
+                Text = "Filters",
+                Size = new Size(90, 36),
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(60, 60, 60),
+                FlatStyle = FlatStyle.Flat,
+                Location = new Point(pnlSearchBar.Width - 200, 7),
+                Font = new Font("Segoe UI", 10F),
+                Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            btnSearchFilters.FlatAppearance.BorderSize = 1;
+            btnSearchFilters.FlatAppearance.BorderColor = Color.FromArgb(220, 220, 220);
+            btnSearchFilters.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnSearchFilters.Width - 1, btnSearchFilters.Height - 1), 6))
+                {
+                    e.Graphics.FillPath(new SolidBrush(btnSearchFilters.BackColor), path);
+                    using (Pen borderPen = new Pen(Color.FromArgb(220, 220, 220), 1))
+                    {
+                        e.Graphics.DrawPath(borderPen, path);
+                    }
+                }
+                StringFormat sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                e.Graphics.DrawString(btnSearchFilters.Text, btnSearchFilters.Font, new SolidBrush(btnSearchFilters.ForeColor), 
+                    new RectangleF(0, 0, btnSearchFilters.Width, btnSearchFilters.Height), sf);
+            };
+            btnSearchFilters.MouseEnter += (s, e) => btnSearchFilters.BackColor = Color.FromArgb(250, 250, 250);
+            btnSearchFilters.MouseLeave += (s, e) => btnSearchFilters.BackColor = Color.White;
+            
+            // Category Filter Dropdown (shown when Filters clicked)
+            cmbSearchCategoryFilter = new ComboBox
+            {
+                Size = new Size(150, 36),
+                Location = new Point(pnlSearchBar.Width - 300, 7),
+                Font = new Font("Segoe UI", 10F),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                FlatStyle = FlatStyle.Flat,
+                Visible = false,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            cmbSearchCategoryFilter.Items.Add("All Categories");
+            cmbSearchCategoryFilter.SelectedIndex = 0;
+            
+            // Load categories from database
+            LoadSearchCategories();
+            
+            btnSearchFilters.Click += (s, e) =>
+            {
+                cmbSearchCategoryFilter.Visible = !cmbSearchCategoryFilter.Visible;
+                if (cmbSearchCategoryFilter.Visible)
+                {
+                    cmbSearchCategoryFilter.BringToFront();
+                }
             };
 
-            Label lblSearchIcon = new Label { Text = "🔍", Font = new Font("Segoe UI", 12F), Location = new Point(10, 15), AutoSize = true, ForeColor = Color.Gray, BackColor = Color.Transparent };
+            // Search Button
+            btnTriggerSearch = new Button
+            {
+                Text = "🔍 Search",
+                Size = new Size(100, 36),
+                BackColor = ThemeConstants.PrimaryMaroon,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Location = new Point(pnlSearchBar.Width - 100, 7),
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            btnTriggerSearch.FlatAppearance.BorderSize = 0;
+            btnTriggerSearch.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnTriggerSearch.Width - 1, btnTriggerSearch.Height - 1), 6))
+                {
+                    e.Graphics.FillPath(new SolidBrush(btnTriggerSearch.BackColor), path);
+                }
+                StringFormat sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                e.Graphics.DrawString(btnTriggerSearch.Text, btnTriggerSearch.Font, new SolidBrush(btnTriggerSearch.ForeColor), 
+                    new RectangleF(0, 0, btnTriggerSearch.Width, btnTriggerSearch.Height), sf);
+            };
+            btnTriggerSearch.MouseEnter += (s, e) => btnTriggerSearch.BackColor = Color.FromArgb(100, 15, 30);
+            btnTriggerSearch.MouseLeave += (s, e) => btnTriggerSearch.BackColor = ThemeConstants.PrimaryMaroon;
 
             pnlSearchBar.Resize += (s, e) =>
-
             {
-
-                txtSearchInput.Width = pnlSearchBar.Width - 260;
-
+                txtSearchInput.Width = pnlSearchBar.Width - 350;
+                btnSearchFilters.Location = new Point(pnlSearchBar.Width - 200, 7);
+                cmbSearchCategoryFilter.Location = new Point(pnlSearchBar.Width - 300, 7);
+                btnTriggerSearch.Location = new Point(pnlSearchBar.Width - 100, 7);
             };
 
-            txtSearchInput.Enter += (s, e) =>
+            pnlSearchBar.Controls.AddRange(new Control[] { lblSearchIcon, txtSearchInput, btnSearchFilters, cmbSearchCategoryFilter, btnTriggerSearch });
 
+            // Results Header Panel
+            Panel pnlResultsHeader = new Panel
             {
-
-                if (txtSearchInput.Text == "Search by title, author, ISBN, subject...")
-
-                {
-
-                    txtSearchInput.Text = "";
-
-                    txtSearchInput.ForeColor = Color.Black;
-
-                }
-
-            };
-
-            txtSearchInput.Leave += (s, e) =>
-
-            {
-
-                if (string.IsNullOrWhiteSpace(txtSearchInput.Text))
-
-                {
-
-                    txtSearchInput.Text = "Search by title, author, ISBN, subject...";
-
-                    txtSearchInput.ForeColor = Color.Gray;
-
-                }
-
-            };
-
-            pnlSearchBar.Controls.Add(txtSearchInput);
-
-            pnlSearchBar.Controls.Add(lblSearchIcon);
-
-            pnlSearchBar.Controls.Add(btnSearchFilters);
-
-            pnlSearchBar.Controls.Add(btnTriggerSearch);
-
-            pnlSearchContent = new Panel
-
-            {
-
+                Size = new Size(pnlSearchView.Width - 60, 40),
                 Location = new Point(0, 150),
-
-                Size = new Size(pnlSearchView.Width - 60, 500),
-
-                BackColor = Color.White,
-
-                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
-
+                BackColor = Color.Transparent,
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
 
-            pnlSearchContent.Paint += (s, e) =>
-
+            lblSearchResultsCount = new Label
             {
-
-                using (Pen p = new Pen(Color.LightGray))
-
-                {
-
-                    e.Graphics.DrawRectangle(p, 0, 0, pnlSearchContent.Width - 1, pnlSearchContent.Height - 1);
-
-                }
-
-            };
-
-            Label lblEmptyIcon = new Label
-
-            {
-
-                Text = "🔍",
-
-                Font = new Font("Segoe UI", 60F),
-
-                ForeColor = Color.LightGray,
-
+                Text = "Found 0 result(s)",
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.FromArgb(60, 60, 60),
                 AutoSize = true,
-
+                Location = new Point(0, 10),
                 BackColor = Color.Transparent
+            };
 
+            // View Toggle Buttons
+            Panel pnlViewToggle = new Panel
+            {
+                Size = new Size(80, 30),
+                Location = new Point(pnlResultsHeader.Width - 90, 5),
+                BackColor = Color.White,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            pnlViewToggle.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlViewToggle.Width - 1, pnlViewToggle.Height - 1), 6))
+                using (Pen p = new Pen(Color.FromArgb(220, 220, 220), 1))
+                {
+                    e.Graphics.DrawPath(p, path);
+                }
+            };
+
+            Button btnGridView = new Button
+            {
+                Text = "⊞",
+                Size = new Size(38, 28),
+                Location = new Point(1, 1),
+                BackColor = isGridView ? Color.FromArgb(245, 245, 245) : Color.White,
+                ForeColor = Color.FromArgb(60, 60, 60),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 12F),
+                Cursor = Cursors.Hand
+            };
+            btnGridView.FlatAppearance.BorderSize = 0;
+
+            Button btnListView = new Button
+            {
+                Text = "☰",
+                Size = new Size(38, 28),
+                Location = new Point(41, 1),
+                BackColor = !isGridView ? Color.FromArgb(245, 245, 245) : Color.White,
+                ForeColor = Color.FromArgb(60, 60, 60),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 12F),
+                Cursor = Cursors.Hand
+            };
+            btnListView.FlatAppearance.BorderSize = 0;
+            
+            // Assign event handlers after both buttons are declared
+            btnGridView.Click += (s, e) =>
+            {
+                isGridView = true;
+                btnGridView.BackColor = Color.FromArgb(245, 245, 245);
+                btnListView.BackColor = Color.White;
+                RefreshSearchResults();
+            };
+            
+            btnListView.Click += (s, e) =>
+            {
+                isGridView = false;
+                btnGridView.BackColor = Color.White;
+                btnListView.BackColor = Color.FromArgb(245, 245, 245);
+                RefreshSearchResults();
+            };
+
+            pnlViewToggle.Controls.AddRange(new Control[] { btnGridView, btnListView });
+            pnlResultsHeader.Controls.AddRange(new Control[] { lblSearchResultsCount, pnlViewToggle });
+
+            // Results Container - Full Stack
+            pnlSearchResultsContainer = new Panel
+            {
+                Location = new Point(0, 200),
+                Size = new Size(pnlSearchView.Width - 60, pnlSearchView.Height - 230),
+                BackColor = Color.Transparent,
+                AutoScroll = true,
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
+            };
+
+            // Empty State
+            Label lblEmptyIcon = new Label
+            {
+                Text = "🔍",
+                Font = new Font("Segoe UI", 60F),
+                ForeColor = Color.LightGray,
+                AutoSize = true,
+                BackColor = Color.Transparent,
+                Name = "lblEmptyIcon"
             };
 
             Label lblEmptyTitle = new Label
-
             {
-
                 Text = "Start your search",
-
                 Font = new Font("Georgia", 16F, FontStyle.Bold),
-
                 ForeColor = ThemeConstants.PrimaryMaroon,
-
                 AutoSize = true,
-
-                BackColor = Color.Transparent
-
+                BackColor = Color.Transparent,
+                Name = "lblEmptyTitle"
             };
 
             Label lblEmptySub = new Label
-
             {
-
                 Text = "Enter a search term to find books in the library catalog",
-
                 Font = new Font("Segoe UI", 10F),
-
                 ForeColor = Color.Gray,
-
                 AutoSize = true,
-
-                BackColor = Color.Transparent
-
+                BackColor = Color.Transparent,
+                Name = "lblEmptySub"
             };
 
-            pnlSearchContent.Resize += (s, e) =>
-
+            pnlSearchResultsContainer.Resize += (s, e) =>
             {
-
-                int cx = pnlSearchContent.Width / 2;
-
-                int cy = pnlSearchContent.Height / 2;
-
+                int cx = pnlSearchResultsContainer.Width / 2;
+                int cy = pnlSearchResultsContainer.Height / 2;
                 lblEmptyIcon.Location = new Point(cx - lblEmptyIcon.Width / 2, cy - 80);
-
                 lblEmptyTitle.Location = new Point(cx - lblEmptyTitle.Width / 2, cy + 20);
-
                 lblEmptySub.Location = new Point(cx - lblEmptySub.Width / 2, cy + 50);
-
             };
 
-            btnTriggerSearch.Click += (s, e) => ShowFeatureMessage("Search", "Search functionality will be implemented.");
+            pnlSearchResultsContainer.Controls.AddRange(new Control[] { lblEmptyIcon, lblEmptyTitle, lblEmptySub });
 
+            // Search functionality
+            btnTriggerSearch.Click += (s, e) => PerformSearch();
             txtSearchInput.KeyDown += (s, e) =>
-
             {
-
                 if (e.KeyCode == Keys.Enter)
-
                 {
-
-                    ShowFeatureMessage("Search", "Search functionality will be implemented.");
-
+                    PerformSearch();
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
                 }
-
             };
-
-            pnlSearchContent.Controls.AddRange(new Control[] { lblEmptyIcon, lblEmptyTitle, lblEmptySub });
+            cmbSearchCategoryFilter.SelectedIndexChanged += (s, e) => PerformSearch();
 
             pnlSearchView.Controls.Add(lblTitle);
-
             pnlSearchView.Controls.Add(lblSubtitle);
-
             pnlSearchView.Controls.Add(pnlSearchBar);
+            pnlSearchView.Controls.Add(pnlResultsHeader);
+            pnlSearchView.Controls.Add(pnlSearchResultsContainer);
+        }
+        
+        private void LoadSearchCategories()
+        {
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    string query = "SELECT DISTINCT Category FROM Books WHERE Category IS NOT NULL AND Category != '' ORDER BY Category";
+                    using (var cmd = new MySqlCommand(query, connection))
+                    {
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            cmbSearchCategoryFilter.Items.Clear();
+                            cmbSearchCategoryFilter.Items.Add("All Categories");
+                            while (reader.Read())
+                            {
+                                cmbSearchCategoryFilter.Items.Add(reader.GetString("Category"));
+                            }
+                            cmbSearchCategoryFilter.SelectedIndex = 0;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading search categories: {ex.Message}");
+            }
+        }
+        
+        private void PerformSearch()
+        {
+            try
+            {
+                string searchTerm = txtSearchInput.GetActualText();
+                string category = cmbSearchCategoryFilter?.SelectedItem?.ToString() ?? "All Categories";
+                
+                if (string.IsNullOrWhiteSpace(searchTerm) && category == "All Categories")
+                {
+                    // Show empty state
+                    ShowSearchEmptyState();
+                    return;
+                }
+                
+                var bookService = new Service.BookService();
+                List<Book> books;
+                
+                if (string.IsNullOrWhiteSpace(searchTerm) && category != "All Categories")
+                {
+                    books = bookService.SearchBooks(null, category);
+                }
+                else if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    books = bookService.SearchBooks(searchTerm, category == "All Categories" ? null : category);
+                }
+                else
+                {
+                    books = bookService.GetAllBooks();
+                }
+                
+                DisplaySearchResults(books);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error performing search: {ex.Message}", "Search Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"Error in PerformSearch: {ex.Message}");
+            }
+        }
+        
+        private void DisplaySearchResults(List<Book> books)
+        {
+            pnlSearchResultsContainer.Controls.Clear();
+            
+            if (books == null || books.Count == 0)
+            {
+                ShowSearchEmptyState("No results found", "Try adjusting your search terms or filters");
+                lblSearchResultsCount.Text = "Found 0 result(s)";
+                return;
+            }
+            
+            lblSearchResultsCount.Text = $"Found {books.Count} result(s)";
+            
+            if (isGridView)
+            {
+                DisplayGridView(books);
+            }
+            else
+            {
+                DisplayListView(books);
+            }
+        }
+        
+        private void DisplayGridView(List<Book> books)
+        {
+            int cardWidth = 220;
+            int cardHeight = 380;
+            int gap = 20;
+            int cardsPerRow = Math.Max(1, (pnlSearchResultsContainer.Width - 40) / (cardWidth + gap));
+            int startX = 0;
+            int startY = 0;
+            int currentX = startX;
+            int currentY = startY;
+            int row = 0;
+            
+            foreach (var book in books)
+            {
+                Panel bookCard = CreateSearchBookCard(book, cardWidth, cardHeight);
+                bookCard.Location = new Point(currentX, currentY);
+                pnlSearchResultsContainer.Controls.Add(bookCard);
+                
+                currentX += cardWidth + gap;
+                row++;
+                if (row >= cardsPerRow)
+                {
+                    currentX = startX;
+                    currentY += cardHeight + gap;
+                    row = 0;
+                }
+            }
+            
+            // Update container height for scrolling
+            int totalRows = (int)Math.Ceiling((double)books.Count / cardsPerRow);
+            pnlSearchResultsContainer.AutoScrollMinSize = new Size(0, totalRows * (cardHeight + gap) + 20);
+        }
+        
+        private void DisplayListView(List<Book> books)
+        {
+            int itemHeight = 120;
+            int yPos = 0;
+            
+            foreach (var book in books)
+            {
+                Panel listItem = CreateSearchBookListItem(book, pnlSearchResultsContainer.Width - 40, itemHeight);
+                listItem.Location = new Point(0, yPos);
+                pnlSearchResultsContainer.Controls.Add(listItem);
+                yPos += itemHeight + 10;
+            }
+            
+            pnlSearchResultsContainer.AutoScrollMinSize = new Size(0, yPos);
+        }
+        
+        private Panel CreateSearchBookCard(Book book, int width, int height)
+        {
+            Panel card = new Panel
+            {
+                Size = new Size(width, height),
+                BackColor = Color.White,
+                BorderStyle = BorderStyle.None
+            };
 
-            pnlSearchView.Controls.Add(pnlSearchContent);
+            // Card shadow and border
+            card.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                
+                // Shadow
+                Rectangle shadowRect = new Rectangle(2, 2, width - 2, height - 2);
+                using (var shadowBrush = new SolidBrush(Color.FromArgb(15, 0, 0, 0)))
+                using (var shadowPath = CreateRoundedRectangle(shadowRect, 8))
+                {
+                    e.Graphics.FillPath(shadowBrush, shadowPath);
+                }
+                
+                // Card
+                Rectangle cardRect = new Rectangle(0, 0, width - 2, height - 2);
+                using (var bgBrush = new SolidBrush(Color.White))
+                using (var cardPath = CreateRoundedRectangle(cardRect, 8))
+                {
+                    e.Graphics.FillPath(bgBrush, cardPath);
+                }
+                
+                // Border
+                using (var borderPen = new Pen(Color.FromArgb(230, 230, 230), 1))
+                using (var borderPath = CreateRoundedRectangle(cardRect, 8))
+                {
+                    e.Graphics.DrawPath(borderPen, borderPath);
+                }
+            };
 
+            // Book cover image placeholder
+            Panel pnlCover = new Panel
+            {
+                Location = new Point(10, 10),
+                Size = new Size(width - 20, 200),
+                BackColor = Color.FromArgb(240, 240, 240)
+            };
+            pnlCover.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                // Draw book cover placeholder
+                using (var brush = new SolidBrush(Color.FromArgb(200, 200, 200)))
+                {
+                    e.Graphics.FillRectangle(brush, 0, 0, pnlCover.Width, pnlCover.Height);
+                }
+                // Draw book icon
+                using (var font = new Font("Segoe UI", 48))
+                using (var brush = new SolidBrush(Color.FromArgb(150, 150, 150)))
+                {
+                    e.Graphics.DrawString("📚", font, brush, new RectangleF(0, 0, pnlCover.Width, pnlCover.Height), 
+                        new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+                }
+            };
+
+            // Availability badge (like in image: "2 of 4 Available")
+            int available = book.AvailableCopies;
+            int total = book.TotalCopies;
+            Label lblAvailability = new Label
+            {
+                Text = $"{available} of {total} Available",
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(255, 152, 0), // Orange like in image
+                BackColor = Color.FromArgb(255, 243, 224),
+                AutoSize = true,
+                Location = new Point(width - 130, 15),
+                Padding = new Padding(8, 4, 8, 4),
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+            lblAvailability.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (var path = CreateRoundedRectangle(new Rectangle(0, 0, lblAvailability.Width, lblAvailability.Height), 12))
+                using (var brush = new SolidBrush(lblAvailability.BackColor))
+                {
+                    e.Graphics.FillPath(brush, path);
+                }
+                TextRenderer.DrawText(e.Graphics, lblAvailability.Text, lblAvailability.Font, 
+                    new Rectangle(0, 0, lblAvailability.Width, lblAvailability.Height), 
+                    lblAvailability.ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+
+            // Title
+            Label lblTitle = new Label
+            {
+                Text = book.Title,
+                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(40, 40, 40),
+                Location = new Point(10, 220),
+                Size = new Size(width - 20, 25),
+                AutoEllipsis = true
+            };
+
+            // Author
+            Label lblAuthor = new Label
+            {
+                Text = book.Author,
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.FromArgb(100, 100, 100),
+                Location = new Point(10, 250),
+                Size = new Size(width - 20, 20),
+                AutoEllipsis = true
+            };
+
+            // Metadata (Category • Year)
+            string metadata = $"{book.Category ?? "Uncategorized"} • {book.PublicationYear ?? 0}";
+            Label lblMetadata = new Label
+            {
+                Text = metadata,
+                Font = new Font("Segoe UI", 9F),
+                ForeColor = Color.FromArgb(120, 120, 120),
+                Location = new Point(10, 275),
+                Size = new Size(width - 20, 20),
+                AutoEllipsis = true
+            };
+
+            // Details Button
+            Button btnDetails = new Button
+            {
+                Text = "👁 Details",
+                Size = new Size(width - 20, 32),
+                Location = new Point(10, height - 42),
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(60, 60, 60),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9F),
+                Cursor = Cursors.Hand
+            };
+            btnDetails.FlatAppearance.BorderSize = 1;
+            btnDetails.FlatAppearance.BorderColor = Color.FromArgb(220, 220, 220);
+            btnDetails.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnDetails.Width - 1, btnDetails.Height - 1), 6))
+                {
+                    e.Graphics.FillPath(new SolidBrush(btnDetails.BackColor), path);
+                    using (Pen borderPen = new Pen(Color.FromArgb(220, 220, 220), 1))
+                    {
+                        e.Graphics.DrawPath(borderPen, path);
+                    }
+                }
+                StringFormat sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                e.Graphics.DrawString(btnDetails.Text, btnDetails.Font, new SolidBrush(btnDetails.ForeColor), 
+                    new RectangleF(0, 0, btnDetails.Width, btnDetails.Height), sf);
+            };
+            btnDetails.MouseEnter += (s, e) => btnDetails.BackColor = Color.FromArgb(250, 250, 250);
+            btnDetails.MouseLeave += (s, e) => btnDetails.BackColor = Color.White;
+            btnDetails.Click += (s, e) => ShowViewBookDialog(book.BookId);
+
+            card.Controls.AddRange(new Control[] { pnlCover, lblAvailability, lblTitle, lblAuthor, lblMetadata, btnDetails });
+
+            return card;
+        }
+        
+        private Panel CreateSearchBookListItem(Book book, int width, int height)
+        {
+            Panel item = new Panel
+            {
+                Size = new Size(width, height),
+                BackColor = Color.White
+            };
+            
+            item.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, width - 1, height - 1), 6))
+                using (Pen p = new Pen(Color.FromArgb(230, 230, 230), 1))
+                {
+                    e.Graphics.DrawPath(p, path);
+                }
+            };
+            
+            // Cover thumbnail
+            Panel pnlCover = new Panel
+            {
+                Location = new Point(10, 10),
+                Size = new Size(80, 100),
+                BackColor = Color.FromArgb(240, 240, 240)
+            };
+            pnlCover.Paint += (s, e) =>
+            {
+                using (var font = new Font("Segoe UI", 32))
+                using (var brush = new SolidBrush(Color.FromArgb(150, 150, 150)))
+                {
+                    e.Graphics.DrawString("📚", font, brush, new RectangleF(0, 0, pnlCover.Width, pnlCover.Height), 
+                        new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+                }
+            };
+            
+            // Title and Author
+            Label lblTitle = new Label
+            {
+                Text = book.Title,
+                Font = new Font("Segoe UI", 12F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(40, 40, 40),
+                Location = new Point(110, 15),
+                Size = new Size(width - 300, 25),
+                AutoEllipsis = true
+            };
+            
+            Label lblAuthor = new Label
+            {
+                Text = book.Author,
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.FromArgb(100, 100, 100),
+                Location = new Point(110, 45),
+                Size = new Size(width - 300, 20),
+                AutoEllipsis = true
+            };
+            
+            // Metadata
+            string metadata = $"{book.Category ?? "Uncategorized"} • {book.PublicationYear ?? 0}";
+            Label lblMetadata = new Label
+            {
+                Text = metadata,
+                Font = new Font("Segoe UI", 9F),
+                ForeColor = Color.FromArgb(120, 120, 120),
+                Location = new Point(110, 70),
+                Size = new Size(width - 300, 20),
+                AutoEllipsis = true
+            };
+            
+            // Availability
+            Label lblAvailability = new Label
+            {
+                Text = $"{book.AvailableCopies} of {book.TotalCopies} Available",
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(255, 152, 0),
+                BackColor = Color.FromArgb(255, 243, 224),
+                AutoSize = true,
+                Location = new Point(width - 200, 40),
+                Padding = new Padding(8, 4, 8, 4),
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+            lblAvailability.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (var path = CreateRoundedRectangle(new Rectangle(0, 0, lblAvailability.Width, lblAvailability.Height), 12))
+                using (var brush = new SolidBrush(lblAvailability.BackColor))
+                {
+                    e.Graphics.FillPath(brush, path);
+                }
+                TextRenderer.DrawText(e.Graphics, lblAvailability.Text, lblAvailability.Font, 
+                    new Rectangle(0, 0, lblAvailability.Width, lblAvailability.Height), 
+                    lblAvailability.ForeColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            };
+            
+            // Details Button
+            Button btnDetails = new Button
+            {
+                Text = "👁 Details",
+                Size = new Size(100, 32),
+                Location = new Point(width - 110, 40),
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(60, 60, 60),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9F),
+                Cursor = Cursors.Hand
+            };
+            btnDetails.FlatAppearance.BorderSize = 1;
+            btnDetails.FlatAppearance.BorderColor = Color.FromArgb(220, 220, 220);
+            btnDetails.Click += (s, e) => ShowViewBookDialog(book.BookId);
+            
+            item.Controls.AddRange(new Control[] { pnlCover, lblTitle, lblAuthor, lblMetadata, lblAvailability, btnDetails });
+            
+            return item;
+        }
+        
+        private void ShowSearchEmptyState(string title = "Start your search", string subtitle = "Enter a search term to find books in the library catalog")
+        {
+            pnlSearchResultsContainer.Controls.Clear();
+            
+            Label lblEmptyIcon = new Label
+            {
+                Text = "🔍",
+                Font = new Font("Segoe UI", 60F),
+                ForeColor = Color.LightGray,
+                AutoSize = true,
+                BackColor = Color.Transparent,
+                Name = "lblEmptyIcon"
+            };
+
+            Label lblEmptyTitle = new Label
+            {
+                Text = title,
+                Font = new Font("Georgia", 16F, FontStyle.Bold),
+                ForeColor = ThemeConstants.PrimaryMaroon,
+                AutoSize = true,
+                BackColor = Color.Transparent,
+                Name = "lblEmptyTitle"
+            };
+
+            Label lblEmptySub = new Label
+            {
+                Text = subtitle,
+                Font = new Font("Segoe UI", 10F),
+                ForeColor = Color.Gray,
+                AutoSize = true,
+                BackColor = Color.Transparent,
+                Name = "lblEmptySub"
+            };
+
+            pnlSearchResultsContainer.Resize += (s, e) =>
+            {
+                int cx = pnlSearchResultsContainer.Width / 2;
+                int cy = pnlSearchResultsContainer.Height / 2;
+                lblEmptyIcon.Location = new Point(cx - lblEmptyIcon.Width / 2, cy - 80);
+                lblEmptyTitle.Location = new Point(cx - lblEmptyTitle.Width / 2, cy + 20);
+                lblEmptySub.Location = new Point(cx - lblEmptySub.Width / 2, cy + 50);
+            };
+
+            pnlSearchResultsContainer.Controls.AddRange(new Control[] { lblEmptyIcon, lblEmptyTitle, lblEmptySub });
+        }
+        
+        private void RefreshSearchResults()
+        {
+            // Re-perform search with current settings
+            PerformSearch();
         }
 
 
@@ -7272,11 +11036,16 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             tlpConfig.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33F));
 
-            tlpConfig.Controls.Add(CreateSettingInput("Maximum Fine Cap ($)", "100"), 0, 0);
-
-            tlpConfig.Controls.Add(CreateSettingInput("Grace Period (Days)", "0"), 1, 0);
-
-            tlpConfig.Controls.Add(CreateSettingInput("Lost Book Multiplier", "2"), 2, 0);
+            // Get current settings from database
+            var fineSettings = GetFineSettings();
+            
+            Panel pnlMaxCap = CreateSettingInput("Maximum Fine Cap (₱)", fineSettings.MaxFineCap.ToString("N2"));
+            Panel pnlGracePeriod = CreateSettingInput("Grace Period (Days)", fineSettings.GracePeriodDays.ToString());
+            Panel pnlLostMultiplier = CreateSettingInput("Lost Book Multiplier", fineSettings.LostBookMultiplier.ToString("N2"));
+            
+            tlpConfig.Controls.Add(pnlMaxCap, 0, 0);
+            tlpConfig.Controls.Add(pnlGracePeriod, 1, 0);
+            tlpConfig.Controls.Add(pnlLostMultiplier, 2, 0);
 
             sectionConfig.Controls.Add(tlpConfig);
 
@@ -7333,53 +11102,37 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             tlpRates.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
 
             string[] types = { "Student:", "Faculty:", "Staff:", "Guest:" };
-
-            string[] rates = { "$5/day", "$3/day", "$4/day", "$10/day" }; 
+            
+            // Get fine rates from database
+            var fineRates = GetFineRates();
+            decimal[] rateValues = { fineRates.Student, fineRates.Faculty, fineRates.Staff, fineRates.Guest };
+            
+            // Store rate input panels for saving
+            Panel[] rateInputPanels = new Panel[4];
 
             for(int i=0; i<4; i++)
-
             {
-
                 Label lT = new Label 
-
                 { 
-
                     Text = types[i], 
-
                     Font = new Font("Segoe UI", 10, FontStyle.Regular), 
-
                     AutoSize = false,
-
                     Dock = DockStyle.Fill,
-
                     ForeColor = Color.FromArgb(60,60,60),
-
                     TextAlign = ContentAlignment.MiddleLeft
-
                 };
 
-                Label lR = new Label 
-
-                { 
-
-                    Text = rates[i], 
-
-                    Font = new Font("Segoe UI", 10, FontStyle.Bold), 
-
-                    AutoSize = false,
-
-                    Dock = DockStyle.Fill,
-
-                    ForeColor = ThemeConstants.PrimaryMaroon, 
-
-                    TextAlign = ContentAlignment.MiddleRight
-
-                };
+                // Create editable input for rate
+                Panel pnlRateInput = CreateSettingInput($"Rate (₱/day)", rateValues[i].ToString("N2"));
+                rateInputPanels[i] = pnlRateInput;
+                
+                // Adjust layout for table
+                pnlRateInput.Dock = DockStyle.None;
+                pnlRateInput.Height = 40;
+                pnlRateInput.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
 
                 tlpRates.Controls.Add(lT, 0, i);
-
-                tlpRates.Controls.Add(lR, 1, i);
-
+                tlpRates.Controls.Add(pnlRateInput, 1, i);
             }
 
             sectionRates.Controls.Add(tlpRates);
@@ -7415,6 +11168,14 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             };
 
             Panel pnlSave = CreateSettingsSaveButton();
+            
+            // Update save button to save fine settings
+            Button btnSaveFine = pnlSave.Controls.OfType<Button>().FirstOrDefault();
+            if (btnSaveFine != null)
+            {
+                btnSaveFine.Click -= (s, e) => MessageBox.Show("Settings saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                btnSaveFine.Click += (s, e) => SaveFineSettings(pnlMaxCap, pnlGracePeriod, pnlLostMultiplier, rateInputPanels);
+            }
 
             pnlSave.Dock = DockStyle.None;
 
@@ -7450,6 +11211,270 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             };
 
+        }
+
+        // Fine Settings Data Classes
+        private class FineSettings
+        {
+            public decimal MaxFineCap { get; set; } = 100;
+            public int GracePeriodDays { get; set; } = 0;
+            public decimal LostBookMultiplier { get; set; } = 2;
+        }
+
+        private class FineRates
+        {
+            public decimal Student { get; set; } = 5;
+            public decimal Faculty { get; set; } = 3;
+            public decimal Staff { get; set; } = 4;
+            public decimal Guest { get; set; } = 10;
+        }
+
+        private FineSettings GetFineSettings()
+        {
+            var settings = new FineSettings();
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Ensure FineSettings table exists
+                    EnsureFineSettingsTableExists(connection);
+
+                    using (var cmd = new MySqlCommand(
+                        "SELECT SettingKey, SettingValue FROM FineSettings WHERE SettingKey IN ('MaxFineCap', 'GracePeriodDays', 'LostBookMultiplier')",
+                        connection))
+                    {
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string key = reader.GetString("SettingKey");
+                                string value = reader.GetString("SettingValue");
+                                
+                                switch (key)
+                                {
+                                    case "MaxFineCap":
+                                        decimal.TryParse(value, out decimal maxCap);
+                                        settings.MaxFineCap = maxCap;
+                                        break;
+                                    case "GracePeriodDays":
+                                        int.TryParse(value, out int gracePeriod);
+                                        settings.GracePeriodDays = gracePeriod;
+                                        break;
+                                    case "LostBookMultiplier":
+                                        decimal.TryParse(value, out decimal multiplier);
+                                        settings.LostBookMultiplier = multiplier;
+                                        break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading fine settings: {ex.Message}");
+            }
+            return settings;
+        }
+
+        private FineRates GetFineRates()
+        {
+            var rates = new FineRates();
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Ensure FineSettings table exists
+                    EnsureFineSettingsTableExists(connection);
+
+                    using (var cmd = new MySqlCommand(
+                        "SELECT SettingKey, SettingValue FROM FineSettings WHERE SettingKey IN ('FineRate_Student', 'FineRate_Faculty', 'FineRate_Staff', 'FineRate_Guest')",
+                        connection))
+                    {
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string key = reader.GetString("SettingKey");
+                                string value = reader.GetString("SettingValue");
+                                
+                                if (decimal.TryParse(value, out decimal rate))
+                                {
+                                    switch (key)
+                                    {
+                                        case "FineRate_Student":
+                                            rates.Student = rate;
+                                            break;
+                                        case "FineRate_Faculty":
+                                            rates.Faculty = rate;
+                                            break;
+                                        case "FineRate_Staff":
+                                            rates.Staff = rate;
+                                            break;
+                                        case "FineRate_Guest":
+                                            rates.Guest = rate;
+                                            break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading fine rates: {ex.Message}");
+            }
+            return rates;
+        }
+
+        private void EnsureFineSettingsTableExists(MySqlConnection connection)
+        {
+            try
+            {
+                string createTableQuery = @"
+                    CREATE TABLE IF NOT EXISTS FineSettings (
+                        SettingKey VARCHAR(50) PRIMARY KEY,
+                        SettingValue VARCHAR(255) NOT NULL,
+                        UpdatedDate DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    )";
+                
+                using (var cmd = new MySqlCommand(createTableQuery, connection))
+                {
+                    cmd.ExecuteNonQuery();
+                }
+
+                // Insert default values if they don't exist
+                string[] defaultSettings = {
+                    "('MaxFineCap', '100')",
+                    "('GracePeriodDays', '0')",
+                    "('LostBookMultiplier', '2')",
+                    "('FineRate_Student', '5')",
+                    "('FineRate_Faculty', '3')",
+                    "('FineRate_Staff', '4')",
+                    "('FineRate_Guest', '10')"
+                };
+
+                foreach (string setting in defaultSettings)
+                {
+                    using (var cmd = new MySqlCommand(
+                        $"INSERT IGNORE INTO FineSettings (SettingKey, SettingValue) VALUES {setting}",
+                        connection))
+                    {
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error ensuring FineSettings table exists: {ex.Message}");
+            }
+        }
+
+        private void SaveFineSettings(Panel pnlMaxCap, Panel pnlGracePeriod, Panel pnlLostMultiplier, Panel[] rateInputPanels)
+        {
+            try
+            {
+                // Get values from input panels
+                TextBox txtMaxCap = pnlMaxCap.Controls.OfType<Panel>().FirstOrDefault()?.Controls.OfType<TextBox>().FirstOrDefault();
+                TextBox txtGracePeriod = pnlGracePeriod.Controls.OfType<Panel>().FirstOrDefault()?.Controls.OfType<TextBox>().FirstOrDefault();
+                TextBox txtLostMultiplier = pnlLostMultiplier.Controls.OfType<Panel>().FirstOrDefault()?.Controls.OfType<TextBox>().FirstOrDefault();
+
+                if (txtMaxCap == null || txtGracePeriod == null || txtLostMultiplier == null)
+                {
+                    MessageBox.Show("Error: Could not find input fields.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                // Parse and validate values
+                bool maxCapValid = decimal.TryParse(txtMaxCap.Text.Replace("₱", "").Replace(",", "").Trim(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out decimal maxCap);
+                if (!maxCapValid || maxCap < 0)
+                {
+                    MessageBox.Show("Please enter a valid maximum fine cap amount.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtMaxCap.Focus();
+                    return;
+                }
+
+                bool gracePeriodValid = int.TryParse(txtGracePeriod.Text.Trim(), out int gracePeriod);
+                if (!gracePeriodValid || gracePeriod < 0)
+                {
+                    MessageBox.Show("Please enter a valid grace period (non-negative integer).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtGracePeriod.Focus();
+                    return;
+                }
+
+                bool lostMultiplierValid = decimal.TryParse(txtLostMultiplier.Text.Replace(",", "").Trim(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out decimal lostMultiplier);
+                if (!lostMultiplierValid || lostMultiplier < 0)
+                {
+                    MessageBox.Show("Please enter a valid lost book multiplier (non-negative number).", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtLostMultiplier.Focus();
+                    return;
+                }
+
+                // Parse fine rates
+                string[] rateKeys = { "FineRate_Student", "FineRate_Faculty", "FineRate_Staff", "FineRate_Guest" };
+                decimal[] rates = new decimal[4];
+                
+                for (int i = 0; i < 4; i++)
+                {
+                    if (rateInputPanels[i] == null)
+                    {
+                        MessageBox.Show($"Error: Could not find rate input field for {rateKeys[i]}.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    
+                    TextBox txtRate = rateInputPanels[i].Controls.OfType<Panel>().FirstOrDefault()?.Controls.OfType<TextBox>().FirstOrDefault();
+                    if (txtRate == null)
+                    {
+                        MessageBox.Show($"Error: Could not find rate input textbox for {rateKeys[i]}.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    
+                    string rateText = txtRate.Text.Replace("₱", "").Replace("/day", "").Replace(",", "").Trim();
+                    bool rateValid = decimal.TryParse(rateText, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out rates[i]);
+                    if (!rateValid || rates[i] < 0)
+                    {
+                        MessageBox.Show($"Please enter a valid fine rate for {rateKeys[i].Replace("FineRate_", "")}.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        txtRate.Focus();
+                        return;
+                    }
+                }
+
+                // Save to database
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    EnsureFineSettingsTableExists(connection);
+
+                    // Update settings using INSERT ... ON DUPLICATE KEY UPDATE
+                    List<string> updates = new List<string>
+                    {
+                        $"INSERT INTO FineSettings (SettingKey, SettingValue) VALUES ('MaxFineCap', '{maxCap:N2}') ON DUPLICATE KEY UPDATE SettingValue = '{maxCap:N2}'",
+                        $"INSERT INTO FineSettings (SettingKey, SettingValue) VALUES ('GracePeriodDays', '{gracePeriod}') ON DUPLICATE KEY UPDATE SettingValue = '{gracePeriod}'",
+                        $"INSERT INTO FineSettings (SettingKey, SettingValue) VALUES ('LostBookMultiplier', '{lostMultiplier:N2}') ON DUPLICATE KEY UPDATE SettingValue = '{lostMultiplier:N2}'"
+                    };
+
+                    // Add fine rate updates
+                    for (int i = 0; i < 4; i++)
+                    {
+                        updates.Add($"INSERT INTO FineSettings (SettingKey, SettingValue) VALUES ('{rateKeys[i]}', '{rates[i]:N2}') ON DUPLICATE KEY UPDATE SettingValue = '{rates[i]:N2}'");
+                    }
+
+                    foreach (string update in updates)
+                    {
+                        using (var cmd = new MySqlCommand(update, connection))
+                        {
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+
+                    MessageBox.Show("Fine settings saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error saving fine settings: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"Error saving fine settings: {ex.Message}");
+            }
         }
 
         private void ShowUserManagementView()
@@ -8722,7 +12747,7 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
             tlp.Controls.Add(CreateSettingInput("Renewal Limit", renewals, 120), 2, 0);
 
-            tlp.Controls.Add(CreateSettingInput("Fine/Day ($)", fine, 120), 3, 0);
+            tlp.Controls.Add(CreateSettingInput("Fine/Day (₱)", fine, 120), 3, 0);
 
             
 
@@ -8980,7 +13005,438 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
         }
 
+        /// <summary>
+        /// Refreshes the circulation statistics cards with real-time data from the database
+        /// </summary>
+        private void RefreshCirculationStatistics()
+        {
+            try
+            {
+                // Find the circulation stats panel
+                Panel statsPanel = null;
+                foreach (Control ctrl in pnlMainContent.Controls)
+                {
+                    if (ctrl is Panel panel && panel.Tag?.ToString() == "CirculationStatsPanel")
+                    {
+                        statsPanel = panel;
+                        break;
+                    }
+                }
 
+                if (statsPanel == null) return;
+
+                // Get latest statistics from database
+                var stats = _circulationService.GetBorrowingStatistics();
+
+                // Update each card
+                foreach (Control card in statsPanel.Controls)
+                {
+                    if (card is Panel cardPanel)
+                    {
+                        // Find the value label in the card
+                        foreach (Control ctrl in cardPanel.Controls)
+                        {
+                            if (ctrl is Label lbl && lbl.Tag != null)
+                            {
+                                string tag = lbl.Tag.ToString();
+                                if (tag == "CurrentlyBorrowed")
+                                {
+                                    lbl.Text = stats.CurrentlyBorrowed.ToString();
+                                }
+                                else if (tag == "Overdue")
+                                {
+                                    lbl.Text = stats.Overdue.ToString();
+                                }
+                                else if (tag == "ReturnedToday")
+                                {
+                                    lbl.Text = stats.ReturnedToday.ToString();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error refreshing circulation statistics: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Gets reservation statistics from the database
+        /// </summary>
+        private ReservationStatistics GetReservationStatistics()
+        {
+            var stats = new ReservationStatistics();
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    string query = @"
+                        SELECT 
+                            SUM(CASE WHEN Status = 'Pending' THEN 1 ELSE 0 END) AS Pending,
+                            SUM(CASE WHEN Status = 'Ready' THEN 1 ELSE 0 END) AS Ready,
+                            SUM(CASE WHEN Status = 'Fulfilled' THEN 1 ELSE 0 END) AS Fulfilled,
+                            SUM(CASE WHEN Status = 'Expired' THEN 1 ELSE 0 END) AS Expired
+                        FROM Reservations";
+                    
+                    using (var cmd = new MySqlCommand(query, connection))
+                    {
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                stats.Pending = reader["Pending"] == DBNull.Value ? 0 : Convert.ToInt32(reader["Pending"]);
+                                stats.Ready = reader["Ready"] == DBNull.Value ? 0 : Convert.ToInt32(reader["Ready"]);
+                                stats.Fulfilled = reader["Fulfilled"] == DBNull.Value ? 0 : Convert.ToInt32(reader["Fulfilled"]);
+                                stats.Expired = reader["Expired"] == DBNull.Value ? 0 : Convert.ToInt32(reader["Expired"]);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting reservation statistics: {ex.Message}");
+            }
+            return stats;
+        }
+
+        /// <summary>
+        /// Gets fines statistics from the database
+        /// </summary>
+        private FinesStatistics GetFinesStatistics()
+        {
+            var stats = new FinesStatistics();
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Ensure PaidAmount column exists before querying
+                    EnsurePaidAmountColumnExists(connection);
+                    
+                    // Pending Fines (unpaid fines)
+                    string pendingQuery = @"
+                        SELECT COALESCE(SUM(Amount - COALESCE(PaidAmount, 0)), 0) AS PendingFines
+                        FROM Fines
+                        WHERE Status = 'Unpaid'";
+                    using (var cmd = new MySqlCommand(pendingQuery, connection))
+                    {
+                        object result = cmd.ExecuteScalar();
+                        if (result != null && result != DBNull.Value)
+                        {
+                            stats.PendingFines = Convert.ToDecimal(result);
+                        }
+                    }
+
+                    // Collected Fines (paid fines)
+                    string collectedQuery = @"
+                        SELECT COALESCE(SUM(COALESCE(PaidAmount, Amount)), 0) AS Collected
+                        FROM Fines
+                        WHERE Status = 'Paid'";
+                    using (var cmd = new MySqlCommand(collectedQuery, connection))
+                    {
+                        object result = cmd.ExecuteScalar();
+                        if (result != null && result != DBNull.Value)
+                        {
+                            stats.Collected = Convert.ToDecimal(result);
+                        }
+                    }
+
+                    // Waived Fines (sum of amounts for waived fines)
+                    string waivedQuery = @"
+                        SELECT COALESCE(SUM(Amount), 0) AS Waived
+                        FROM Fines
+                        WHERE Status = 'Waived'";
+                    using (var cmd = new MySqlCommand(waivedQuery, connection))
+                    {
+                        object result = cmd.ExecuteScalar();
+                        if (result != null && result != DBNull.Value)
+                        {
+                            stats.Waived = Convert.ToDecimal(result);
+                        }
+                    }
+
+                    // Pending Cases (number of unpaid fines)
+                    string casesQuery = @"
+                        SELECT COUNT(*) AS PendingCases
+                        FROM Fines
+                        WHERE Status = 'Unpaid'";
+                    using (var cmd = new MySqlCommand(casesQuery, connection))
+                    {
+                        object result = cmd.ExecuteScalar();
+                        if (result != null && result != DBNull.Value)
+                        {
+                            stats.PendingCases = Convert.ToInt32(result);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting fines statistics: {ex.Message}");
+            }
+            return stats;
+        }
+
+        private void EnsurePaidAmountColumnExists(MySqlConnection connection)
+        {
+            try
+            {
+                // Check if PaidAmount column exists
+                string checkColumnQuery = @"
+                    SELECT COUNT(*) 
+                    FROM information_schema.COLUMNS 
+                    WHERE TABLE_SCHEMA = DATABASE() 
+                    AND TABLE_NAME = 'Fines' 
+                    AND COLUMN_NAME = 'PaidAmount'";
+                
+                using (var checkCmd = new MySqlCommand(checkColumnQuery, connection))
+                {
+                    int columnExists = Convert.ToInt32(checkCmd.ExecuteScalar());
+                    if (columnExists == 0)
+                    {
+                        // Add PaidAmount column
+                        using (var addColumnCmd = new MySqlCommand(
+                            "ALTER TABLE Fines ADD COLUMN PaidAmount DECIMAL(10,2) DEFAULT 0", 
+                            connection))
+                        {
+                            addColumnCmd.ExecuteNonQuery();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // If column already exists or other error, continue
+                System.Diagnostics.Debug.WriteLine($"Error ensuring PaidAmount column: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Gets inventory statistics from the database
+        /// </summary>
+        private InventoryStatistics GetInventoryStatistics()
+        {
+            var stats = new InventoryStatistics();
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Total Titles
+                    using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM Books", connection))
+                    {
+                        stats.TotalTitles = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+
+                    // Total Copies (using Books table TotalCopies)
+                    using (var cmd = new MySqlCommand("SELECT COALESCE(SUM(TotalCopies), 0) FROM Books", connection))
+                    {
+                        object result = cmd.ExecuteScalar();
+                        stats.TotalCopies = result != null && result != DBNull.Value ? Convert.ToInt32(result) : 0;
+                    }
+
+                    // Available Copies
+                    using (var cmd = new MySqlCommand("SELECT COALESCE(SUM(AvailableCopies), 0) FROM Books", connection))
+                    {
+                        object result = cmd.ExecuteScalar();
+                        stats.Available = result != null && result != DBNull.Value ? Convert.ToInt32(result) : 0;
+                    }
+
+                    // Borrowed (Total - Available)
+                    stats.Borrowed = stats.TotalCopies - stats.Available;
+
+                    // Damaged and Lost (from BookCopies if table exists, otherwise 0)
+                    try
+                    {
+                        using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM BookCopies WHERE Status = 'Damaged' OR `Condition` = 'Damaged'", connection))
+                        {
+                            object result = cmd.ExecuteScalar();
+                            stats.Damaged = result != null && result != DBNull.Value ? Convert.ToInt32(result) : 0;
+                        }
+                        using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM BookCopies WHERE Status = 'Lost'", connection))
+                        {
+                            object result = cmd.ExecuteScalar();
+                            stats.Lost = result != null && result != DBNull.Value ? Convert.ToInt32(result) : 0;
+                        }
+                    }
+                    catch
+                    {
+                        stats.Damaged = 0;
+                        stats.Lost = 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting inventory statistics: {ex.Message}");
+            }
+            return stats;
+        }
+
+        /// <summary>
+        /// Refreshes the reservation statistics cards with real-time data from the database
+        /// </summary>
+        private void RefreshReservationStatistics()
+        {
+            try
+            {
+                Panel statsPanel = null;
+                foreach (Control ctrl in pnlMainContent.Controls)
+                {
+                    if (ctrl is Panel panel && panel.Tag?.ToString() == "ReservationsStatsPanel")
+                    {
+                        statsPanel = panel;
+                        break;
+                    }
+                }
+
+                if (statsPanel == null) return;
+
+                var stats = GetReservationStatistics();
+
+                foreach (Control card in statsPanel.Controls)
+                {
+                    if (card is Panel cardPanel)
+                    {
+                        foreach (Control ctrl in cardPanel.Controls)
+                        {
+                            if (ctrl is Label lbl && lbl.Tag != null)
+                            {
+                                string tag = lbl.Tag.ToString();
+                                if (tag == "ReservationPending") lbl.Text = stats.Pending.ToString();
+                                else if (tag == "ReservationReady") lbl.Text = stats.Ready.ToString();
+                                else if (tag == "ReservationFulfilled") lbl.Text = stats.Fulfilled.ToString();
+                                else if (tag == "ReservationExpired") lbl.Text = stats.Expired.ToString();
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error refreshing reservation statistics: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Refreshes the fines statistics cards with real-time data from the database
+        /// </summary>
+        private void RefreshFinesStatistics()
+        {
+            try
+            {
+                Panel statsPanel = null;
+                foreach (Control ctrl in pnlMainContent.Controls)
+                {
+                    if (ctrl is Panel panel && panel.Tag?.ToString() == "FinesStatsPanel")
+                    {
+                        statsPanel = panel;
+                        break;
+                    }
+                }
+
+                if (statsPanel == null) return;
+
+                var stats = GetFinesStatistics();
+
+                foreach (Control card in statsPanel.Controls)
+                {
+                    if (card is Panel cardPanel)
+                    {
+                        foreach (Control ctrl in cardPanel.Controls)
+                        {
+                            if (ctrl is Label lbl && lbl.Tag != null)
+                            {
+                                string tag = lbl.Tag.ToString();
+                                if (tag == "PendingFines") lbl.Text = $"₱{stats.PendingFines:N2}";
+                                else if (tag == "CollectedFines") lbl.Text = $"₱{stats.Collected:N2}";
+                                else if (tag == "WaivedFines") lbl.Text = $"₱{stats.Waived:N2}";
+                                else if (tag == "PendingCases") lbl.Text = stats.PendingCases.ToString();
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error refreshing fines statistics: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Refreshes the inventory statistics cards with real-time data from the database
+        /// </summary>
+        private void RefreshInventoryStatistics()
+        {
+            try
+            {
+                Panel statsPanel = null;
+                foreach (Control ctrl in pnlMainContent.Controls)
+                {
+                    if (ctrl is Panel panel && panel.Tag?.ToString() == "InventoryStatsPanel")
+                    {
+                        statsPanel = panel;
+                        break;
+                    }
+                }
+
+                if (statsPanel == null) return;
+
+                var stats = GetInventoryStatistics();
+
+                foreach (Control card in statsPanel.Controls)
+                {
+                    if (card is Panel cardPanel)
+                    {
+                        foreach (Control ctrl in cardPanel.Controls)
+                        {
+                            if (ctrl is Label lbl && lbl.Tag != null)
+                            {
+                                string tag = lbl.Tag.ToString();
+                                if (tag == "TotalTitles") lbl.Text = stats.TotalTitles.ToString();
+                                else if (tag == "TotalCopies") lbl.Text = stats.TotalCopies.ToString();
+                                else if (tag == "Available") lbl.Text = stats.Available.ToString();
+                                else if (tag == "Borrowed") lbl.Text = stats.Borrowed.ToString();
+                                else if (tag == "Damaged") lbl.Text = stats.Damaged.ToString();
+                                else if (tag == "Lost") lbl.Text = stats.Lost.ToString();
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error refreshing inventory statistics: {ex.Message}");
+            }
+        }
+
+        // Statistics classes
+        private class ReservationStatistics
+        {
+            public int Pending { get; set; }
+            public int Ready { get; set; }
+            public int Fulfilled { get; set; }
+            public int Expired { get; set; }
+        }
+
+        private class FinesStatistics
+        {
+            public decimal PendingFines { get; set; }
+            public decimal Collected { get; set; }
+            public decimal Waived { get; set; }
+            public int PendingCases { get; set; }
+        }
+
+        private class InventoryStatistics
+        {
+            public int TotalTitles { get; set; }
+            public int TotalCopies { get; set; }
+            public int Available { get; set; }
+            public int Borrowed { get; set; }
+            public int Damaged { get; set; }
+            public int Lost { get; set; }
+        }
 
         private void ShowFeatureMessage(string title, string message)
 
@@ -9051,35 +13507,298 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
 
         private void LoadDashboardData()
-
         {
-
-            // TODO: Load actual data from database
-
-            // For now, using placeholder values
-
-            lblTotalBooks.Text = "0";
-
-            lblTotalBooksChange.Text = "+0% from last week";
-
-            lblActiveMembers.Text = "0";
-
-            lblActiveMembersChange.Text = "+0% from last week";
-
-            lblBooksBorrowed.Text = "0";
-
-            lblBooksBorrowedChange.Text = "+0% from last week";
-
-            lblOverdueBooks.Text = "0";
-
-            lblOverdueBooksChange.Text = "+0% from last week";
-
-            lblTodaysBorrowings.Text = "0";
-
-            lblTodaysReturns.Text = "0";
-
-            lblPendingFines.Text = "0";
-
+            try
+            {
+                // Get circulation statistics
+                var circulationStats = _circulationService.GetBorrowingStatistics();
+                
+                // Get book statistics
+                var bookService = new Service.BookService();
+                var bookStats = bookService.GetBookStatistics();
+                
+                // Get member statistics
+                var memberService = new Service.MemberService();
+                int totalMembers = 0;
+                int activeMembers = 0;
+                
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Total Members
+                    using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM Members", connection))
+                    {
+                        totalMembers = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+                    
+                    // Active Members
+                    using (var cmd = new MySqlCommand("SELECT COUNT(*) FROM Members WHERE Status = 1", connection))
+                    {
+                        activeMembers = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+                }
+                
+                // Calculate week-over-week changes
+                DateTime oneWeekAgo = DateTime.Now.AddDays(-7);
+                int totalBooksLastWeek = 0;
+                int activeMembersLastWeek = 0;
+                int booksBorrowedLastWeek = 0;
+                int overdueBooksLastWeek = 0;
+                
+                try
+                {
+                    using (var connection = Helper.MYSqlHelper.CreateConnection())
+                    {
+                        // Books count last week
+                        using (var cmd = new MySqlCommand(
+                            "SELECT COUNT(*) FROM Books WHERE CreatedDate < @OneWeekAgo", connection))
+                        {
+                            cmd.Parameters.AddWithValue("@OneWeekAgo", oneWeekAgo);
+                            totalBooksLastWeek = Convert.ToInt32(cmd.ExecuteScalar());
+                        }
+                        
+                        // Active members last week
+                        using (var cmd = new MySqlCommand(
+                            "SELECT COUNT(*) FROM Members WHERE Status = 1 AND CreatedDate < @OneWeekAgo", connection))
+                        {
+                            cmd.Parameters.AddWithValue("@OneWeekAgo", oneWeekAgo);
+                            activeMembersLastWeek = Convert.ToInt32(cmd.ExecuteScalar());
+                        }
+                        
+                        // Books borrowed last week
+                        using (var cmd = new MySqlCommand(
+                            "SELECT COUNT(*) FROM Borrowings WHERE BorrowDate < @OneWeekAgo AND ReturnDate IS NULL", connection))
+                        {
+                            cmd.Parameters.AddWithValue("@OneWeekAgo", oneWeekAgo);
+                            booksBorrowedLastWeek = Convert.ToInt32(cmd.ExecuteScalar());
+                        }
+                        
+                        // Overdue books last week
+                        using (var cmd = new MySqlCommand(
+                            "SELECT COUNT(*) FROM Borrowings WHERE DueDate < @OneWeekAgo AND ReturnDate IS NULL", connection))
+                        {
+                            cmd.Parameters.AddWithValue("@OneWeekAgo", oneWeekAgo);
+                            overdueBooksLastWeek = Convert.ToInt32(cmd.ExecuteScalar());
+                        }
+                    }
+                }
+                catch { }
+                
+                // Calculate percentage changes
+                int totalBooks = bookStats.ContainsKey("TotalTitles") ? bookStats["TotalTitles"] : 0;
+                int booksBorrowed = circulationStats.CurrentlyBorrowed;
+                int overdueBooks = circulationStats.Overdue;
+                
+                string totalBooksChange = CalculatePercentageChange(totalBooks, totalBooksLastWeek);
+                string activeMembersChange = CalculatePercentageChange(activeMembers, activeMembersLastWeek);
+                string booksBorrowedChange = CalculatePercentageChange(booksBorrowed, booksBorrowedLastWeek);
+                string overdueBooksChange = CalculatePercentageChange(overdueBooks, overdueBooksLastWeek);
+                
+                // Today's statistics
+                DateTime today = DateTime.Now.Date;
+                int todaysBorrowings = 0;
+                int todaysReturns = 0;
+                decimal pendingFines = 0;
+                
+                try
+                {
+                    using (var connection = Helper.MYSqlHelper.CreateConnection())
+                    {
+                        // Today's borrowings
+                        using (var cmd = new MySqlCommand(
+                            "SELECT COUNT(*) FROM Borrowings WHERE DATE(BorrowDate) = @Today", connection))
+                        {
+                            cmd.Parameters.AddWithValue("@Today", today);
+                            todaysBorrowings = Convert.ToInt32(cmd.ExecuteScalar());
+                        }
+                        
+                        // Today's returns
+                        using (var cmd = new MySqlCommand(
+                            "SELECT COUNT(*) FROM Borrowings WHERE DATE(ReturnDate) = @Today AND ReturnDate IS NOT NULL", connection))
+                        {
+                            cmd.Parameters.AddWithValue("@Today", today);
+                            todaysReturns = Convert.ToInt32(cmd.ExecuteScalar());
+                        }
+                        
+                        // Pending fines (unpaid fines)
+                        EnsurePaidAmountColumnExists(connection);
+                        using (var cmd = new MySqlCommand(
+                            @"SELECT COALESCE(SUM(f.Amount - COALESCE(f.PaidAmount, 0)), 0) AS PendingFines
+                              FROM Fines f
+                              WHERE f.Status = 'Unpaid' OR (f.Status = 'Paid' AND f.Amount > COALESCE(f.PaidAmount, 0))", connection))
+                        {
+                            object result = cmd.ExecuteScalar();
+                            if (result != null && result != DBNull.Value)
+                            {
+                                pendingFines = Convert.ToDecimal(result);
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error loading today's statistics: {ex.Message}");
+                }
+                
+                // Update labels
+                lblTotalBooks.Text = totalBooks.ToString("N0");
+                lblTotalBooksChange.Text = totalBooksChange;
+                
+                lblActiveMembers.Text = activeMembers.ToString("N0");
+                lblActiveMembersChange.Text = activeMembersChange;
+                
+                lblBooksBorrowed.Text = booksBorrowed.ToString("N0");
+                lblBooksBorrowedChange.Text = booksBorrowedChange;
+                
+                lblOverdueBooks.Text = overdueBooks.ToString("N0");
+                lblOverdueBooksChange.Text = overdueBooksChange;
+                
+                lblTodaysBorrowings.Text = todaysBorrowings.ToString("N0");
+                lblTodaysReturns.Text = todaysReturns.ToString("N0");
+                lblPendingFines.Text = $"₱{pendingFines:N2}";
+                
+                // Load charts
+                LoadWeeklyCirculationChart();
+                LoadCollectionCategoryChart();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading dashboard data: {ex.Message}");
+                // Set default values on error
+                lblTotalBooks.Text = "0";
+                lblActiveMembers.Text = "0";
+                lblBooksBorrowed.Text = "0";
+                lblOverdueBooks.Text = "0";
+                lblTodaysBorrowings.Text = "0";
+                lblTodaysReturns.Text = "0";
+                lblPendingFines.Text = "₱0.00";
+            }
+        }
+        
+        private string CalculatePercentageChange(int current, int previous)
+        {
+            if (previous == 0)
+            {
+                return current > 0 ? "+100% from last week" : "0% from last week";
+            }
+            
+            double change = ((double)(current - previous) / previous) * 100;
+            string sign = change >= 0 ? "+" : "";
+            return $"{sign}{change:F1}% from last week";
+        }
+        
+        private void LoadWeeklyCirculationChart()
+        {
+            try
+            {
+                if (pnlWeeklyCirculation == null) return;
+                
+                pnlWeeklyCirculation.Controls.Clear();
+                
+                Dictionary<string, int> borrowData = new Dictionary<string, int>();
+                Dictionary<string, int> returnData = new Dictionary<string, int>();
+                
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Get borrowings for last 7 days
+                    string borrowQuery = @"
+                        SELECT 
+                            DATE(BorrowDate) AS BorrowDate,
+                            COUNT(*) AS BorrowCount
+                        FROM Borrowings
+                        WHERE BorrowDate >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                        GROUP BY DATE(BorrowDate)
+                        ORDER BY BorrowDate ASC";
+                    
+                    using (var command = new MySqlCommand(borrowQuery, connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                DateTime date = reader.GetDateTime("BorrowDate");
+                                int count = reader.GetInt32("BorrowCount");
+                                borrowData[date.ToString("MMM dd")] = count;
+                            }
+                        }
+                    }
+                    
+                    // Get returns for last 7 days
+                    string returnQuery = @"
+                        SELECT 
+                            DATE(ReturnDate) AS ReturnDate,
+                            COUNT(*) AS ReturnCount
+                        FROM Borrowings
+                        WHERE ReturnDate >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                        AND ReturnDate IS NOT NULL
+                        GROUP BY DATE(ReturnDate)
+                        ORDER BY ReturnDate ASC";
+                    
+                    using (var command = new MySqlCommand(returnQuery, connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                DateTime date = reader.GetDateTime("ReturnDate");
+                                int count = reader.GetInt32("ReturnCount");
+                                returnData[date.ToString("MMM dd")] = count;
+                            }
+                        }
+                    }
+                }
+                
+                SetupChartWithData(pnlWeeklyCirculation, "Weekly Circulation Trends", borrowData, returnData);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading weekly circulation chart: {ex.Message}");
+                SetupChart(pnlWeeklyCirculation, "Weekly Circulation Trends");
+            }
+        }
+        
+        private void LoadCollectionCategoryChart()
+        {
+            try
+            {
+                if (pnlCollectionCategory == null) return;
+                
+                pnlCollectionCategory.Controls.Clear();
+                
+                Dictionary<string, int> categoryData = new Dictionary<string, int>();
+                
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Get collection by category
+                    string categoryQuery = @"
+                        SELECT 
+                            COALESCE(Category, 'Uncategorized') AS Category,
+                            COUNT(*) AS Count
+                        FROM Books
+                        GROUP BY Category
+                        ORDER BY Count DESC
+                        LIMIT 6";
+                    
+                    using (var command = new MySqlCommand(categoryQuery, connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string category = reader.GetString("Category");
+                                int count = reader.GetInt32("Count");
+                                categoryData[category] = count;
+                            }
+                        }
+                    }
+                }
+                
+                SetupDistributionChart(pnlCollectionCategory, "Collection by Category", categoryData);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading collection category chart: {ex.Message}");
+                SetupDistributionChart(pnlCollectionCategory, "Collection by Category", new Dictionary<string, int>());
+            }
         }
 
 
@@ -9872,365 +14591,860 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
 
         private void ShowCheckOutDialog()
-
         {
-
-            Form checkOutForm = new Form();
-
-            checkOutForm.Size = new Size(450, 350);
-
-            checkOutForm.FormBorderStyle = FormBorderStyle.None;
-
-            checkOutForm.StartPosition = FormStartPosition.CenterParent;
-
-            checkOutForm.BackColor = Color.FromArgb(245, 240, 235); // Beige background
-
-            checkOutForm.ShowInTaskbar = false;
-
-
-
-             checkOutForm.Paint += (s, e) => {
-
-                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-
-                 using (Pen p = new Pen(Color.FromArgb(200, 200, 200), 1))
-
-                 {
-
-                     e.Graphics.DrawRectangle(p, 0, 0, checkOutForm.Width - 1, checkOutForm.Height - 1);
-
-                 }
-
-            };
-
-
-
-            Label btnClose = new Label { Text = "×", Font = new Font("Arial", 18), ForeColor = Color.Gray, Location = new Point(checkOutForm.Width - 40, 10), Size = new Size(30, 30), Cursor = Cursors.Hand };
-
-            btnClose.Click += (s, e) => checkOutForm.Close();
-
-            checkOutForm.Controls.Add(btnClose);
-
-
-
-            Label lblTitle = new Label { Text = "Check Out Book", Font = new Font("Georgia", 16, FontStyle.Bold), ForeColor = Color.FromArgb(40, 40, 40), Location = new Point(30, 25), AutoSize = true };
-
-            checkOutForm.Controls.Add(lblTitle);
-
-             Label lblSubtitle = new Label { Text = "Issue a book to a library member", Font = new Font("Segoe UI", 10), ForeColor = Color.Gray, Location = new Point(32, 55), AutoSize = true };
-
-            checkOutForm.Controls.Add(lblSubtitle);
-
-
-
-            int y = 100;
-
-            // Member Select
-
-            Label lblMem = new Label { Text = "Select Member", Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(50, 50, 50), Location = new Point(30, y), AutoSize = true };
-
-            checkOutForm.Controls.Add(lblMem);
-
-            
-
-            Panel pnlMem = new Panel { Location = new Point(30, y + 25), Size = new Size(390, 45), BackColor = Color.White, Padding = new Padding(10, 8, 10, 5) };
-
-            ComboBox cmbMem = new ComboBox { FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 11), Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDown }; 
-
-            // Mock Data
-
-            cmbMem.Items.Add("John Smith (MEM-001)");
-
-            pnlMem.Controls.Add(cmbMem);
-
-            checkOutForm.Controls.Add(pnlMem);
-
-            
-
-             pnlMem.Paint += (s, e) => {
-
-                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-
-                 bool isFocused = cmbMem.Focused;
-
-                 Color borderColor = isFocused ? Color.Maroon : Color.FromArgb(120, 0, 0); // Solid Maroon Border as per image
-
-                 using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlMem.Width - 3, pnlMem.Height - 3), 8))
-
-                 using(Pen pen = new Pen(borderColor, 1.5f)) e.Graphics.DrawPath(pen, path);
-
-            };
-
-            cmbMem.Enter += (s, e) => pnlMem.Invalidate();
-
-            cmbMem.Leave += (s, e) => pnlMem.Invalidate();
-
-            
-
-            y += 85;
-
-
-
-            // Book Select
-
-            Label lblBk = new Label { Text = "Select Book", Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(50, 50, 50), Location = new Point(30, y), AutoSize = true };
-
-            checkOutForm.Controls.Add(lblBk);
-
-            
-
-             Panel pnlBk = new Panel { Location = new Point(30, y + 25), Size = new Size(390, 45), BackColor = Color.White, Padding = new Padding(10, 8, 10, 5) };
-
-            ComboBox cmbBk = new ComboBox { FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 11), Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDown }; 
-
-             cmbBk.Items.Add("Intro to C# (ISBN-123)");
-
-            pnlBk.Controls.Add(cmbBk);
-
-            checkOutForm.Controls.Add(pnlBk);
-
-            
-
-             pnlBk.Paint += (s, e) => {
-
-                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-
-                 using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlBk.Width - 3, pnlBk.Height - 3), 8))
-
-                 using(Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1)) e.Graphics.DrawPath(pen, path);
-
-            };
-
-            
-
-            cmbBk.Enter += (s, e) => pnlBk.Invalidate();
-
-            cmbBk.Leave += (s, e) => pnlBk.Invalidate();
-
-
-
-            // Buttons
-
-            Button btnCancel = new Button { Text = "Cancel", Size = new Size(100, 38), Location = new Point(190, 280), FlatStyle = FlatStyle.Flat, BackColor = Color.White, ForeColor = Color.Black, Font = ThemeConstants.FontButton };
-
-            btnCancel.Click += (s, e) => checkOutForm.Close();
-
-
-
-             Button btnConfirm = new Button { Text = "Confirm Checkout", Size = new Size(140, 38), Location = new Point(300, 280), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(180, 120, 120), ForeColor = Color.White, Font = ThemeConstants.FontButton };
-
-            btnConfirm.FlatAppearance.BorderSize = 0;
-
-             btnConfirm.Paint += (s, e) => {
-
-                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-
-                 using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnConfirm.Width, btnConfirm.Height), 6))
-
-                 using(SolidBrush brush = new SolidBrush(Color.FromArgb(180, 120, 120))) // Rose/Mauve color from image
-
-                 {
-
-                     e.Graphics.FillPath(brush, path);
-
-                     TextRenderer.DrawText(e.Graphics, "Confirm Checkout", btnConfirm.Font, new Rectangle(0,0,btnConfirm.Width,btnConfirm.Height), Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-
-                 }
-
-            };
-
-
-
-             checkOutForm.Controls.Add(btnCancel);
-
-             checkOutForm.Controls.Add(btnConfirm);
-
-             checkOutForm.ShowDialog(this);
-
+            try
+            {
+                using (CheckOutBookDialog dialog = new CheckOutBookDialog())
+                {
+                    dialog.Owner = this;
+                    if (dialog.ShowDialog() == DialogResult.OK)
+                    {
+                        // Validate member before borrowing
+                        string validationError;
+                        if (!_circulationService.ValidateMember(dialog.SelectedMemberId, out validationError))
+                        {
+                            MessageBox.Show(validationError, "Member Validation Failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            return;
+                        }
+
+                        // Borrow the book
+                        string errorMessage;
+                        bool success = _circulationService.BorrowBook(
+                            dialog.SelectedMemberId,
+                            dialog.SelectedBookId,
+                            dialog.DueDate,
+                            out errorMessage
+                        );
+
+                        if (success)
+                        {
+                            // Generate and display receipt
+                            var member = _memberService.GetMemberById(dialog.SelectedMemberId);
+                            string memberName = member != null ? $"{member.FirstName} {member.LastName}" : "Unknown";
+                            
+                            string receipt = $"✓ Book Checkout Successful\n\n" +
+                                           $"Member: {memberName}\n" +
+                                           $"Due Date: {dialog.DueDate:dd MMM yyyy}\n" +
+                                           $"Date: {DateTime.Now:dd MMM yyyy HH:mm}";
+                            
+                            MessageBox.Show(receipt, "Checkout Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            
+                            // Refresh circulation statistics
+                            RefreshCirculationStatistics();
+                            
+                            // Refresh view if on circulation/dashboard
+                            ShowDashboardView();
+                        }
+                        else
+                        {
+                            MessageBox.Show(errorMessage, "Checkout Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error during checkout: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
+        private void ShowReturnBookDialog()
+        {
+            try
+            {
+                using (ReturnBookDialog dialog = new ReturnBookDialog())
+                {
+                    dialog.Owner = this;
+                    if (dialog.ShowDialog() == DialogResult.OK)
+                    {
+                        // Refresh circulation statistics
+                        RefreshCirculationStatistics();
+                        
+                        // Refresh circulation view
+                        ShowCirculationView();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error during return: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
 
+        private void EnsureReservationsTableExists()
+        {
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    string checkTableQuery = @"
+                        SELECT COUNT(*) 
+                        FROM information_schema.tables 
+                        WHERE table_schema = DATABASE() 
+                        AND table_name = 'Reservations'";
+                    
+                    using (var checkCmd = new MySqlCommand(checkTableQuery, connection))
+                    {
+                        int tableExists = Convert.ToInt32(checkCmd.ExecuteScalar());
+                        if (tableExists == 0)
+                        {
+                            // Create Reservations table
+                            string createTableQuery = @"
+                                CREATE TABLE Reservations (
+                                    ReservationId INT PRIMARY KEY AUTO_INCREMENT,
+                                    MemberId INT NOT NULL,
+                                    BookId INT NOT NULL,
+                                    ReservedOn DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                    Expires DATETIME NOT NULL,
+                                    Status VARCHAR(20) DEFAULT 'Pending',
+                                    Notified BOOLEAN DEFAULT FALSE,
+                                    FOREIGN KEY (MemberId) REFERENCES Members(MemberId) ON DELETE CASCADE,
+                                    FOREIGN KEY (BookId) REFERENCES Books(BookId) ON DELETE CASCADE,
+                                    INDEX idx_MemberId (MemberId),
+                                    INDEX idx_BookId (BookId),
+                                    INDEX idx_Status (Status)
+                                )";
+                            
+                            using (var createCmd = new MySqlCommand(createTableQuery, connection))
+                            {
+                                createCmd.ExecuteNonQuery();
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error ensuring Reservations table exists: {ex.Message}");
+            }
+        }
+        
+        private void EnsureFinesTableAllowsNullBorrowingId()
+        {
+            try
+            {
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    // Check if BorrowingId column allows NULL
+                    string checkColumnQuery = @"
+                        SELECT IS_NULLABLE 
+                        FROM information_schema.columns 
+                        WHERE table_schema = DATABASE() 
+                        AND table_name = 'Fines' 
+                        AND column_name = 'BorrowingId'";
+                    
+                    using (var checkCmd = new MySqlCommand(checkColumnQuery, connection))
+                    {
+                        object result = checkCmd.ExecuteScalar();
+                        if (result != null && result.ToString().ToUpper() == "NO")
+                        {
+                            // Column doesn't allow NULL, modify it
+                            string alterQuery = @"
+                                ALTER TABLE Fines 
+                                MODIFY COLUMN BorrowingId INT NULL";
+                            
+                            using (var alterCmd = new MySqlCommand(alterQuery, connection))
+                            {
+                                alterCmd.ExecuteNonQuery();
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error ensuring Fines table allows NULL BorrowingId: {ex.Message}");
+            }
+        }
 
         private void ShowReservationDialog()
-
         {
+            // Ensure Reservations table exists
+            EnsureReservationsTableExists();
 
             Form rvForm = new Form();
-
-            rvForm.Size = new Size(450, 400);
-
+            rvForm.Size = new Size(520, 380);
             rvForm.FormBorderStyle = FormBorderStyle.None;
-
             rvForm.StartPosition = FormStartPosition.CenterParent;
-
-            rvForm.BackColor = Color.FromArgb(245, 240, 235); // Beige background
-
+            rvForm.BackColor = Color.FromArgb(248, 247, 242);
             rvForm.ShowInTaskbar = false;
 
-
-
              rvForm.Paint += (s, e) => {
-
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-
-                 using (Pen p = new Pen(Color.FromArgb(200, 200, 200), 1))
-
-                 {
-
-                     e.Graphics.DrawRectangle(p, 0, 0, rvForm.Width - 1, rvForm.Height - 1);
-
-                 }
-
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, rvForm.Width - 1, rvForm.Height - 1), 10))
+                {
+                    rvForm.Region = new Region(path);
+                    using (Pen p = new Pen(Color.FromArgb(220, 220, 220), 1))
+                    {
+                        e.Graphics.DrawPath(p, path);
+                    }
+                }
             };
 
-
-
-            Label btnClose = new Label { Text = "×", Font = new Font("Arial", 18), ForeColor = Color.Gray, Location = new Point(rvForm.Width - 40, 10), Size = new Size(30, 30), Cursor = Cursors.Hand };
-
+            // Header
+            Label btnClose = new Label 
+            { 
+                Text = "✕", 
+                Font = new Font("Segoe UI", 14F), 
+                ForeColor = Color.FromArgb(150, 150, 150), 
+                Location = new Point(rvForm.Width - 45, 15), 
+                Size = new Size(35, 35), 
+                Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
             btnClose.Click += (s, e) => rvForm.Close();
-
-            btnClose.MouseEnter += (s, e) => btnClose.ForeColor = Color.Black;
-
-            btnClose.MouseLeave += (s, e) => btnClose.ForeColor = Color.Gray;
-
+            btnClose.MouseEnter += (s, e) => btnClose.ForeColor = Color.FromArgb(80, 80, 80);
+            btnClose.MouseLeave += (s, e) => btnClose.ForeColor = Color.FromArgb(150, 150, 150);
             rvForm.Controls.Add(btnClose);
 
-
-
-            Label lblTitle = new Label { Text = "Create Reservation", Font = new Font("Georgia", 16, FontStyle.Bold), ForeColor = Color.FromArgb(40, 40, 40), Location = new Point(30, 25), AutoSize = true };
-
+            Label lblTitle = new Label 
+            { 
+                Text = "Create Reservation", 
+                Font = new Font("Segoe UI", 18F, FontStyle.Bold), 
+                ForeColor = Color.FromArgb(101, 67, 33), 
+                Location = new Point(30, 20), 
+                AutoSize = true 
+            };
             rvForm.Controls.Add(lblTitle);
 
-             Label lblSubtitle = new Label { Text = "Reserve a book for a library member", Font = new Font("Segoe UI", 10), ForeColor = Color.Gray, Location = new Point(32, 55), AutoSize = true };
-
+            Label lblSubtitle = new Label 
+            { 
+                Text = "Reserve a book for a library member", 
+                Font = new Font("Segoe UI", 9.5F), 
+                ForeColor = Color.FromArgb(120, 120, 120), 
+                Location = new Point(30, 52), 
+                AutoSize = true 
+            };
             rvForm.Controls.Add(lblSubtitle);
 
-
-
-            int y = 100;
+            int y = 90;
+            int selectedMemberId = 0;
+            int selectedBookId = 0;
 
             // Member Select
-
-            Label lblMem = new Label { Text = "Select Member", Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(50, 50, 50), Location = new Point(30, y), AutoSize = true };
-
-            rvForm.Controls.Add(lblMem);
-
-            
-
-            Panel pnlMem = new Panel { Location = new Point(30, y + 25), Size = new Size(390, 45), BackColor = Color.White, Padding = new Padding(10, 8, 10, 5) };
-
-            ComboBox cmbMem = new ComboBox { FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 11), Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDown }; 
-
-            cmbMem.Items.Add("Choose a member...");
-
-            cmbMem.SelectedIndex = 0;
-
-            pnlMem.Controls.Add(cmbMem);
-
-            rvForm.Controls.Add(pnlMem);
-
-            
-
-             pnlMem.Paint += (s, e) => {
-
-                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-
-                 bool isFocused = cmbMem.Focused;
-
-                 Color borderColor = isFocused ? Color.Maroon : Color.FromArgb(120, 0, 0); 
-
-                 using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlMem.Width - 3, pnlMem.Height - 3), 8))
-
-                 using(Pen pen = new Pen(borderColor, 1.5f)) e.Graphics.DrawPath(pen, path);
-
+            Label lblMem = new Label 
+            { 
+                Text = "Select Member", 
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Regular), 
+                ForeColor = Color.FromArgb(60, 60, 60), 
+                Location = new Point(30, y), 
+                AutoSize = true 
             };
-
-            cmbMem.Enter += (s, e) => pnlMem.Invalidate();
-
-            cmbMem.Leave += (s, e) => pnlMem.Invalidate();
-
+            rvForm.Controls.Add(lblMem);
             
-
-            y += 85;
-
-
+            Panel pnlMem = new Panel 
+            { 
+                Location = new Point(30, y + 28), 
+                Size = new Size(458, 44), 
+                BackColor = Color.White,
+                Tag = false
+            };
+            
+            TextBox txtMemberSearch = new TextBox
+            {
+                Location = new Point(12, 12),
+                Size = new Size(410, 20),
+                Font = new Font("Segoe UI", 9.5F),
+                BorderStyle = BorderStyle.None,
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(60, 60, 60)
+            };
+            txtMemberSearch.SetPlaceholder("Choose a member...");
+            
+            Panel pnlMemberDropdown = new Panel
+            {
+                Location = new Point(30, y + 76),
+                Size = new Size(458, 0),
+                BackColor = Color.White,
+                Visible = false,
+                BorderStyle = BorderStyle.None
+            };
+            
+            pnlMemberDropdown.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath shadowPath = CreateRoundedRectangle(new Rectangle(2, 2, pnlMemberDropdown.Width - 3, pnlMemberDropdown.Height - 3), 6))
+                {
+                    using (SolidBrush shadowBrush = new SolidBrush(Color.FromArgb(30, 0, 0, 0)))
+                    {
+                        e.Graphics.FillPath(shadowBrush, shadowPath);
+                    }
+                }
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlMemberDropdown.Width - 1, pnlMemberDropdown.Height - 1), 6))
+                {
+                    e.Graphics.FillPath(Brushes.White, path);
+                    using (Pen pen = new Pen(Color.FromArgb(200, 200, 200), 1))
+                    {
+                        e.Graphics.DrawPath(pen, path);
+                    }
+                }
+            };
+            
+            ListBox lstMembers = new ListBox
+            {
+                Dock = DockStyle.Fill,
+                BorderStyle = BorderStyle.None,
+                Font = new Font("Segoe UI", 9.5F),
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(60, 60, 60),
+                ItemHeight = 22
+            };
+            
+            lstMembers.MouseDown += (s, e) =>
+            {
+                int index = lstMembers.IndexFromPoint(e.Location);
+                if (index >= 0)
+                {
+                    lstMembers.SelectedIndex = index;
+                }
+            };
+            
+            // Load members from database
+            MemberService memberService = new MemberService();
+            List<MemberData> allMembers = new List<MemberData>();
+            var filteredMembers = new List<MemberData>();
+            
+            Action refreshMemberData = () =>
+            {
+                try
+                {
+                    allMembers = memberService.GetAllMembers().Where(m => m.Status == 1).ToList();
+                    filteredMembers = new List<MemberData>(allMembers);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error loading members: {ex.Message}");
+                    allMembers = new List<MemberData>();
+                    filteredMembers = new List<MemberData>();
+                }
+            };
+            
+            refreshMemberData();
+            
+            Action updateMemberList = () =>
+            {
+                lstMembers.Items.Clear();
+                if (filteredMembers == null || filteredMembers.Count == 0)
+                {
+                    lstMembers.Items.Add("No active members found");
+                }
+                else
+                {
+                    foreach (var member in filteredMembers)
+                    {
+                        lstMembers.Items.Add($"{member.FirstName} {member.LastName} ({member.MemberNumber})");
+                    }
+                }
+                lstMembers.Visible = true;
+                lstMembers.Refresh();
+                pnlMemberDropdown.Refresh();
+            };
+            
+            updateMemberList();
+            
+            txtMemberSearch.TextChanged += (s, e) =>
+            {
+                string searchText = txtMemberSearch.Text.ToLower();
+                if (txtMemberSearch.Tag is PlaceholderTextHelper.PlaceholderData placeholderData)
+                {
+                    if (searchText == placeholderData.PlaceholderText.ToLower())
+                    {
+                        searchText = "";
+                    }
+                }
+                
+                if (string.IsNullOrWhiteSpace(searchText))
+                {
+                    filteredMembers = new List<MemberData>(allMembers);
+                }
+                else
+                {
+                    filteredMembers = allMembers.Where(m =>
+                        m.MemberNumber.ToLower().Contains(searchText) ||
+                        m.FirstName.ToLower().Contains(searchText) ||
+                        m.LastName.ToLower().Contains(searchText) ||
+                        m.Email.ToLower().Contains(searchText)
+                    ).ToList();
+                }
+                updateMemberList();
+            };
+            
+            lstMembers.SelectedIndexChanged += (s, e) =>
+            {
+                if (lstMembers.SelectedIndex >= 0 && lstMembers.SelectedIndex < filteredMembers.Count)
+                {
+                    var member = filteredMembers[lstMembers.SelectedIndex];
+                    selectedMemberId = member.MemberId;
+                    txtMemberSearch.Text = $"{member.FirstName} {member.LastName} ({member.MemberNumber})";
+                    txtMemberSearch.ForeColor = Color.Black;
+                    pnlMemberDropdown.Visible = false;
+                }
+            };
+            
+            pnlMemberDropdown.Controls.Add(lstMembers);
+            
+            Label lblMemberArrow = new Label
+            {
+                Text = "▼",
+                Font = new Font("Segoe UI", 8F),
+                ForeColor = Color.FromArgb(150, 150, 150),
+                Location = new Point(430, 13),
+                Size = new Size(25, 18),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Cursor = Cursors.Hand
+            };
+            Action showMemberDropdown = () =>
+            {
+                refreshMemberData();
+                updateMemberList();
+                int itemCount = lstMembers.Items.Count;
+                int height = itemCount > 0 ? Math.Min(150, itemCount * 22 + 10) : 40;
+                
+                pnlMemberDropdown.Location = new Point(30, y + 28 + 44 + 2);
+                pnlMemberDropdown.Width = 458;
+                pnlMemberDropdown.Height = height;
+                pnlMemberDropdown.Visible = true;
+                pnlMemberDropdown.BringToFront();
+                pnlMemberDropdown.Invalidate();
+                
+                lstMembers.Visible = true;
+                lstMembers.Height = height;
+                lstMembers.Refresh();
+                
+                rvForm.Invalidate();
+                rvForm.Update();
+            };
+            
+            lblMemberArrow.Click += (s, e) => 
+            { 
+                txtMemberSearch.Focus();
+                showMemberDropdown();
+            };
+            
+            txtMemberSearch.Enter += (s, e) =>
+            {
+                pnlMem.Tag = true;
+                pnlMem.Invalidate();
+                showMemberDropdown();
+            };
+            
+            txtMemberSearch.Leave += (s, e) =>
+            {
+                pnlMem.Tag = false;
+                pnlMem.Invalidate();
+                System.Threading.Thread.Sleep(200);
+                pnlMemberDropdown.Visible = false;
+            };
+            
+            txtMemberSearch.Click += (s, e) =>
+            {
+                showMemberDropdown();
+            };
+            
+            pnlMem.Controls.AddRange(new Control[] { txtMemberSearch, lblMemberArrow });
+            rvForm.Controls.Add(pnlMem);
+            
+            pnlMem.Paint += (s, e) => {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                bool isFocused = (bool)pnlMem.Tag;
+                Color borderColor = isFocused ? Color.FromArgb(128, 0, 32) : Color.FromArgb(200, 200, 200);
+                int borderWidth = isFocused ? 2 : 1;
+                using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlMem.Width - 1, pnlMem.Height - 1), 6))
+                using(Pen pen = new Pen(borderColor, borderWidth)) 
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
+            
+            y += 90;
 
             // Book Select
-
-            Label lblBk = new Label { Text = "Select Book", Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(50, 50, 50), Location = new Point(30, y), AutoSize = true };
-
+            Label lblBk = new Label 
+            { 
+                Text = "Select Book", 
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Regular), 
+                ForeColor = Color.FromArgb(60, 60, 60), 
+                Location = new Point(30, y), 
+                AutoSize = true 
+            };
             rvForm.Controls.Add(lblBk);
 
-            
-
-             Panel pnlBk = new Panel { Location = new Point(30, y + 25), Size = new Size(390, 45), BackColor = Color.White, Padding = new Padding(10, 8, 10, 5) };
-
-            ComboBox cmbBk = new ComboBox { FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 11), Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDown }; 
-
-             cmbBk.Items.Add("Choose a book...");
-
-             cmbBk.SelectedIndex = 0;
-
-            pnlBk.Controls.Add(cmbBk);
-
-            rvForm.Controls.Add(pnlBk);
-
-            
-
-             pnlBk.Paint += (s, e) => {
-
-                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-
-                 using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlBk.Width - 3, pnlBk.Height - 3), 8))
-
-                 using(Pen pen = new Pen(Color.FromArgb(220, 220, 220), 1)) e.Graphics.DrawPath(pen, path);
-
+            Panel pnlBk = new Panel 
+            { 
+                Location = new Point(30, y + 28), 
+                Size = new Size(458, 44), 
+                BackColor = Color.White,
+                Tag = false
             };
-
-             cmbBk.Enter += (s, e) => pnlBk.Invalidate();
-
-             cmbBk.Leave += (s, e) => pnlBk.Invalidate();
-
-
+            
+            TextBox txtBookSearch = new TextBox
+            {
+                Location = new Point(12, 12),
+                Size = new Size(410, 20),
+                Font = new Font("Segoe UI", 9.5F),
+                BorderStyle = BorderStyle.None,
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(60, 60, 60)
+            };
+            txtBookSearch.SetPlaceholder("Choose a book...");
+            
+            Panel pnlBookDropdown = new Panel
+            {
+                Location = new Point(30, y + 76),
+                Size = new Size(458, 0),
+                BackColor = Color.White,
+                Visible = false,
+                BorderStyle = BorderStyle.None
+            };
+            
+            pnlBookDropdown.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath shadowPath = CreateRoundedRectangle(new Rectangle(2, 2, pnlBookDropdown.Width - 3, pnlBookDropdown.Height - 3), 6))
+                {
+                    using (SolidBrush shadowBrush = new SolidBrush(Color.FromArgb(30, 0, 0, 0)))
+                    {
+                        e.Graphics.FillPath(shadowBrush, shadowPath);
+                    }
+                }
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlBookDropdown.Width - 1, pnlBookDropdown.Height - 1), 6))
+                {
+                    e.Graphics.FillPath(Brushes.White, path);
+                    using (Pen pen = new Pen(Color.FromArgb(200, 200, 200), 1))
+                    {
+                        e.Graphics.DrawPath(pen, path);
+                    }
+                }
+            };
+            
+            ListBox lstBooks = new ListBox
+            {
+                Dock = DockStyle.Fill,
+                BorderStyle = BorderStyle.None,
+                Font = new Font("Segoe UI", 9.5F),
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(60, 60, 60),
+                ItemHeight = 22
+            };
+            
+            lstBooks.MouseDown += (s, e) =>
+            {
+                int index = lstBooks.IndexFromPoint(e.Location);
+                if (index >= 0)
+                {
+                    lstBooks.SelectedIndex = index;
+                }
+            };
+            
+            // Load books from database
+            BookService bookService = new BookService();
+            List<Book> allBooks = new List<Book>();
+            var filteredBooks = new List<Book>();
+            
+            Action refreshBookData = () =>
+            {
+                try
+                {
+                    allBooks = bookService.GetAllBooks().Where(b => b.AvailableCopies > 0).ToList();
+                    filteredBooks = new List<Book>(allBooks);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error loading books: {ex.Message}");
+                    allBooks = new List<Book>();
+                    filteredBooks = new List<Book>();
+                }
+            };
+            
+            refreshBookData();
+            
+            Action updateBookList = () =>
+            {
+                lstBooks.Items.Clear();
+                if (filteredBooks == null || filteredBooks.Count == 0)
+                {
+                    lstBooks.Items.Add("No available books found");
+                }
+                else
+                {
+                    foreach (var book in filteredBooks)
+                    {
+                        lstBooks.Items.Add($"{book.Title} by {book.Author}");
+                    }
+                }
+                lstBooks.Visible = true;
+                lstBooks.Refresh();
+                pnlBookDropdown.Refresh();
+            };
+            
+            updateBookList();
+            
+            txtBookSearch.TextChanged += (s, e) =>
+            {
+                string searchText = txtBookSearch.Text.ToLower();
+                if (txtBookSearch.Tag is PlaceholderTextHelper.PlaceholderData placeholderData)
+                {
+                    if (searchText == placeholderData.PlaceholderText.ToLower())
+                    {
+                        searchText = "";
+                    }
+                }
+                
+                if (string.IsNullOrWhiteSpace(searchText))
+                {
+                    filteredBooks = new List<Book>(allBooks);
+                }
+                else
+                {
+                    filteredBooks = allBooks.Where(b =>
+                        b.Title.ToLower().Contains(searchText) ||
+                        b.Author.ToLower().Contains(searchText) ||
+                        (b.ISBN != null && b.ISBN.ToLower().Contains(searchText))
+                    ).ToList();
+                }
+                updateBookList();
+            };
+            
+            lstBooks.SelectedIndexChanged += (s, e) =>
+            {
+                if (lstBooks.SelectedIndex >= 0 && lstBooks.SelectedIndex < filteredBooks.Count)
+                {
+                    var book = filteredBooks[lstBooks.SelectedIndex];
+                    selectedBookId = book.BookId;
+                    txtBookSearch.Text = $"{book.Title} by {book.Author}";
+                    txtBookSearch.ForeColor = Color.Black;
+                    pnlBookDropdown.Visible = false;
+                }
+            };
+            
+            pnlBookDropdown.Controls.Add(lstBooks);
+            
+            Label lblBookArrow = new Label
+            {
+                Text = "▼",
+                Font = new Font("Segoe UI", 8F),
+                ForeColor = Color.FromArgb(150, 150, 150),
+                Location = new Point(430, 13),
+                Size = new Size(25, 18),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Cursor = Cursors.Hand
+            };
+            Action showBookDropdown = () =>
+            {
+                refreshBookData();
+                updateBookList();
+                int itemCount = lstBooks.Items.Count;
+                int height = itemCount > 0 ? Math.Min(150, itemCount * 22 + 10) : 40;
+                
+                pnlBookDropdown.Location = new Point(30, y + 28 + 44 + 2);
+                pnlBookDropdown.Width = 458;
+                pnlBookDropdown.Height = height;
+                pnlBookDropdown.Visible = true;
+                pnlBookDropdown.BringToFront();
+                pnlBookDropdown.Invalidate();
+                
+                lstBooks.Visible = true;
+                lstBooks.Height = height;
+                lstBooks.Refresh();
+                
+                rvForm.Invalidate();
+                rvForm.Update();
+            };
+            
+            lblBookArrow.Click += (s, e) => 
+            { 
+                txtBookSearch.Focus();
+                showBookDropdown();
+            };
+            
+            txtBookSearch.Enter += (s, e) =>
+            {
+                pnlBk.Tag = true;
+                pnlBk.Invalidate();
+                showBookDropdown();
+            };
+            
+            txtBookSearch.Leave += (s, e) =>
+            {
+                pnlBk.Tag = false;
+                pnlBk.Invalidate();
+                System.Threading.Thread.Sleep(200);
+                pnlBookDropdown.Visible = false;
+            };
+            
+            txtBookSearch.Click += (s, e) =>
+            {
+                showBookDropdown();
+            };
+            
+            pnlBk.Controls.AddRange(new Control[] { txtBookSearch, lblBookArrow });
+            rvForm.Controls.Add(pnlBk);
+            
+            pnlBk.Paint += (s, e) => {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                bool isFocused = (bool)pnlBk.Tag;
+                Color borderColor = isFocused ? Color.FromArgb(128, 0, 32) : Color.FromArgb(200, 200, 200);
+                int borderWidth = isFocused ? 2 : 1;
+                using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlBk.Width - 1, pnlBk.Height - 1), 6))
+                using(Pen pen = new Pen(borderColor, borderWidth)) 
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+            };
 
             // Buttons
-
-            Button btnCancel = new Button { Text = "Cancel", Size = new Size(100, 38), Location = new Point(180, 330), FlatStyle = FlatStyle.Flat, BackColor = Color.White, ForeColor = Color.Black, Font = ThemeConstants.FontButton };
-
+            Button btnCancel = new Button 
+            { 
+                Text = "Cancel", 
+                Size = new Size(90, 38), 
+                Location = new Point(320, 300), 
+                FlatStyle = FlatStyle.Flat, 
+                BackColor = Color.White, 
+                ForeColor = Color.FromArgb(80, 80, 80), 
+                Font = new Font("Segoe UI", 9.5F),
+                Cursor = Cursors.Hand
+            };
+            btnCancel.FlatAppearance.BorderSize = 1;
+            btnCancel.FlatAppearance.BorderColor = Color.FromArgb(220, 220, 220);
             btnCancel.Click += (s, e) => rvForm.Close();
+            btnCancel.Paint += (s, e) =>
+            {
+                Button btn = s as Button;
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btn.Width - 1, btn.Height - 1), 6))
+                {
+                    e.Graphics.FillPath(new SolidBrush(btn.BackColor), path);
+                    using (Pen borderPen = new Pen(Color.FromArgb(220, 220, 220), 1))
+                    {
+                        e.Graphics.DrawPath(borderPen, path);
+                    }
+                }
+                StringFormat sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                e.Graphics.DrawString(btn.Text, btn.Font, new SolidBrush(btn.ForeColor), new RectangleF(0, 0, btn.Width, btn.Height), sf);
+            };
+            btnCancel.MouseEnter += (s, e) => btnCancel.BackColor = Color.FromArgb(250, 250, 250);
+            btnCancel.MouseLeave += (s, e) => btnCancel.BackColor = Color.White;
 
-
-
-             Button btnConfirm = new Button { Text = "Create Reservation", Size = new Size(150, 38), Location = new Point(290, 330), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(120, 20, 40), ForeColor = Color.White, Font = ThemeConstants.FontButton }; // Darker Maroon
-
+            Button btnConfirm = new Button 
+            { 
+                Text = "Create Reservation", 
+                Size = new Size(150, 38), 
+                Location = new Point(398, 300), 
+                FlatStyle = FlatStyle.Flat, 
+                BackColor = Color.FromArgb(128, 0, 32), 
+                ForeColor = Color.White, 
+                Font = new Font("Segoe UI", 9.5F),
+                Cursor = Cursors.Hand
+            };
             btnConfirm.FlatAppearance.BorderSize = 0;
-
              btnConfirm.Paint += (s, e) => {
-
+                Button btn = s as Button;
                  e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-
-                 using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btnConfirm.Width, btnConfirm.Height), 6))
-
-                 using(SolidBrush brush = new SolidBrush(Color.FromArgb(120, 20, 40))) 
-
-                 {
-
-                     e.Graphics.FillPath(brush, path);
-
-                     TextRenderer.DrawText(e.Graphics, "Create Reservation", btnConfirm.Font, new Rectangle(0,0,btnConfirm.Width,btnConfirm.Height), Color.White, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
-
-                 }
-
+                using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, btn.Width - 1, btn.Height - 1), 6))
+                using(SolidBrush brush = new SolidBrush(btn.BackColor)) 
+                {
+                    e.Graphics.FillPath(brush, path);
+                }
+                StringFormat sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                e.Graphics.DrawString(btn.Text, btn.Font, new SolidBrush(btn.ForeColor), new RectangleF(0, 0, btn.Width, btn.Height), sf);
+            };
+            btnConfirm.MouseEnter += (s, e) => btnConfirm.BackColor = Color.FromArgb(110, 0, 25);
+            btnConfirm.MouseLeave += (s, e) => btnConfirm.BackColor = Color.FromArgb(128, 0, 32);
+            
+            btnConfirm.Click += (s, e) =>
+            {
+                if (selectedMemberId == 0)
+                {
+                    MessageBox.Show("Please select a member.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtMemberSearch.Focus();
+                    return;
+                }
+                
+                if (selectedBookId == 0)
+                {
+                    MessageBox.Show("Please select a book.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtBookSearch.Focus();
+                    return;
+                }
+                
+                // Create reservation in database
+                try
+                {
+                    using (var connection = Helper.MYSqlHelper.CreateConnection())
+                    {
+                        // Check if member already has an active reservation for this book
+                        string checkQuery = @"
+                            SELECT COUNT(*) 
+                            FROM Reservations 
+                            WHERE MemberId = @MemberId 
+                            AND BookId = @BookId 
+                            AND Status IN ('Pending', 'Ready')";
+                        
+                        using (var checkCmd = new MySqlCommand(checkQuery, connection))
+                        {
+                            checkCmd.Parameters.AddWithValue("@MemberId", selectedMemberId);
+                            checkCmd.Parameters.AddWithValue("@BookId", selectedBookId);
+                            int existingReservations = Convert.ToInt32(checkCmd.ExecuteScalar());
+                            
+                            if (existingReservations > 0)
+                            {
+                                MessageBox.Show("This member already has an active reservation for this book.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                return;
+                            }
+                        }
+                        
+                        // Create reservation (expires in 7 days)
+                        DateTime expiresDate = DateTime.Now.AddDays(7);
+                        string insertQuery = @"
+                            INSERT INTO Reservations (MemberId, BookId, ReservedOn, Expires, Status, Notified)
+                            VALUES (@MemberId, @BookId, @ReservedOn, @Expires, 'Pending', FALSE)";
+                        
+                        using (var insertCmd = new MySqlCommand(insertQuery, connection))
+                        {
+                            insertCmd.Parameters.AddWithValue("@MemberId", selectedMemberId);
+                            insertCmd.Parameters.AddWithValue("@BookId", selectedBookId);
+                            insertCmd.Parameters.AddWithValue("@ReservedOn", DateTime.Now);
+                            insertCmd.Parameters.AddWithValue("@Expires", expiresDate);
+                            insertCmd.ExecuteNonQuery();
+                        }
+                    }
+                    
+                    MessageBox.Show("Reservation created successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    rvForm.DialogResult = DialogResult.OK;
+                    rvForm.Close();
+                    
+                    // Refresh reservations view and stats
+                    Panel statsPanel = pnlMainContent.Controls.OfType<Panel>().FirstOrDefault(p => p.Tag?.ToString() == "ReservationsStatsPanel");
+                    if (statsPanel != null)
+                    {
+                        UpdateReservationStats(statsPanel);
+                    }
+                    
+                    // Refresh the data grid
+                    DataGridView dgv = pnlMainContent.Controls.OfType<DataGridView>().FirstOrDefault();
+                    if (dgv != null)
+                    {
+                        LoadReservationsData(dgv);
+                    }
+                    else
+                    {
+                        ShowReservationsView();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error creating reservation: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             };
 
-
-
-             rvForm.Controls.Add(btnCancel);
-
+            rvForm.Controls.Add(btnCancel);
              rvForm.Controls.Add(btnConfirm);
 
-             rvForm.ShowDialog(this);
+            // Add dropdown panels last so they appear on top
+            rvForm.Controls.Add(pnlMemberDropdown);
+            rvForm.Controls.Add(pnlBookDropdown);
 
+            rvForm.ShowDialog(this);
         }
 
 
@@ -10290,42 +15504,240 @@ namespace LMS_Library_Management_System.Forms.Dashboard
 
 
             int y = 90;
+            int selectedMemberId = 0;
 
             // Member Select
-
             Label lblMem = new Label { Text = "Select Member", Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(50, 50, 50), Location = new Point(30, y), AutoSize = true };
-
             fineForm.Controls.Add(lblMem);
-
-            Panel pnlMem = new Panel { Location = new Point(30, y + 25), Size = new Size(390, 45), BackColor = Color.White, Padding = new Padding(10, 8, 10, 5) };
-
-            ComboBox cmbMem = new ComboBox { FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 11), Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDown }; 
-
-            cmbMem.Items.Add("Choose a member...");
-
-            cmbMem.SelectedIndex = 0;
-
-            pnlMem.Controls.Add(cmbMem);
-
-            fineForm.Controls.Add(pnlMem);
-
-             pnlMem.Paint += (s, e) => {
-
-                 e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-
-                 bool isFocused = cmbMem.Focused;
-
-                 Color borderColor = isFocused ? Color.Maroon : Color.FromArgb(120, 0, 0); 
-
-                 using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlMem.Width - 3, pnlMem.Height - 3), 8))
-
-                 using(Pen pen = new Pen(borderColor, 1.5f)) e.Graphics.DrawPath(pen, path);
-
+            
+            Panel pnlMem = new Panel 
+            { 
+                Location = new Point(30, y + 25), 
+                Size = new Size(390, 45), 
+                BackColor = Color.White,
+                Tag = false
             };
-
-            cmbMem.Enter += (s, e) => pnlMem.Invalidate();
-
-            cmbMem.Leave += (s, e) => pnlMem.Invalidate();
+            
+            TextBox txtMemberSearch = new TextBox
+            {
+                Location = new Point(12, 12),
+                Size = new Size(350, 20),
+                Font = new Font("Segoe UI", 11),
+                BorderStyle = BorderStyle.None,
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(60, 60, 60)
+            };
+            txtMemberSearch.SetPlaceholder("Choose a member...");
+            
+            // Member dropdown panel
+            Panel pnlMemberDropdown = new Panel
+            {
+                Location = new Point(30, y + 25 + 45 + 2),
+                Size = new Size(390, 0),
+                BackColor = Color.White,
+                Visible = false,
+                BorderStyle = BorderStyle.None
+            };
+            
+            pnlMemberDropdown.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                
+                // Draw subtle shadow
+                using (GraphicsPath shadowPath = CreateRoundedRectangle(new Rectangle(2, 2, pnlMemberDropdown.Width - 3, pnlMemberDropdown.Height - 3), 6))
+                {
+                    using (SolidBrush shadowBrush = new SolidBrush(Color.FromArgb(30, 0, 0, 0)))
+                    {
+                        e.Graphics.FillPath(shadowBrush, shadowPath);
+                    }
+                }
+                
+                // Draw main border
+                using (GraphicsPath path = CreateRoundedRectangle(new Rectangle(0, 0, pnlMemberDropdown.Width - 1, pnlMemberDropdown.Height - 1), 6))
+                {
+                    e.Graphics.FillPath(Brushes.White, path);
+                    using (Pen pen = new Pen(Color.FromArgb(200, 200, 200), 1))
+                    {
+                        e.Graphics.DrawPath(pen, path);
+                    }
+                }
+            };
+            
+            ListBox lstMembers = new ListBox
+            {
+                Dock = DockStyle.Fill,
+                BorderStyle = BorderStyle.None,
+                Font = new Font("Segoe UI", 9.5F),
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(60, 60, 60),
+                ItemHeight = 22
+            };
+            
+            lstMembers.MouseDown += (s, e) =>
+            {
+                int index = lstMembers.IndexFromPoint(e.Location);
+                if (index >= 0)
+                {
+                    lstMembers.SelectedIndex = index;
+                }
+            };
+            
+            pnlMemberDropdown.Controls.Add(lstMembers);
+            
+            // Load members from database
+            MemberService memberService = new MemberService();
+            List<MemberData> allMembers = new List<MemberData>();
+            var filteredMembers = new List<MemberData>();
+            
+            Action refreshMemberData = () =>
+            {
+                try
+                {
+                    allMembers = memberService.GetAllMembers().Where(m => m.Status == 1).ToList();
+                    filteredMembers = new List<MemberData>(allMembers);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error loading members: {ex.Message}");
+                    allMembers = new List<MemberData>();
+                    filteredMembers = new List<MemberData>();
+                }
+            };
+            
+            refreshMemberData();
+            
+            Action updateMemberList = () =>
+            {
+                lstMembers.Items.Clear();
+                if (filteredMembers == null || filteredMembers.Count == 0)
+                {
+                    lstMembers.Items.Add("No active members found");
+                }
+                else
+                {
+                    foreach (var member in filteredMembers)
+                    {
+                        lstMembers.Items.Add($"{member.FirstName} {member.LastName} ({member.MemberNumber})");
+                    }
+                }
+                lstMembers.Visible = true;
+                lstMembers.Refresh();
+                pnlMemberDropdown.Refresh();
+            };
+            
+            updateMemberList();
+            
+            txtMemberSearch.TextChanged += (s, e) =>
+            {
+                string searchText = txtMemberSearch.Text.ToLower();
+                if (txtMemberSearch.Tag is PlaceholderTextHelper.PlaceholderData placeholderData)
+                {
+                    if (searchText == placeholderData.PlaceholderText.ToLower())
+                    {
+                        searchText = "";
+                    }
+                }
+                
+                if (string.IsNullOrWhiteSpace(searchText))
+                {
+                    filteredMembers = new List<MemberData>(allMembers);
+                }
+                else
+                {
+                    filteredMembers = allMembers.Where(m =>
+                        m.MemberNumber.ToLower().Contains(searchText) ||
+                        m.FirstName.ToLower().Contains(searchText) ||
+                        m.LastName.ToLower().Contains(searchText) ||
+                        m.Email.ToLower().Contains(searchText)
+                    ).ToList();
+                }
+                updateMemberList();
+            };
+            
+            lstMembers.SelectedIndexChanged += (s, e) =>
+            {
+                if (lstMembers.SelectedIndex >= 0 && lstMembers.SelectedIndex < filteredMembers.Count)
+                {
+                    var member = filteredMembers[lstMembers.SelectedIndex];
+                    selectedMemberId = member.MemberId;
+                    txtMemberSearch.Text = $"{member.FirstName} {member.LastName} ({member.MemberNumber})";
+                    txtMemberSearch.ForeColor = Color.Black;
+                    pnlMemberDropdown.Visible = false;
+                }
+            };
+            
+            Label lblMemberArrow = new Label
+            {
+                Text = "▼",
+                Font = new Font("Segoe UI", 8F),
+                ForeColor = Color.FromArgb(150, 150, 150),
+                Location = new Point(370, 13),
+                Size = new Size(25, 18),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Cursor = Cursors.Hand
+            };
+            
+            Action showMemberDropdown = () =>
+            {
+                refreshMemberData();
+                updateMemberList();
+                int itemCount = lstMembers.Items.Count;
+                int height = itemCount > 0 ? Math.Min(150, itemCount * 22 + 10) : 40;
+                
+                pnlMemberDropdown.Location = new Point(30, y + 25 + 45 + 2);
+                pnlMemberDropdown.Width = 390;
+                pnlMemberDropdown.Height = height;
+                pnlMemberDropdown.Visible = true;
+                pnlMemberDropdown.BringToFront();
+                pnlMemberDropdown.Invalidate();
+                
+                lstMembers.Visible = true;
+                lstMembers.Height = height;
+                lstMembers.Refresh();
+                
+                fineForm.Invalidate();
+                fineForm.Update();
+            };
+            
+            lblMemberArrow.Click += (s, e) => 
+            { 
+                txtMemberSearch.Focus();
+                showMemberDropdown();
+            };
+            
+            txtMemberSearch.Enter += (s, e) =>
+            {
+                pnlMem.Tag = true;
+                pnlMem.Invalidate();
+                showMemberDropdown();
+            };
+            
+            txtMemberSearch.Leave += (s, e) =>
+            {
+                pnlMem.Tag = false;
+                pnlMem.Invalidate();
+                System.Threading.Thread.Sleep(200);
+                pnlMemberDropdown.Visible = false;
+            };
+            
+            txtMemberSearch.Click += (s, e) =>
+            {
+                showMemberDropdown();
+            };
+            
+            pnlMem.Controls.AddRange(new Control[] { txtMemberSearch, lblMemberArrow });
+            fineForm.Controls.Add(pnlMem);
+            
+            pnlMem.Paint += (s, e) => {
+                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                bool isFocused = (bool)pnlMem.Tag;
+                Color borderColor = isFocused ? Color.Maroon : Color.FromArgb(120, 0, 0); 
+                using(GraphicsPath path = CreateRoundedRectangle(new Rectangle(1, 1, pnlMem.Width - 3, pnlMem.Height - 3), 8))
+                using(Pen pen = new Pen(borderColor, 1.5f)) e.Graphics.DrawPath(pen, path);
+            };
+            
+            // Add dropdown panel last so it appears on top
+            fineForm.Controls.Add(pnlMemberDropdown);
 
             y += 80;
 
@@ -10476,8 +15888,121 @@ namespace LMS_Library_Management_System.Forms.Dashboard
                  }
 
             };
-
-
+            
+            btnConfirm.Click += (s, e) =>
+            {
+                if (selectedMemberId == 0)
+                {
+                    MessageBox.Show("Please select a member.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtMemberSearch.Focus();
+                    return;
+                }
+                
+                // Validate amount
+                if (!decimal.TryParse(txtAmt.Text, out decimal amount) || amount <= 0)
+                {
+                    MessageBox.Show("Please enter a valid amount greater than 0.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    txtAmt.Focus();
+                    return;
+                }
+                
+                // Get form values
+                string fineType = cmbType.SelectedItem?.ToString() ?? "Other";
+                string bookTitle = txtBk.Text?.Trim() ?? "";
+                if (txtBk.Tag is PlaceholderTextHelper.PlaceholderData placeholderData && bookTitle == placeholderData.PlaceholderText)
+                {
+                    bookTitle = "";
+                }
+                string notes = txtNotes.Text?.Trim() ?? "";
+                if (txtNotes.Tag is PlaceholderTextHelper.PlaceholderData notesPlaceholder && notes == notesPlaceholder.PlaceholderText)
+                {
+                    notes = "";
+                }
+                
+                // Build reason string
+                string reason = fineType;
+                if (!string.IsNullOrWhiteSpace(bookTitle))
+                {
+                    reason += $" - {bookTitle}";
+                }
+                if (!string.IsNullOrWhiteSpace(notes))
+                {
+                    reason += $" ({notes})";
+                }
+                
+                try
+                {
+                    // Ensure Fines table allows NULL for BorrowingId
+                    EnsureFinesTableAllowsNullBorrowingId();
+                    
+                    using (var connection = Helper.MYSqlHelper.CreateConnection())
+                    {
+                        // Get BorrowingId if book title is provided (optional)
+                        int? borrowingId = null;
+                        if (!string.IsNullOrWhiteSpace(bookTitle))
+                        {
+                            string borrowingQuery = @"
+                                SELECT b.BorrowingId 
+                                FROM Borrowings b
+                                INNER JOIN Books bk ON b.BookId = bk.BookId
+                                INNER JOIN Members m ON b.MemberId = m.MemberId
+                                WHERE m.MemberId = @MemberId 
+                                AND bk.Title LIKE @BookTitle 
+                                AND b.ReturnDate IS NULL
+                                LIMIT 1";
+                            
+                            using (var borrowingCmd = new MySqlCommand(borrowingQuery, connection))
+                            {
+                                borrowingCmd.Parameters.AddWithValue("@MemberId", selectedMemberId);
+                                borrowingCmd.Parameters.AddWithValue("@BookTitle", $"%{bookTitle}%");
+                                object result = borrowingCmd.ExecuteScalar();
+                                if (result != null && result != DBNull.Value)
+                                {
+                                    borrowingId = Convert.ToInt32(result);
+                                }
+                            }
+                        }
+                        
+                        // Insert fine into database - use conditional INSERT based on whether BorrowingId exists
+                        string insertQuery;
+                        MySqlCommand insertCmd;
+                        
+                        if (borrowingId.HasValue)
+                        {
+                            insertQuery = @"
+                                INSERT INTO Fines (BorrowingId, MemberId, Amount, Reason, Status, CreatedDate)
+                                VALUES (@BorrowingId, @MemberId, @Amount, @Reason, 'Unpaid', NOW())";
+                            insertCmd = new MySqlCommand(insertQuery, connection);
+                            insertCmd.Parameters.AddWithValue("@BorrowingId", borrowingId.Value);
+                        }
+                        else
+                        {
+                            insertQuery = @"
+                                INSERT INTO Fines (MemberId, Amount, Reason, Status, CreatedDate)
+                                VALUES (@MemberId, @Amount, @Reason, 'Unpaid', NOW())";
+                            insertCmd = new MySqlCommand(insertQuery, connection);
+                        }
+                        
+                        insertCmd.Parameters.AddWithValue("@MemberId", selectedMemberId);
+                        insertCmd.Parameters.AddWithValue("@Amount", amount);
+                        insertCmd.Parameters.AddWithValue("@Reason", reason);
+                        
+                        insertCmd.ExecuteNonQuery();
+                        
+                        MessageBox.Show("Fine added successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        fineForm.DialogResult = DialogResult.OK;
+                        
+                        // Refresh fines view BEFORE closing
+                        RefreshFinesView();
+                        
+                        fineForm.Close();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error creating fine: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            };
 
              fineForm.Controls.Add(btnCancel);
 
@@ -10750,6 +16275,634 @@ namespace LMS_Library_Management_System.Forms.Dashboard
             };
 
         }
+        
+        private int GetDaysFromTimeRange(ComboBox cmbDate)
+        {
+            string selected = cmbDate.SelectedItem?.ToString() ?? "📅  Last 7 days";
+            if (selected.Contains("7 days")) return 7;
+            if (selected.Contains("14 days")) return 14;
+            if (selected.Contains("30 days")) return 30;
+            if (selected.Contains("90 days")) return 90;
+            return 7; // Default
+        }
+        
+        private DateTime GetStartDateFromTimeRange(ComboBox cmbDate)
+        {
+            int days = GetDaysFromTimeRange(cmbDate);
+            return DateTime.Now.AddDays(-days);
+        }
+        
+        private void PrintCurrentReport(ComboBox cmbDate)
+        {
+            try
+            {
+                // Get current active tab
+                string activeTab = "Circulation";
+                if (pnlReportsTabs != null)
+                {
+                    foreach (Control ctrl in pnlReportsTabs.Controls)
+                    {
+                        if (ctrl is Button btn && btn.Font.Bold)
+                        {
+                            activeTab = btn.Tag?.ToString() ?? btn.Text;
+                            break;
+                        }
+                    }
+                }
+                
+                // Create print document
+                PrintDialog printDialog = new PrintDialog();
+                PrintDocument printDoc = new PrintDocument();
+                
+                printDoc.PrintPage += (s, e) =>
+                {
+                    PrintReportPage(e, activeTab, cmbDate);
+                };
+                
+                printDialog.Document = printDoc;
+                
+                if (printDialog.ShowDialog() == DialogResult.OK)
+                {
+                    printDoc.Print();
+                    MessageBox.Show("Report printed successfully!", "Print", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error printing report: {ex.Message}", "Print Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        
+        private void PrintReportPage(PrintPageEventArgs e, string reportType, ComboBox cmbDate)
+        {
+            Font titleFont = new Font("Arial", 16, FontStyle.Bold);
+            Font headerFont = new Font("Arial", 12, FontStyle.Bold);
+            Font bodyFont = new Font("Arial", 10);
+            
+            float yPos = 50;
+            float leftMargin = 50;
+            float rightMargin = e.MarginBounds.Right;
+            
+            // Title
+            e.Graphics.DrawString($"Library Management System - {reportType} Report", titleFont, Brushes.Black, leftMargin, yPos);
+            yPos += 30;
+            
+            // Time range
+            string timeRange = cmbDate.SelectedItem?.ToString() ?? "📅  Last 7 days";
+            e.Graphics.DrawString($"Period: {timeRange.Replace("📅", "").Trim()}", bodyFont, Brushes.Black, leftMargin, yPos);
+            yPos += 20;
+            e.Graphics.DrawString($"Generated: {DateTime.Now:MMMM dd, yyyy 'at' HH:mm:ss}", bodyFont, Brushes.Black, leftMargin, yPos);
+            yPos += 30;
+            
+            // Draw line
+            e.Graphics.DrawLine(new Pen(Color.Black, 1), leftMargin, yPos, rightMargin, yPos);
+            yPos += 20;
+            
+            // Report content based on type
+            DateTime startDate = GetStartDateFromTimeRange(cmbDate);
+            
+            using (var connection = Helper.MYSqlHelper.CreateConnection())
+            {
+                switch (reportType)
+                {
+                    case "Circulation":
+                        PrintCirculationReport(e, connection, startDate, leftMargin, ref yPos, headerFont, bodyFont);
+                        break;
+                    case "Members":
+                        PrintMembersReport(e, connection, startDate, leftMargin, ref yPos, headerFont, bodyFont);
+                        break;
+                    case "Collection":
+                        PrintCollectionReport(e, connection, startDate, leftMargin, ref yPos, headerFont, bodyFont);
+                        break;
+                    case "Fines":
+                        PrintFinesReport(e, connection, startDate, leftMargin, ref yPos, headerFont, bodyFont);
+                        break;
+                }
+            }
+        }
+        
+        private void PrintCirculationReport(PrintPageEventArgs e, MySqlConnection connection, DateTime startDate, float leftMargin, ref float yPos, Font headerFont, Font bodyFont)
+        {
+            e.Graphics.DrawString("Circulation Statistics", headerFont, Brushes.Black, leftMargin, yPos);
+            yPos += 25;
+            
+            string query = @"
+                SELECT 
+                    COUNT(*) AS TotalBorrowings,
+                    SUM(CASE WHEN ReturnDate IS NULL AND DueDate < NOW() THEN 1 ELSE 0 END) AS Overdue,
+                    SUM(CASE WHEN DATE(ReturnDate) = CURDATE() THEN 1 ELSE 0 END) AS ReturnedToday
+                FROM Borrowings
+                WHERE BorrowDate >= @StartDate";
+            
+            using (var cmd = new MySqlCommand(query, connection))
+            {
+                cmd.Parameters.AddWithValue("@StartDate", startDate);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        e.Graphics.DrawString($"Total Borrowings: {reader.GetInt32("TotalBorrowings")}", bodyFont, Brushes.Black, leftMargin, yPos);
+                        yPos += 20;
+                        e.Graphics.DrawString($"Overdue Books: {reader.GetInt32("Overdue")}", bodyFont, Brushes.Black, leftMargin, yPos);
+                        yPos += 20;
+                        e.Graphics.DrawString($"Returned Today: {reader.GetInt32("ReturnedToday")}", bodyFont, Brushes.Black, leftMargin, yPos);
+                        yPos += 30;
+                    }
+                }
+            }
+        }
+        
+        private void PrintMembersReport(PrintPageEventArgs e, MySqlConnection connection, DateTime startDate, float leftMargin, ref float yPos, Font headerFont, Font bodyFont)
+        {
+            e.Graphics.DrawString("Members Statistics", headerFont, Brushes.Black, leftMargin, yPos);
+            yPos += 25;
+            
+            string query = @"
+                SELECT 
+                    COUNT(*) AS TotalMembers,
+                    SUM(CASE WHEN Status = 1 THEN 1 ELSE 0 END) AS ActiveMembers,
+                    SUM(CASE WHEN RegistrationDate >= @StartDate THEN 1 ELSE 0 END) AS NewMembers
+                FROM Members";
+            
+            using (var cmd = new MySqlCommand(query, connection))
+            {
+                cmd.Parameters.AddWithValue("@StartDate", startDate);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        e.Graphics.DrawString($"Total Members: {reader.GetInt32("TotalMembers")}", bodyFont, Brushes.Black, leftMargin, yPos);
+                        yPos += 20;
+                        e.Graphics.DrawString($"Active Members: {reader.GetInt32("ActiveMembers")}", bodyFont, Brushes.Black, leftMargin, yPos);
+                        yPos += 20;
+                        e.Graphics.DrawString($"New Members: {reader.GetInt32("NewMembers")}", bodyFont, Brushes.Black, leftMargin, yPos);
+                        yPos += 30;
+                    }
+                }
+            }
+        }
+        
+        private void PrintCollectionReport(PrintPageEventArgs e, MySqlConnection connection, DateTime startDate, float leftMargin, ref float yPos, Font headerFont, Font bodyFont)
+        {
+            e.Graphics.DrawString("Collection Statistics", headerFont, Brushes.Black, leftMargin, yPos);
+            yPos += 25;
+            
+            string query = @"
+                SELECT 
+                    COUNT(DISTINCT BookId) AS TotalTitles,
+                    COUNT(*) AS TotalCopies,
+                    SUM(CASE WHEN Status = 'Available' THEN 1 ELSE 0 END) AS Available
+                FROM BookCopies";
+            
+            using (var cmd = new MySqlCommand(query, connection))
+            {
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        e.Graphics.DrawString($"Total Titles: {reader.GetInt32("TotalTitles")}", bodyFont, Brushes.Black, leftMargin, yPos);
+                        yPos += 20;
+                        e.Graphics.DrawString($"Total Copies: {reader.GetInt32("TotalCopies")}", bodyFont, Brushes.Black, leftMargin, yPos);
+                        yPos += 20;
+                        e.Graphics.DrawString($"Available Copies: {reader.GetInt32("Available")}", bodyFont, Brushes.Black, leftMargin, yPos);
+                        yPos += 30;
+                    }
+                }
+            }
+        }
+        
+        private void PrintFinesReport(PrintPageEventArgs e, MySqlConnection connection, DateTime startDate, float leftMargin, ref float yPos, Font headerFont, Font bodyFont)
+        {
+            e.Graphics.DrawString("Fines Statistics", headerFont, Brushes.Black, leftMargin, yPos);
+            yPos += 25;
+            
+            EnsurePaidAmountColumnExists(connection);
+            
+            string query = @"
+                SELECT 
+                    COUNT(*) AS TotalFines,
+                    SUM(f.Amount) AS TotalAmount,
+                    SUM(CASE WHEN f.Status = 'Paid' THEN COALESCE(f.PaidAmount, f.Amount) ELSE 0 END) AS Collected,
+                    SUM(CASE WHEN f.Status = 'Unpaid' THEN f.Amount - COALESCE(f.PaidAmount, 0) ELSE 0 END) AS Pending,
+                    SUM(CASE WHEN f.Status = 'Waived' THEN f.Amount ELSE 0 END) AS Waived
+                FROM Fines f
+                WHERE f.CreatedDate >= @StartDate";
+            
+            using (var cmd = new MySqlCommand(query, connection))
+            {
+                cmd.Parameters.AddWithValue("@StartDate", startDate);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        e.Graphics.DrawString($"Total Fines: {reader.GetInt32("TotalFines")}", bodyFont, Brushes.Black, leftMargin, yPos);
+                        yPos += 20;
+                        e.Graphics.DrawString($"Total Amount: ₱{reader.GetDecimal("TotalAmount"):N2}", bodyFont, Brushes.Black, leftMargin, yPos);
+                        yPos += 20;
+                        e.Graphics.DrawString($"Collected: ₱{reader.GetDecimal("Collected"):N2}", bodyFont, Brushes.Black, leftMargin, yPos);
+                        yPos += 20;
+                        e.Graphics.DrawString($"Pending: ₱{reader.GetDecimal("Pending"):N2}", bodyFont, Brushes.Black, leftMargin, yPos);
+                        yPos += 20;
+                        e.Graphics.DrawString($"Waived: ₱{reader.GetDecimal("Waived"):N2}", bodyFont, Brushes.Black, leftMargin, yPos);
+                        yPos += 30;
+                    }
+                }
+            }
+        }
+        
+        private void ExportCurrentReport(ComboBox cmbDate)
+        {
+            try
+            {
+                // Get current active tab
+                string activeTab = "Circulation";
+                if (pnlReportsTabs != null)
+                {
+                    foreach (Control ctrl in pnlReportsTabs.Controls)
+                    {
+                        if (ctrl is Button btn && btn.Font.Bold)
+                        {
+                            activeTab = btn.Tag?.ToString() ?? btn.Text;
+                            break;
+                        }
+                    }
+                }
+                
+                // Show save dialog
+                SaveFileDialog saveDialog = new SaveFileDialog
+                {
+                    Filter = "CSV Files (*.csv)|*.csv|Text Files (*.txt)|*.txt|All Files (*.*)|*.*",
+                    FileName = $"{activeTab}Report_{DateTime.Now:yyyyMMdd_HHmmss}",
+                    Title = $"Export {activeTab} Report"
+                };
+                
+                if (saveDialog.ShowDialog() != DialogResult.OK)
+                {
+                    return;
+                }
+                
+                string filePath = saveDialog.FileName;
+                string extension = Path.GetExtension(filePath).ToLower();
+                DateTime startDate = GetStartDateFromTimeRange(cmbDate);
+                
+                using (var connection = Helper.MYSqlHelper.CreateConnection())
+                {
+                    if (extension == ".csv")
+                    {
+                        ExportReportToCSV(connection, filePath, activeTab, startDate);
+                    }
+                    else
+                    {
+                        ExportReportToText(connection, filePath, activeTab, startDate);
+                    }
+                }
+                
+                MessageBox.Show($"{activeTab} report exported successfully!\n\nSaved to: {filePath}", "Export Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error exporting report: {ex.Message}", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        
+        private void ExportReportToCSV(MySqlConnection connection, string filePath, string reportType, DateTime startDate)
+        {
+            using (var writer = new StreamWriter(filePath))
+            {
+                switch (reportType)
+                {
+                    case "Circulation":
+                        writer.WriteLine("BorrowingId,MemberName,BookTitle,BorrowDate,DueDate,ReturnDate,Status,FineAmount");
+                        string circQuery = @"
+                            SELECT 
+                                b.BorrowingId,
+                                CONCAT(u.FirstName, ' ', u.LastName) AS MemberName,
+                                bk.Title AS BookTitle,
+                                b.BorrowDate,
+                                b.DueDate,
+                                b.ReturnDate,
+                                b.Status,
+                                COALESCE(b.FineAmount, 0) AS FineAmount
+                            FROM Borrowings b
+                            INNER JOIN Members m ON b.MemberId = m.MemberId
+                            INNER JOIN Users u ON m.UserId = u.UserId
+                            INNER JOIN Books bk ON b.BookId = bk.BookId
+                            WHERE b.BorrowDate >= @StartDate
+                            ORDER BY b.BorrowDate DESC";
+                        ExportQueryToCSV(connection, writer, circQuery, startDate);
+                        break;
+                    case "Members":
+                        writer.WriteLine("MemberId,MemberNumber,FirstName,LastName,Email,Phone,MemberType,Status,RegistrationDate");
+                        string memQuery = @"
+                            SELECT 
+                                m.MemberId,
+                                m.MemberNumber,
+                                u.FirstName,
+                                u.LastName,
+                                u.Email,
+                                m.Phone,
+                                m.MemberType,
+                                CASE WHEN m.Status = 1 THEN 'Active' ELSE 'Inactive' END AS Status,
+                                m.RegistrationDate
+                            FROM Members m
+                            INNER JOIN Users u ON m.UserId = u.UserId
+                            WHERE m.RegistrationDate >= @StartDate
+                            ORDER BY m.RegistrationDate DESC";
+                        ExportQueryToCSV(connection, writer, memQuery, startDate);
+                        break;
+                    case "Collection":
+                        writer.WriteLine("BookId,Title,Author,ISBN,Category,TotalCopies,AvailableCopies,Status");
+                        string collQuery = @"
+                            SELECT 
+                                b.BookId,
+                                b.Title,
+                                b.Author,
+                                COALESCE(b.ISBN, '') AS ISBN,
+                                COALESCE(b.Category, '') AS Category,
+                                b.TotalCopies,
+                                b.AvailableCopies,
+                                CASE WHEN b.AvailableCopies > 0 THEN 'Available' ELSE 'Unavailable' END AS Status
+                            FROM Books b
+                            ORDER BY b.Title";
+                        ExportQueryToCSV(connection, writer, collQuery, DateTime.MinValue);
+                        break;
+                    case "Fines":
+                        EnsurePaidAmountColumnExists(connection);
+                        writer.WriteLine("FineId,MemberName,Book/Reason,Type,Amount,PaidAmount,Status,Date,Reason");
+                        string finesQuery = @"
+                            SELECT 
+                                f.FineId,
+                                COALESCE(CONCAT(u.FirstName, ' ', u.LastName), m.MemberNumber, 'Unknown Member') AS MemberName,
+                                CASE 
+                                    WHEN bk.Title IS NOT NULL THEN bk.Title
+                                    WHEN f.Reason IS NOT NULL AND f.Reason != '' THEN f.Reason
+                                    ELSE 'N/A'
+                                END AS BookReason,
+                                CASE 
+                                    WHEN f.Reason LIKE '%Lost%' OR f.Reason LIKE '%lost%' THEN 'Lost'
+                                    WHEN f.Reason LIKE '%Damaged%' OR f.Reason LIKE '%damaged%' THEN 'Damaged'
+                                    WHEN f.Reason LIKE '%Overdue%' OR f.Reason LIKE '%overdue%' OR f.Reason IS NULL THEN 'Overdue'
+                                    ELSE 'Other'
+                                END AS Type,
+                                f.Amount,
+                                COALESCE(f.PaidAmount, 0) AS PaidAmount,
+                                CASE 
+                                    WHEN f.Status = 'Unpaid' THEN 'Pending'
+                                    ELSE f.Status
+                                END AS Status,
+                                COALESCE(f.PaidDate, br.DueDate, f.CreatedDate) AS FineDate,
+                                COALESCE(f.Reason, 'N/A') AS Reason
+                            FROM Fines f
+                            INNER JOIN Members m ON f.MemberId = m.MemberId
+                            LEFT JOIN Users u ON m.UserId = u.UserId
+                            LEFT JOIN Borrowings br ON f.BorrowingId = br.BorrowingId
+                            LEFT JOIN Books bk ON br.BookId = bk.BookId
+                            WHERE f.CreatedDate >= @StartDate
+                            ORDER BY f.CreatedDate DESC";
+                        ExportQueryToCSV(connection, writer, finesQuery, startDate);
+                        break;
+                }
+            }
+        }
+        
+        private void ExportQueryToCSV(MySqlConnection connection, StreamWriter writer, string query, DateTime startDate)
+        {
+            using (var cmd = new MySqlCommand(query, connection))
+            {
+                if (query.Contains("@StartDate"))
+                {
+                    cmd.Parameters.AddWithValue("@StartDate", startDate);
+                }
+                
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        List<string> values = new List<string>();
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            if (reader.IsDBNull(i))
+                            {
+                                values.Add("");
+                            }
+                            else
+                            {
+                                object value = reader.GetValue(i);
+                                if (value is DateTime dt)
+                                {
+                                    values.Add(dt.ToString("yyyy-MM-dd HH:mm:ss"));
+                                }
+                                else
+                                {
+                                    values.Add($"\"{EscapeCSV(value.ToString())}\"");
+                                }
+                            }
+                        }
+                        writer.WriteLine(string.Join(",", values));
+                    }
+                }
+            }
+        }
+        
+        private void ExportReportToText(MySqlConnection connection, string filePath, string reportType, DateTime startDate)
+        {
+            StringBuilder report = new StringBuilder();
+            
+            report.AppendLine("=".PadRight(80, '='));
+            report.AppendLine($"LIBRARY MANAGEMENT SYSTEM - {reportType.ToUpper()} REPORT");
+            report.AppendLine("=".PadRight(80, '='));
+            report.AppendLine($"Generated: {DateTime.Now:MMMM dd, yyyy 'at' HH:mm:ss}");
+            
+            // Calculate days from start date
+            int days = (DateTime.Now - startDate).Days;
+            report.AppendLine($"Period: Last {days} days");
+            report.AppendLine();
+            
+            // Add report-specific content
+            switch (reportType)
+            {
+                case "Circulation":
+                    ExportCirculationToText(connection, report, startDate);
+                    break;
+                case "Members":
+                    ExportMembersToText(connection, report, startDate);
+                    break;
+                case "Collection":
+                    ExportCollectionToText(connection, report);
+                    break;
+                case "Fines":
+                    ExportFinesToText(connection, report, startDate);
+                    break;
+            }
+            
+            File.WriteAllText(filePath, report.ToString());
+        }
+        
+        private void ExportCirculationToText(MySqlConnection connection, StringBuilder report, DateTime startDate)
+        {
+            report.AppendLine("CIRCULATION STATISTICS");
+            report.AppendLine("-".PadRight(80, '-'));
+            
+            string query = @"
+                SELECT 
+                    COUNT(*) AS TotalBorrowings,
+                    SUM(CASE WHEN ReturnDate IS NULL AND DueDate < NOW() THEN 1 ELSE 0 END) AS Overdue,
+                    SUM(CASE WHEN DATE(ReturnDate) = CURDATE() THEN 1 ELSE 0 END) AS ReturnedToday
+                FROM Borrowings
+                WHERE BorrowDate >= @StartDate";
+            
+            using (var cmd = new MySqlCommand(query, connection))
+            {
+                cmd.Parameters.AddWithValue("@StartDate", startDate);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        report.AppendLine($"Total Borrowings:     {reader.GetInt32("TotalBorrowings"),10:N0}");
+                        report.AppendLine($"Overdue Books:        {reader.GetInt32("Overdue"),10:N0}");
+                        report.AppendLine($"Returned Today:       {reader.GetInt32("ReturnedToday"),10:N0}");
+                    }
+                }
+            }
+        }
+        
+        private void ExportMembersToText(MySqlConnection connection, StringBuilder report, DateTime startDate)
+        {
+            report.AppendLine("MEMBERS STATISTICS");
+            report.AppendLine("-".PadRight(80, '-'));
+            
+            string query = @"
+                SELECT 
+                    COUNT(*) AS TotalMembers,
+                    SUM(CASE WHEN Status = 1 THEN 1 ELSE 0 END) AS ActiveMembers,
+                    SUM(CASE WHEN RegistrationDate >= @StartDate THEN 1 ELSE 0 END) AS NewMembers
+                FROM Members";
+            
+            using (var cmd = new MySqlCommand(query, connection))
+            {
+                cmd.Parameters.AddWithValue("@StartDate", startDate);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        report.AppendLine($"Total Members:         {reader.GetInt32("TotalMembers"),10:N0}");
+                        report.AppendLine($"Active Members:        {reader.GetInt32("ActiveMembers"),10:N0}");
+                        report.AppendLine($"New Members:          {reader.GetInt32("NewMembers"),10:N0}");
+                    }
+                }
+            }
+        }
+        
+        private void ExportCollectionToText(MySqlConnection connection, StringBuilder report)
+        {
+            report.AppendLine("COLLECTION STATISTICS");
+            report.AppendLine("-".PadRight(80, '-'));
+            
+            string query = @"
+                SELECT 
+                    COUNT(DISTINCT BookId) AS TotalTitles,
+                    COUNT(*) AS TotalCopies,
+                    SUM(CASE WHEN Status = 'Available' THEN 1 ELSE 0 END) AS Available
+                FROM BookCopies";
+            
+            using (var cmd = new MySqlCommand(query, connection))
+            {
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        report.AppendLine($"Total Titles:          {reader.GetInt32("TotalTitles"),10:N0}");
+                        report.AppendLine($"Total Copies:          {reader.GetInt32("TotalCopies"),10:N0}");
+                        report.AppendLine($"Available Copies:      {reader.GetInt32("Available"),10:N0}");
+                    }
+                }
+            }
+        }
+        
+        private void ExportFinesToText(MySqlConnection connection, StringBuilder report, DateTime startDate)
+        {
+            report.AppendLine("FINES STATISTICS");
+            report.AppendLine("-".PadRight(80, '-'));
+            
+            EnsurePaidAmountColumnExists(connection);
+            
+            string query = @"
+                SELECT 
+                    COUNT(*) AS TotalFines,
+                    SUM(f.Amount) AS TotalAmount,
+                    SUM(CASE WHEN f.Status = 'Paid' THEN COALESCE(f.PaidAmount, f.Amount) ELSE 0 END) AS Collected,
+                    SUM(CASE WHEN f.Status = 'Unpaid' THEN f.Amount - COALESCE(f.PaidAmount, 0) ELSE 0 END) AS Pending,
+                    SUM(CASE WHEN f.Status = 'Waived' THEN f.Amount ELSE 0 END) AS Waived
+                FROM Fines f
+                WHERE f.CreatedDate >= @StartDate";
+            
+            using (var cmd = new MySqlCommand(query, connection))
+            {
+                cmd.Parameters.AddWithValue("@StartDate", startDate);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        report.AppendLine($"Total Fines:           {reader.GetInt32("TotalFines"),10:N0}");
+                        report.AppendLine($"Total Amount:          ₱{reader.GetDecimal("TotalAmount"),9:N2}");
+                        report.AppendLine($"Collected:             ₱{reader.GetDecimal("Collected"),9:N2}");
+                        report.AppendLine($"Pending:               ₱{reader.GetDecimal("Pending"),9:N2}");
+                        report.AppendLine($"Waived:                ₱{reader.GetDecimal("Waived"),9:N2}");
+                    }
+                }
+            }
+            
+            // Add detailed fines list
+            report.AppendLine();
+            report.AppendLine("DETAILED FINES LIST");
+            report.AppendLine("-".PadRight(80, '-'));
+            report.AppendLine($"{"Member",-25} {"Book/Reason",-30} {"Amount",12} {"Paid",12} {"Status",-10} {"Date",-12}");
+            report.AppendLine("-".PadRight(80, '-'));
+            
+            string detailsQuery = @"
+                SELECT 
+                    COALESCE(CONCAT(u.FirstName, ' ', u.LastName), m.MemberNumber, 'Unknown') AS MemberName,
+                    CASE 
+                        WHEN bk.Title IS NOT NULL THEN LEFT(bk.Title, 28)
+                        WHEN f.Reason IS NOT NULL AND f.Reason != '' THEN LEFT(f.Reason, 28)
+                        ELSE 'N/A'
+                    END AS BookReason,
+                    f.Amount,
+                    COALESCE(f.PaidAmount, 0) AS PaidAmount,
+                    CASE 
+                        WHEN f.Status = 'Unpaid' THEN 'Pending'
+                        ELSE f.Status
+                    END AS Status,
+                    DATE_FORMAT(COALESCE(f.PaidDate, br.DueDate, f.CreatedDate), '%Y-%m-%d') AS FineDate
+                FROM Fines f
+                INNER JOIN Members m ON f.MemberId = m.MemberId
+                LEFT JOIN Users u ON m.UserId = u.UserId
+                LEFT JOIN Borrowings br ON f.BorrowingId = br.BorrowingId
+                LEFT JOIN Books bk ON br.BookId = bk.BookId
+                WHERE f.CreatedDate >= @StartDate
+                ORDER BY f.CreatedDate DESC
+                LIMIT 100";
+            
+            using (var cmd = new MySqlCommand(detailsQuery, connection))
+            {
+                cmd.Parameters.AddWithValue("@StartDate", startDate);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string member = reader.GetString("MemberName");
+                        string book = reader.GetString("BookReason");
+                        decimal amount = reader.GetDecimal("Amount");
+                        decimal paid = reader.GetDecimal("PaidAmount");
+                        string status = reader.GetString("Status");
+                        string date = reader.GetString("FineDate");
+                        
+                        report.AppendLine($"{member,-25} {book,-30} ₱{amount,10:N2} ₱{paid,10:N2} {status,-10} {date,-12}");
+                    }
+                }
+            }
+        }
+        
 
 
 
@@ -12905,5 +19058,9 @@ namespace LMS_Library_Management_System.Forms.Dashboard
         }
     }
 
+    // Note: Dialog classes (CheckOutBookDialog, ReturnBookDialog, RecordPaymentDialog, 
+    // WaiveFineDialog, EditBookCopyDialog) are defined in separate files in the Dashboard folder.
+    // They can be accessed directly by their class names.
 }
+
 
