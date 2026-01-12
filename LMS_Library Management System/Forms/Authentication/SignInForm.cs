@@ -21,11 +21,14 @@ namespace LMS_Library_Management_System.Forms.Authentication
     public partial class SignInForm : Form
     {
         private static User _currentUser;
+        private static bool _isApplicationExiting = false;
         private bool passwordVisible = false;
         private readonly IAuthenticationService _authenticationService;
 
         public static User CurrentUser => _currentUser;
         public static bool IsLoggedIn => _currentUser != null;
+        public static bool IsApplicationExiting => _isApplicationExiting;
+        public static void SetApplicationExiting(bool value) => _isApplicationExiting = value;
 
         public static void SetCurrentUser(User user)
         {
@@ -337,13 +340,28 @@ namespace LMS_Library_Management_System.Forms.Authentication
                         
                         dashboard.FormClosed += (s, args) => 
                         {
-                            SignInForm.ClearCurrentUser();
-                            this.Show();
-                            this.txtEmail.SetActualText("");
-                            this.txtPassword.SetActualText("");
-                            this.cmbLoginAs.SelectedIndex = -1;
-                            btnSignIn.Enabled = true;
-                            btnSignIn.Text = "Sign In";
+                            // Only reopen SignInForm if the application is not exiting
+                            // (i.e., not closed via Application.Exit())
+                            if (!SignInForm.IsApplicationExiting)
+                            {
+                                try
+                                {
+                                    if (!this.IsDisposed)
+                                    {
+                                        SignInForm.ClearCurrentUser();
+                                        this.Show();
+                                        this.txtEmail.SetActualText("");
+                                        this.txtPassword.SetActualText("");
+                                        this.cmbLoginAs.SelectedIndex = -1;
+                                        btnSignIn.Enabled = true;
+                                        btnSignIn.Text = "Sign In";
+                                    }
+                                }
+                                catch
+                                {
+                                    // Form is disposed or application is exiting, ignore
+                                }
+                            }
                         };
                         
                         this.Hide();

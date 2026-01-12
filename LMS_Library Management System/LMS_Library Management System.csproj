@@ -117,12 +117,28 @@
     <Compile Include="Forms\Dashboard\StaffDashboardForm.Designer.cs">
       <DependentUpon>StaffDashboardForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\Dashboard\CheckOutBookDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\Dashboard\ReturnBookDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\Dashboard\RecordPaymentDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\Dashboard\WaiveFineDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\Dashboard\EditBookCopyDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Helpers\MYSqlHelper.cs" />
     <Compile Include="Helpers\PlaceholderTextHelper.cs" />
     <Compile Include="Helpers\ThemeConstants.cs" />
     <Compile Include="Helpers\UserCreationHelper.cs" />
     <Compile Include="Interfaces\IAuthenticationService.cs" />
     <Compile Include="Interfaces\IBookService.cs" />
+    <Compile Include="Interfaces\ICirculationService.cs" />
     <Compile Include="Interfaces\IMemberService.cs" />
     <Compile Include="Interfaces\IUserManagementService.cs" />
     <Compile Include="Models\Book.cs" />
@@ -137,6 +153,7 @@
     <Compile Include="Models\UserRole.cs" />
     <Compile Include="Services\AuthenticationService.cs" />
     <Compile Include="Services\BookService.cs" />
+    <Compile Include="Services\CirculationService.cs" />
     <Compile Include="Services\MemberService.cs" />
     <Compile Include="Services\UserManagementService.cs" />
     <Compile Include="Program.cs" />
